@@ -1,5 +1,5 @@
 app = 'investsheet'
-primary_region = 'mad'
+primary_region = 'cdg'
 
 [env]
   ORIGIN = 'https://invest.jdmuriel.com'

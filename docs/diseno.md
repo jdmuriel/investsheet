@@ -177,7 +177,7 @@ Un selector de cartera en la cabecera fija a cuál se refiere todo lo demás. En
 
 | Elemento | Configuración |
 |---|---|
-| Máquina | `shared-cpu-1x`, 512 MB, una sola, en una región europea |
+| Máquina | `shared-cpu-1x`, 512 MB, una sola, en París (`cdg`); Madrid ya no admite recursos nuevos |
 | Volumen | 1 GB montado en `/data`, con retención de instantáneas de 30 días |
 | Parada y arranque | `auto_stop_machines = "stop"`, `auto_start_machines = true`, `min_machines_running = 0` |
 | Dominio | `fly certs add invest.jdmuriel.com` y un registro CNAME de `invest` hacia el nombre `.fly.dev` de la aplicación |
@@ -246,7 +246,7 @@ Diferencias esperadas frente a la hoja, que el informe de importación detalla:
 
 ### 10.2 Otras
 
-- **Región de Fly**: Madrid si está disponible para máquinas nuevas; si no, París o Fráncfort. Se confirma al crear la aplicación.
+- **Región de Fly**: París (`cdg`). Madrid está retirada para recursos nuevos.
 - **Capa gratuita de Google Cloud Storage**: según fuentes de terceros cubre 5 GB solo en regiones de EE. UU.; se confirma al crear el *bucket*. Fuera de ella, el coste de unos megas seguiría siendo de céntimos.
 - **Precio de cierre trimestral en la hoja de precios**: hay que probar que `GOOGLEFINANCE` devuelve el histórico de todos los mercados usados.
 

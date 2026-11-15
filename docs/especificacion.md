@@ -1,6 +1,6 @@
 # Especificación de la nueva herramienta
 
-**Estado: borrador 0.1.** Las decisiones marcadas con ❓ dependen de las [preguntas abiertas](#11-decisiones-abiertas); lo demás se deriva de la [descripción de la hoja actual](descripcion-hoja-actual.md).
+**Estado: borrador 0.2.** Incorpora las [decisiones tomadas](#11-decisiones-tomadas) con el propietario; lo demás se deriva de la [descripción de la hoja actual](descripcion-hoja-actual.md).
 
 ## 1. Objetivo
 
@@ -11,7 +11,7 @@ Sustituir la hoja de cálculo por una herramienta que:
 - mantenga las vistas que hoy sostienen la disciplina inversora, sobre todo el cuadro de cartera;
 - cueste como máximo 5 €/mes y no dependa de fórmulas de Google Sheets para funcionar.
 
-Fuera de alcance: operar con brokers, datos en tiempo real, asesoramiento automático.
+Fuera del alcance inicial: apartado fiscal (IRPF, modelo 720), cálculo FIFO de plusvalías, operar con brokers, datos en tiempo real y asesoramiento automático.
 
 ## 2. Principios de diseño
 
@@ -22,9 +22,9 @@ Fuera de alcance: operar con brokers, datos en tiempo real, asesoramiento autom�
 
 ## 3. Usuarios y carteras
 
-- Un único usuario con acceso de escritura. ❓ (P2)
+- Un único usuario; nadie más accede, ni en modo lectura.
 - Varias **carteras** independientes (hoy tres: la propia y una por hijo), cada una con sus cuentas, operaciones y objetivos. Los valores y sus datos maestros son comunes.
-- Todas las vistas se pueden ver por cartera; ❓ si además hace falta una vista consolidada (P3).
+- Todas las vistas son por cartera. No hay vista consolidada.
 
 ## 4. Modelo de datos
 
@@ -50,14 +50,14 @@ Los importes monetarios se guardan como decimales exactos con su moneda, nunca e
 ### 5.1 Registro de operaciones
 
 - **RF-01** Alta, edición y borrado de operaciones con formulario específico por tipo: solo se piden los campos que aplican y la descripción se genera sola.
-- **RF-02** Tipos soportados: compra, venta, dividendo, interés, aportación, retirada, traspaso entre cuentas, cambio de divisa, gasto o comisión, devolución de prima, compra / venta / conversión de derechos, ampliación liberada, *split* y contrasplit, *spin-off*, conversión de ticker. ❓ Opciones y otros casos raros (P7).
+- **RF-02** Tipos soportados: compra, venta, dividendo, interés, aportación, retirada, traspaso entre cuentas, cambio de divisa, gasto o comisión, devolución de prima, compra / venta / conversión de derechos, ampliación liberada, *split* y contrasplit, *spin-off*, conversión de ticker, venta y compra de opciones (*put* / *call*), y pérdidas y compensaciones de fondos monetarios del broker. Son los 25 tipos de la hoja actual; todos siguen en uso.
 - **RF-03** En operaciones en divisa se **sugiere el tipo de cambio oficial** de la fecha, editable. Se guarda el cambio realmente aplicado.
 - **RF-04** Se registran por separado **retención en origen y en destino**. Al dar de alta un dividendo se precalculan con los porcentajes del valor.
 - **RF-05** Ajuste de céntimos: los gastos e importes son editables a mano para cuadrar con el broker, y al guardar se muestra el **saldo resultante de la cuenta** para comprobarlo.
-- **RF-06** **Dividendos esperados**: a partir del calendario de dividendos y de la posición, la aplicación propone los cobros pendientes; confirmar uno solo requiere revisar importe y cambio. Sustituye a las notas al pie del registro. ❓ (P9)
+- **RF-06** **Entrada en cualquier orden y por lotes**: las operaciones se pueden introducir sin respetar el orden cronológico; saldos y posiciones se recalculan siempre por fecha. Hay un modo de alta rápida para meter seguidos todos los dividendos de una cuenta en un periodo (se fija la cuenta, y cada línea pide valor, fecha, importe y retención), y después los de otra cuenta aunque las fechas se intercalen. Hace innecesarias las notas de próximos dividendos al pie del registro.
 - **RF-07** Listado de operaciones con filtro por cartera, año, tipo, valor y cuenta, y búsqueda de texto.
 - **RF-08** Validación: tipo, valor, cuenta y moneda se eligen de listas; no se permite vender más acciones de las que hay ni dejar una cuenta en negativo sin confirmación.
-- **RF-09** ❓ Importación de extractos de los brokers en CSV para proponer operaciones (P10).
+- **RF-09** A medio plazo (fase 4): importación de los extractos CSV de Degiro e Interactive Brokers, que propone operaciones para revisar antes de guardarlas y detecta las ya registradas. ING no exporta, así que sus operaciones se introducen a mano.
 
 ### 5.2 Efectivo y capital
 
@@ -69,7 +69,7 @@ Los importes monetarios se guardan como decimales exactos con su moneda, nunca e
 
 - **RF-13** Por valor y a cualquier fecha: nº de acciones, coste bruto, coste reducido (descontando ventas de derechos y devoluciones de prima) y precio medio.
 - **RF-14** Total invertido a cualquier fecha, completo y reducido.
-- **RF-15** Tratamiento del coste en ventas parciales ❓ (P6): la hoja usa coste medio; para IRPF hace falta FIFO.
+- **RF-15** En las ventas se descuenta **coste medio**, como en la hoja. El modelo guarda cada compra por separado para poder añadir FIFO más adelante sin migrar datos.
 
 ### 5.4 Dividendos previstos y cambios de dividendo
 
@@ -103,8 +103,8 @@ Los importes monetarios se guardan como decimales exactos con su moneda, nunca e
 - **RF-31** Listas por zona ordenables a mano (arrastrar), con las columnas actuales: *tier*, invertido, RPD, precio, objetivo, distancia, variación desde la revisión anterior.
 - **RF-32** «Cerrar revisión» guarda la fecha, el orden y el precio de cada valor ese día; se conserva el histórico de revisiones y la evolución mensual de precios.
 - **RF-33** Variación mensual clasificada con umbrales configurables (hoy 4 % y 10 %).
-- **RF-34** Inversión máxima por *tier* configurable, con aviso al superarla. ❓ (P12)
-- **RF-35** Línea de texto resumen por valor, copiable. ❓ (P13)
+- **RF-34** Inversión máxima por valor según *tier* y zona, configurable y con aviso al acercarse o superarla. Valores iniciales en miles de euros: España T1 6, T2 4, T3 1,5; resto del mundo T1 5, T2 3, T3 1. Los valores sin *tier* no tienen límite definido.
+- **RF-35** Línea de texto resumen por valor con el formato actual (`XXX +2% (11.70/9.50 +23%, RPD 3.59%, invertido 4.3K, T1, PMC 9.35)`), con botón para copiar una línea o una lista entera, porque se pega en un fichero de texto externo donde se anotan las decisiones y los datos que las justifican.
 - **RF-36** Registro de las propuestas y de la elección de cada mes por cartera.
 
 ### 5.9 Informes
@@ -113,8 +113,8 @@ Los importes monetarios se guardan como decimales exactos con su moneda, nunca e
 - **RF-38** **Dividendos por mes y año** (brutos y netos), con gráficos comparativos.
 - **RF-39** **Evolución de la inversión**: capital aportado, coste y, donde haya precios, valor de mercado.
 - **RF-40** **Crecimiento de dividendos** año X frente a X−1 por valor y total: orgánico frente a compras, calculado automáticamente con las fórmulas actuales.
-- **RF-41** **Informe fiscal anual** ❓ (P8): dividendos por país y valor con bruto, retención en origen, retención en destino y neto; ventas con ganancia o pérdida.
-- **RF-42** Foto de cartera automática a cierre de año, y bajo demanda.
+- **RF-41** *(Excluido del diseño inicial.)* Informe fiscal anual. Las retenciones en origen y destino se guardan desde el principio (RF-04) para poder añadirlo después.
+- **RF-42** Foto de cartera automática al cierre de cada trimestre y de cada año, con el precio de cierre de ese día, y bajo demanda. Si la aplicación estaba parada en esa fecha, la foto se genera en el siguiente arranque con precios históricos.
 
 ### 5.10 Precios y tipos de cambio
 
@@ -126,7 +126,7 @@ Los importes monetarios se guardan como decimales exactos con su moneda, nunca e
 ### 5.11 Datos
 
 - **RF-47** Exportación completa a Excel o CSV, y copia de seguridad automática.
-- **RF-48** Importación del histórico desde la hoja actual ❓ (P5).
+- **RF-48** Importación de **todo el histórico** desde la hoja actual: las operaciones desde 2014 de la cartera propia y las de los hijos.
 
 ## 6. Reglas de cálculo
 
@@ -163,9 +163,10 @@ Con *fx* = unidades de moneda extranjera por euro.
 - **Coste**: ≤ 5 €/mes en total (alojamiento, base de datos, precios, dominio si lo hay).
 - **Disponibilidad bajo demanda**: uso de unas 2 horas semanales. El servidor puede estar parado; debe **arrancar solo al abrir la aplicación** y pararse solo tras un rato sin uso, o con un botón. Arranque en menos de 30 segundos.
 - **Rendimiento**: cualquier vista en menos de 2 segundos con 15 años de operaciones (del orden de 5.000 filas).
-- **Seguridad**: acceso con autenticación; datos financieros personales cifrados en tránsito; sin datos reales en el repositorio.
+- **Seguridad**: acceso con autenticación; datos cifrados en tránsito.
+- **Privacidad del repositorio**: el repositorio es público. Pueden aparecer la composición de la cartera (qué valores) y los parámetros de la estrategia (límites por *tier*), pero **nunca el volumen real**: ni importes, ni nº de acciones, ni saldos, ni dividendos cobrados. La hoja original, la base de datos y sus copias quedan fuera del repositorio, y las pruebas usan datos ficticios.
 - **Copias**: copia diaria automática cuando haya cambios, con al menos 30 días de retención.
-- **Dispositivos**: navegador de escritorio y móvil Android.
+- **Dispositivos**: Chromebook como equipo principal (toda la funcionalidad) y móvil Android para consultar y hacer apuntes sueltos.
 - **Idioma**: español; formato numérico y de fecha español.
 
 ## 8. Arquitectura propuesta
@@ -177,9 +178,10 @@ Con *fx* = unidades de moneda extranjera por euro.
 | Interfaz | Web *responsive* instalable como PWA | App nativa; hoja de cálculo simplificada |
 | Servidor | Contenedor que **escala a cero**: arranca con la primera petición y se para solo al quedar inactivo | Servidor virtual siempre encendido |
 | Datos | SQLite en un único fichero, con copia continua a almacenamiento de objetos | PostgreSQL gestionado con capa gratuita |
-| Precios ❓ (P4) | Hoja de Google mínima con `GOOGLEFINANCE` publicada como CSV, que la aplicación lee y cachea | API de precios gratuita o de pago |
+| Precios | Hoja de Google mínima con `GOOGLEFINANCE` publicada como CSV, que la aplicación lee y cachea | API de precios gratuita o de pago |
 | Tipos de cambio | Referencia diaria del BCE (gratuita) | El mismo proveedor de precios |
-| Acceso | Inicio de sesión con cuenta de Google restringido a direcciones autorizadas | Usuario y contraseña |
+| Acceso | Inicio de sesión con cuenta de Google restringido a una dirección autorizada | Usuario y contraseña |
+| Tecnología | Un único proyecto TypeScript (interfaz y servidor) empaquetado en un contenedor; se concreta en la fase de diseño | Python en servidor con interfaz ligera |
 
 El volumen de datos es mínimo (decenas de megas como mucho), así que el coste lo determina solo el tiempo de servidor encendido; con unas horas a la semana cabe holgadamente en el presupuesto. El proveedor concreto y sus precios vigentes se elegirán en la fase de diseño.
 
@@ -188,7 +190,7 @@ La fuente de precios es la pieza de más riesgo: las API gratuitas cubren bien E
 ## 9. Migración
 
 1. Importar los datos maestros de valores desde `Control cartera` y `Valores en estudio`.
-2. Importar las operaciones de los tres registros, normalizando tipos, monedas y cuentas. ❓ Alcance (P5).
+2. Importar todas las operaciones de los tres registros desde 2014, normalizando tipos, monedas y cuentas (hay monedas mal tecleadas y filas sin moneda). La importación se ejecuta sobre el fichero local, que no se sube al repositorio.
 3. Verificar contra la hoja: acciones y coste por valor, saldo de cada cuenta y métricas anuales deben coincidir a cierre de cada año.
 4. Importar calendario de dividendos, cambios de dividendo, histórico de revisiones de selección y fotos anuales del top 50.
 5. Periodo en paralelo con la hoja hasta validar un mes completo.
@@ -197,27 +199,27 @@ La fuente de precios es la pieza de más riesgo: las API gratuitas cubren bien E
 
 | Fase | Contenido | Resultado |
 |---|---|---|
-| 1 | Modelo de datos, registro de operaciones, efectivo, posiciones, migración y verificación | Se puede dejar de usar `Log` |
+| 1 | Modelo de datos, registro de operaciones con alta rápida por lotes, efectivo, posiciones, migración y verificación | Se puede dejar de usar `Log` |
 | 2 | Precios y cambios, cuadro de cartera, calendario y cambios de dividendo, métricas y objetivos | Se puede dejar de usar `Control cartera` y `Variación divs` |
 | 3 | Valores en estudio y selección mensual | Se puede dejar de usar la hoja |
-| 4 | Informes (top 50, evolución, crecimiento, fiscal), dividendos esperados, importación de extractos | Se eliminan los procesos manuales anuales |
+| 4 | Informes (top 50, evolución, crecimiento de dividendos), fotos trimestrales, importación de extractos de Degiro e IB | Se eliminan los procesos manuales anuales |
 
-## 11. Decisiones abiertas
+## 11. Decisiones tomadas
 
-| # | Pregunta | Afecta a |
-|---|---|---|
-| P1 | Tipo de herramienta y dispositivos de uso | §8 |
-| P2 | Quién accede y con qué permisos | §3 |
-| P3 | Vista consolidada de las tres carteras | §3 |
-| P4 | Fuente de precios: hoja-puente con `GOOGLEFINANCE` u otra | RF-43, §8 |
-| P5 | Alcance de la migración del histórico | RF-48, §9 |
-| P6 | Método de coste en ventas (medio / FIFO) | RF-15 |
-| P7 | Tipos de operación a mantener | RF-02 |
-| P8 | Alcance del informe fiscal | RF-41 |
-| P9 | Dividendos esperados y origen del calendario | RF-06, RF-16 |
-| P10 | Importación de extractos de brokers | RF-09 |
-| P11 | Histórico de valor de mercado | RF-39, RF-42 |
-| P12 | Significado de los *tiers* y de la inversión máxima | RF-34 |
-| P13 | Uso de la línea de texto resumen | RF-35 |
-| P14 | Tecnología y mantenimiento | §8 |
-| P15 | Visibilidad del repositorio | §7 |
+| Tema | Decisión |
+|---|---|
+| Tipo de herramienta | Aplicación web instalable; Chromebook como equipo principal y apuntes desde el móvil |
+| Acceso | Solo el propietario |
+| Carteras | Siempre vistas separadas, sin consolidado |
+| Precios | Hoja de Google mínima con `GOOGLEFINANCE` como fuente |
+| Histórico | Se migran todas las operaciones previas |
+| Coste en ventas | Coste medio; FIFO queda para el futuro si hace falta |
+| Tipos de operación | Se mantienen los 25 actuales |
+| Fiscalidad | Fuera del diseño inicial |
+| Próximos dividendos | No hace falta calendario de cobros esperados; basta poder introducir operaciones en cualquier orden y por lotes |
+| Extractos de brokers | A medio plazo, para Degiro e Interactive Brokers |
+| Valor de mercado histórico | Foto al cierre de cada trimestre y de cada año |
+| *Tiers* | Límite por valor en miles de euros: España 6 / 4 / 1,5; resto 5 / 3 / 1 |
+| Texto resumen | Se conserva, copiable, para el fichero externo de decisiones |
+| Tecnología | Sin preferencia; se propone en la fase de diseño |
+| Repositorio | Público; puede mostrar composición y parámetros, nunca volúmenes reales |

@@ -84,7 +84,7 @@ audit_log(id, at, entity, entity_id, action, before_json, after_json)
 Puntos de diseño:
 
 - **Orden**: las operaciones se ordenan por `(date, seq)`. `seq` se asigna al final del día al crearla y se puede cambiar a mano; por eso se pueden introducir en cualquier orden.
-- **Efectos explícitos**: cada operación guarda su efecto en efectivo y en coste (`cash_delta`, `cost_delta_eur`…). El formulario los calcula según el tipo, pero quedan guardados y son editables, lo que permite el ajuste de céntimos y los casos raros sin reglas especiales.
+- **Efectos explícitos**: cada operación guarda su efecto en efectivo (`cash_delta`) y, cuando añade coste, el importe que añade (`cost_delta_eur`). El formulario los calcula según el tipo, pero quedan guardados y son editables, lo que permite el ajuste de céntimos y los casos raros. El coste que **sale** en una venta no se guarda: lo calcula el motor por FIFO (§4.2).
 - **Contravalor en euros guardado**, no recalculado: es el que se usó al registrar la operación.
 - **Calendario de dividendos versionado** por `valid_from`: cada cambio de dividendo crea una versión nueva y conserva las anteriores, de modo que el PADI de una fecha pasada se puede reconstruir.
 - **Registro de auditoría**: cada alta, edición o borrado guarda el antes y el después, para poder deshacer un error.
@@ -98,8 +98,10 @@ estado = {
   efectivo por cuenta,
   capital aportado,
   resultado acumulado del año,
-  por valor: { acciones, coste, coste reducido, dividendos brutos cobrados,
-               cobrado desde la última compra }
+  por valor: { lotes de compra (fecha, acciones, coste, coste reducido),
+               acciones, coste y coste reducido como suma de los lotes,
+               dividendos brutos cobrados, cobrado desde la última compra,
+               plusvalía realizada }
 }
 ```
 
@@ -110,7 +112,7 @@ De ese recorrido salen el listado de movimientos (RF-07), el estado a cualquier 
 | Tipo | Efectivo | Acciones | Coste | Coste reducido | Resultado |
 |---|---|---|---|---|---|
 | Compra | − importe − gastos | + cantidad | + importe | + importe | − gastos |
-| Venta | + importe − gastos | − cantidad | ver §10.1 | ver §10.1 | − gastos |
+| Venta | + importe − gastos | − cantidad | − coste FIFO de lo vendido | − coste reducido FIFO de lo vendido | − gastos |
 | Dividendo, interés, promoción | + bruto − retenciones − gastos | | | | + neto |
 | Devolución de prima | + importe | | | − importe | + importe |
 | Aportación / retirada | ± importe | | | | (capital ±) |
@@ -119,7 +121,8 @@ De ese recorrido salen el listado de movimientos (RF-07), el estado a cualquier 
 | Gasto o comisión | − importe | | | | − importe |
 | Compra de derechos | − importe − gastos | | + importe | + importe | − gastos |
 | Venta de derechos | + bruto − retención − gastos | | | − bruto | + neto |
-| Conversión de derechos, ampliación liberada | | + cantidad | | | |
+| Conversión de derechos, ampliación liberada | | + cantidad, repartida entre los lotes | | | |
+| Traspaso de valores entre cuentas | | sin cambio | sin cambio | sin cambio | − gastos |
 | *Split* / contrasplit | | × factor | | | |
 | *Spin-off* | + picos, si los hay | + en el valor nuevo | reparto manual | reparto manual | + picos |
 | Conversión de ticker | | pasa al valor nuevo | pasa al valor nuevo | pasa al valor nuevo | |
@@ -128,7 +131,22 @@ De ese recorrido salen el listado de movimientos (RF-07), el estado a cualquier 
 
 Esta tabla reproduce lo observado en la hoja. La migración la valida: si el motor no da los mismos saldos y posiciones que la hoja a cierre de cada año, la regla está mal.
 
-### 4.2 Cálculos con precios
+### 4.2 Lotes y FIFO
+
+El coste de un valor es la suma del coste de sus **lotes** vivos; el precio medio es ese coste dividido por las acciones. Son dos magnitudes distintas que salen de los mismos lotes.
+
+- Cada compra crea un lote con su fecha, acciones y coste original.
+- Una venta consume los lotes **más antiguos primero**. El coste que sale es el de las acciones consumidas; lo que queda conserva su coste original.
+- FIFO se aplica por valor dentro de cada cartera, sin distinguir la cuenta o el broker donde estén las acciones.
+- Las acciones recibidas sin desembolso (ampliación liberada, conversión de derechos) se reparten entre los lotes existentes en proporción a sus acciones: cada lote tiene más acciones con el mismo coste. Si se compraron derechos para completar la suscripción, su importe se añade al coste de esos lotes.
+- Un *split* multiplica las acciones de cada lote; el coste no cambia.
+- La venta de derechos y la devolución de prima reducen el **coste reducido** de los lotes vivos en proporción; el coste original no se toca.
+- Una conversión de ticker traslada los lotes al valor nuevo; un traspaso entre cuentas no los altera.
+- La **plusvalía realizada** de una venta (importe − coste FIFO − gastos) se calcula y se muestra como dato aparte. No se suma a las «ganancias del año», que siguen recogiendo solo rentas menos gastos, como en la hoja, para que los objetivos anuales sean comparables.
+
+Los lotes no se guardan: se reconstruyen en cada recorrido de las operaciones, de modo que corregir una compra antigua actualiza todo lo posterior.
+
+### 4.3 Cálculos con precios
 
 El cuadro de cartera combina el estado del motor con el último precio, el tipo de cambio y el calendario de dividendos vigente, según las fórmulas del §6 de la especificación. No se guarda nada; solo las fotos (`snapshot`) congelan valores.
 
@@ -228,22 +246,16 @@ La copia externa funciona así: tras cada cambio se marca la base de datos como 
 
 ## 10. Cuestiones abiertas
 
-### 10.1 Coste en las ventas
+### 10.1 Reconciliación del coste con la hoja
 
-Al revisar las fórmulas, la hoja **no descuenta coste medio**, en contra de lo que se dijo al cerrar la especificación:
+La hoja no aplica FIFO: en una venta parcial resta del coste del valor el importe obtenido en la venta, y en una venta total pone el coste a cero a mano. Al aplicar FIFO a todo el histórico (§4.2), el coste calculado **diferirá del de la hoja** en los valores que hayan tenido ventas parciales y sigan en cartera, y en los que conserven un coste residual tras una venta total. En el registro principal son, según el análisis de la hoja:
 
-- en una venta parcial resta del coste del valor el **importe obtenido en la venta**;
-- en una venta total pone el coste a cero a mano;
-- el resultado de la operación solo recoge los gastos: la plusvalía o minusvalía no entra en las ganancias del año.
+- con ventas parciales y posición actual: ENG, MMM, UNA, SPG, PFE y CVS;
+- con coste residual tras una venta total y posición actual: DIS y KHC.
 
-Opciones:
+En los registros de los hijos también hay ventas parciales. El importador emite para cada uno de estos valores un informe con el coste según la hoja, el coste FIFO y los lotes que lo componen, para revisarlo. El resto de magnitudes (efectivo, capital, acciones, y el coste de los demás valores) debe coincidir con la hoja.
 
-| Opción | Coste tras una venta parcial | Efecto |
-|---|---|---|
-| A. Como la hoja | coste − importe de la venta | Valida contra la hoja sin diferencias; el precio medio de lo que queda baja (o sube) según el precio de venta |
-| B. Coste medio | coste × acciones restantes / acciones previas | Precio medio estable; diferirá de la hoja en los pocos valores con ventas parciales |
-
-**Propuesta**: aplicar A a las operaciones migradas, para que la validación sea exacta, y decidir cuál se usa para las ventas futuras. Como el efecto en el coste se guarda en cada operación (§3), ambas pueden convivir.
+Queda por confirmar durante la importación si algunas de esas ventas son en realidad **traspasos de valores entre brokers** anotados como venta y compra: en ese caso se migran como traspaso, que conserva los lotes y su fecha.
 
 ### 10.2 Otras
 

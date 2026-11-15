@@ -1,6 +1,6 @@
 # Especificación de la nueva herramienta
 
-**Estado: borrador 0.2.** Incorpora las [decisiones tomadas](#11-decisiones-tomadas) con el propietario; lo demás se deriva de la [descripción de la hoja actual](descripcion-hoja-actual.md).
+**Estado: versión 1.0, cerrada para pasar a diseño.** Incorpora las [decisiones tomadas](#11-decisiones-tomadas) con el propietario; lo demás se deriva de la [descripción de la hoja actual](descripcion-hoja-actual.md).
 
 ## 1. Objetivo
 
@@ -55,7 +55,12 @@ Los importes monetarios se guardan como decimales exactos con su moneda, nunca e
 - **RF-04** Se registran por separado **retención en origen y en destino**. Al dar de alta un dividendo se precalculan con los porcentajes del valor.
 - **RF-05** Ajuste de céntimos: los gastos e importes son editables a mano para cuadrar con el broker, y al guardar se muestra el **saldo resultante de la cuenta** para comprobarlo.
 - **RF-06** **Entrada en cualquier orden y por lotes**: las operaciones se pueden introducir sin respetar el orden cronológico; saldos y posiciones se recalculan siempre por fecha. Hay un modo de alta rápida para meter seguidos todos los dividendos de una cuenta en un periodo (se fija la cuenta, y cada línea pide valor, fecha, importe y retención), y después los de otra cuenta aunque las fechas se intercalen. Hace innecesarias las notas de próximos dividendos al pie del registro.
-- **RF-07** Listado de operaciones con filtro por cartera, año, tipo, valor y cuenta, y búsqueda de texto.
+- **RF-07** **Listado de movimientos** (consulta principal del registro, equivalente a la solapa `Log`): operaciones de una cartera ordenadas por fecha, una por fila, con sus datos (fecha, descripción, tipo, valor, cantidad, precio, moneda, cambio, cuenta, bruto, retención, gastos, resultado neto) y, **en cada fila, los acumulados tras esa operación**:
+  - saldo de cada cuenta de efectivo, en su moneda;
+  - capital invertido (aportaciones − retiradas);
+  - ganancias acumuladas del año, que se reinician cada 1 de enero.
+
+  Los acumulados se calculan siempre sobre todas las operaciones por orden de fecha, de modo que no cambian al filtrar ni dependen del orden en que se introdujeron. Las operaciones de un mismo día mantienen un orden estable y ajustable a mano. El listado se filtra por año, tipo, valor y cuenta, admite búsqueda de texto, muestra por defecto el año en curso con lo más reciente a la vista y permite editar una operación desde su fila. La cabecera muestra las métricas del año y los objetivos (RF-25 y RF-26). En móvil se muestra una versión reducida.
 - **RF-08** Validación: tipo, valor, cuenta y moneda se eligen de listas; no se permite vender más acciones de las que hay ni dejar una cuenta en negativo sin confirmación.
 - **RF-09** A medio plazo (fase 4): importación de los extractos CSV de Degiro e Interactive Brokers, que propone operaciones para revisar antes de guardarlas y detecta las ya registradas. ING no exporta, así que sus operaciones se introducen a mano.
 
@@ -125,7 +130,12 @@ Los importes monetarios se guardan como decimales exactos con su moneda, nunca e
 
 ### 5.11 Datos
 
-- **RF-47** Exportación completa a Excel o CSV, y copia de seguridad automática.
+- **RF-47** Exportación completa de los datos en formato abierto (CSV o Excel, una tabla por entidad) y copia de seguridad automática.
+- **RF-49** **Exportación de validación con el formato de la hoja actual**: genera un libro de cálculo cuyas solapas reproducen la disposición de la hoja (mismas columnas, en el mismo orden) para poder compararlas lado a lado durante el periodo en paralelo:
+  - registro de cada cartera como en `Log`: columnas de entrada, resultado neto, capital invertido, ganancias acumuladas del año, saldo de cada cuenta y, por valor, los bloques de coste, coste reducido y nº de acciones, más la cabecera de métricas anuales;
+  - cuadro de cartera como en `Control cartera`: una columna por valor con las mismas filas, incluido el histórico de dividendos cobrados por mes.
+
+  Los datos se exportan como valores, no como fórmulas. La exportación incluye una solapa de **diferencias** cuando se le da como referencia una copia de la hoja actual: celdas que no coinciden por encima de una tolerancia de un céntimo, por fecha y columna. El fichero se genera bajo demanda y se descarga; no se guarda en el repositorio.
 - **RF-48** Importación de **todo el histórico** desde la hoja actual: las operaciones desde 2014 de la cartera propia y las de los hijos.
 
 ## 6. Reglas de cálculo
@@ -180,6 +190,7 @@ Con *fx* = unidades de moneda extranjera por euro.
 | Datos | SQLite en un único fichero, con copia continua a almacenamiento de objetos | PostgreSQL gestionado con capa gratuita |
 | Precios | Hoja de Google mínima con `GOOGLEFINANCE` publicada como CSV, que la aplicación lee y cachea | API de precios gratuita o de pago |
 | Tipos de cambio | Referencia diaria del BCE (gratuita) | El mismo proveedor de precios |
+| Dominio | `invest.jdmuriel.com`, subdominio de un dominio ya existente, sin coste añadido | — |
 | Acceso | Inicio de sesión con cuenta de Google restringido a una dirección autorizada | Usuario y contraseña |
 | Tecnología | Un único proyecto TypeScript (interfaz y servidor) empaquetado en un contenedor; se concreta en la fase de diseño | Python en servidor con interfaz ligera |
 
@@ -193,7 +204,7 @@ La fuente de precios es la pieza de más riesgo: las API gratuitas cubren bien E
 2. Importar todas las operaciones de los tres registros desde 2014, normalizando tipos, monedas y cuentas (hay monedas mal tecleadas y filas sin moneda). La importación se ejecuta sobre el fichero local, que no se sube al repositorio.
 3. Verificar contra la hoja: acciones y coste por valor, saldo de cada cuenta y métricas anuales deben coincidir a cierre de cada año.
 4. Importar calendario de dividendos, cambios de dividendo, histórico de revisiones de selección y fotos anuales del top 50.
-5. Periodo en paralelo con la hoja hasta validar un mes completo.
+5. Periodo en paralelo con la hoja hasta validar un mes completo, comparando con la exportación de validación (RF-49).
 
 ## 10. Fases
 

@@ -28,3 +28,14 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# Proyecto
+/.svelte-kit
+/build
+/data
+*.db
+*.db-wal
+*.db-shm
+*.db.gz
+*.xlsx
+vite.config.*.timestamp-*

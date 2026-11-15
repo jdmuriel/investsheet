@@ -81,7 +81,10 @@ export interface YearMetrics {
 /** Estado acumulado tras una operación. El motor lo muta: quien lo guarde debe copiar lo que necesite. */
 export interface State {
 	cash: Map<number, Cents>;
+	/** Capital aportado: aportaciones menos retiradas. */
 	capital: Cents;
+	/** Resultado de los años ya cerrados, que la hoja suma al «capital invertido» en cada cambio de año. */
+	closedYearsResult: Cents;
 	/** Rentas menos impuestos y gastos acumulados en el año de la última operación. */
 	yearResult: Cents;
 	year: number | null;

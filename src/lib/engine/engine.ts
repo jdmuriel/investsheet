@@ -4,11 +4,16 @@ import type { Cents, Lot, Micro, Operation, Position, PositionLeg, State, Warnin
 export const DIVIDEND_TYPES = new Set(['DIVIDENDOS']);
 
 export function emptyState(): State {
-	return { cash: new Map(), capital: 0, yearResult: 0, year: null, positions: new Map(), years: new Map() };
+	return { cash: new Map(), capital: 0, closedYearsResult: 0, yearResult: 0, year: null, positions: new Map(), years: new Map() };
 }
 
 export function compareOperations(a: Operation, b: Operation): number {
 	return a.date < b.date ? -1 : a.date > b.date ? 1 : a.seq - b.seq || a.id - b.id;
+}
+
+/** «Capital invertido» de la hoja: capital aportado más el resultado de los años cerrados. */
+export function investedCapital(state: State): Cents {
+	return state.capital + state.closedYearsResult;
 }
 
 export function totalShares(p: Position | undefined): Micro {
@@ -135,6 +140,7 @@ function applyLeg(state: State, op: Operation, leg: PositionLeg, warnings: Warni
 export function applyOperation(state: State, op: Operation, warnings: Warning[] = []): void {
 	const year = Number(op.date.slice(0, 4));
 	if (state.year !== year) {
+		state.closedYearsResult += state.yearResult;
 		state.year = year;
 		state.yearResult = 0;
 	}

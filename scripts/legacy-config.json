@@ -1,0 +1,5 @@
+{
+	"currencyFixes": { "EU": "EUR", "UEUR": "EUR", "IBUSD": "USD", "GBX": "GBP" },
+	"tickerAliases": { "KHZ": "KHC" },
+	"overrides": [{ "sheet": "Log", "match": { "date": "2025-10-12", "ticker": "GIS" }, "set": { "date": "2026-10-12" } }]
+}

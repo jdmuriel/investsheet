@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allocate, run, totalCost, totalReducedCost, totalShares } from './engine.ts';
+import { allocate, investedCapital, run, totalCost, totalReducedCost, totalShares } from './engine.ts';
 import { MICRO, type Operation, type PositionLeg } from './types.ts';
 
 // Todos los datos de estas pruebas son inventados.
@@ -53,6 +53,8 @@ describe('efectivo, capital y resultado', () => {
 		expect(state.cash.get(EUR)).toBe(100000 - 50200 + 810 - 10000);
 		expect(state.cash.get(USD)).toBe(11000);
 		expect(state.capital).toBe(100000);
+		// El resultado de 2020 (610) se capitaliza al empezar 2021.
+		expect(investedCapital(state)).toBe(100610);
 		expect(rows).toEqual([0, -200, 610, -100]);
 		expect(state.years.get(2020)).toMatchObject({ capital: 100000, gross: 1000, tax: 190, fees: 200, purchases: 50000 });
 		expect(state.positions.get(ACME)?.dividendsGross).toBe(1000);

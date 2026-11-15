@@ -13,9 +13,9 @@ export interface AuthConfig {
 
 /** Configuración de acceso tomada del entorno; `null` si falta algún valor. */
 export function authConfig(): AuthConfig | null {
-	const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, ALLOWED_EMAIL, SESSION_SECRET } = process.env;
-	if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !ALLOWED_EMAIL || !SESSION_SECRET) return null;
-	return { clientId: GOOGLE_CLIENT_ID, clientSecret: GOOGLE_CLIENT_SECRET, allowedEmail: ALLOWED_EMAIL.trim().toLowerCase(), sessionSecret: SESSION_SECRET };
+	const { OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET, ALLOWED_EMAIL, SESSION_SECRET } = process.env;
+	if (!OAUTH_CLIENT_ID || !OAUTH_CLIENT_SECRET || !ALLOWED_EMAIL || !SESSION_SECRET) return null;
+	return { clientId: OAUTH_CLIENT_ID, clientSecret: OAUTH_CLIENT_SECRET, allowedEmail: ALLOWED_EMAIL.trim().toLowerCase(), sessionSecret: SESSION_SECRET };
 }
 
 const b64 = (data: string | Buffer) => Buffer.from(data).toString('base64url');

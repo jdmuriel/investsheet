@@ -29,8 +29,8 @@ Aplicación (SvelteKit + Node)
 |---|---|---|
 | Lenguaje | TypeScript, en interfaz y servidor | Un solo lenguaje y un solo proyecto |
 | Framework | SvelteKit con adaptador Node | Páginas renderizadas en servidor, formularios sencillos, poco código de cliente |
-| Base de datos | SQLite (`better-sqlite3`) con Drizzle para esquema y migraciones | Un fichero; copia y restauración triviales; sobra para un usuario |
-| Decimales | `decimal.js` | Evitar errores de coma flotante en importes, precios y cambios |
+| Base de datos | SQLite con el módulo integrado de Node (`node:sqlite`) y migraciones SQL propias | Un fichero; sin dependencias nativas que compilar; sobra para un usuario |
+| Decimales | Enteros: céntimos para importes y millonésimas para acciones | Evitar errores de coma flotante sin añadir dependencias |
 | Hoja de cálculo | ExcelJS | Importar la hoja antigua y generar la exportación de validación |
 | Gráficos | Chart.js | Suficiente para barras, líneas y sectores |
 | Pruebas | Vitest (motor de cálculo) y Playwright (flujos principales) | |
@@ -44,47 +44,31 @@ Importes en **céntimos enteros** de su moneda. Cantidades, precios y tipos de c
 
 ```
 portfolio(id, name)
-account(id, portfolio_id, broker, name, currency, sort_order, closed)
-security(id, ticker, price_ticker, name, market, country, currency, dividend_currency,
-         sector, supersector, zone, tier, wht_source_pct, wht_dest_pct, reinvest, active)
-security_note(security_id, eps, target_price, target_date, target_reason, thesis,
-              links_json, notes)
-security_review(id, security_id, year, text)
+account(id, portfolio_id, code, name, broker, currency, sort_order, closed)
+security(id, ticker, price_ticker, name, country, currency, sector, supersector,
+         zone, tier, wht_source_pct, wht_dest_pct, reinvest, active)
 
 operation(id, portfolio_id, date, seq, type, account_id, security_id,
-          quantity, price, currency, fx_rate,
-          gross, wht_source, wht_dest, fees,          -- en la moneda de la operación
-          gross_eur, tax_eur, fees_eur,               -- contravalor guardado, editable
-          capital_in_eur, capital_out_eur,
-          cash_delta,                                 -- efecto en la cuenta, en su moneda
-          counter_account_id, counter_cash_delta,     -- traspasos y cambios de divisa
-          cost_delta_eur, reduced_cost_delta_eur,     -- efecto en el coste del valor
-          description, notes, source, created_at, updated_at)
+          quantity, price, currency, fx_rate,             -- datos informativos
+          amount_local, tax_local, wht_source_local, wht_dest_local, fees_local,
+          gross_eur, tax_eur, fees_eur,                   -- contravalor guardado
+          capital_in_eur, capital_out_eur, purchase_eur,
+          description, notes, source, legacy_ref, created_at, updated_at)
+cash_leg(operation_id, account_id, amount)                -- efecto en efectivo
+position_leg(operation_id, security_id, kind, shares, cost_eur, reduced_cost_eur,
+             proceeds_eur, to_security_id)                -- efecto en la posición
 
-dividend_schedule(id, security_id, valid_from, month, amount_per_share, currency)
-dividend_change(id, security_id, date, annual_before, annual_after, shares_at_date,
-                fx_rate, url, note)
-
-price(security_id, date, close, source, fetched_at)
-fx_rate(currency, date, rate)                         -- unidades de divisa por euro
 goal(portfolio_id, year, metric, amount_eur)
-
-selection_review(id, date, closed)
-selection_item(review_id, security_id, list, position, price, note)
-selection_decision(id, portfolio_id, date, proposals, choice)
-
-snapshot(id, portfolio_id, date, kind)                -- trimestral, anual o manual
-snapshot_item(snapshot_id, security_id, shares, cost_eur, reduced_cost_eur,
-              price, fx_rate, market_value_eur, forecast_dividend_eur)
-
-setting(key, value)                                   -- límites por tier, umbrales
+setting(key, value)
 audit_log(id, at, entity, entity_id, action, before_json, after_json)
 ```
+
+Las tablas de fases posteriores (ficha de estudio, calendario y cambios de dividendo, precios, tipos de cambio, selección y fotos) se añaden con su propia migración cuando se implementen.
 
 Puntos de diseño:
 
 - **Orden**: las operaciones se ordenan por `(date, seq)`. `seq` se asigna al final del día al crearla y se puede cambiar a mano; por eso se pueden introducir en cualquier orden.
-- **Efectos explícitos**: cada operación guarda su efecto en efectivo (`cash_delta`) y, cuando añade coste, el importe que añade (`cost_delta_eur`). El formulario los calcula según el tipo, pero quedan guardados y son editables, lo que permite el ajuste de céntimos y los casos raros. El coste que **sale** en una venta no se guarda: lo calcula el motor por FIFO (§4.2).
+- **Operación = cabecera + efectos**: cada operación guarda sus efectos como filas aparte. Un `cash_leg` es un movimiento de efectivo en una cuenta (un cambio de divisa o un traspaso tienen dos). Un `position_leg` es un efecto sobre un valor, de cuatro clases: `buy` (lote nuevo), `sell` (baja por FIFO), `adjust` (reparto de acciones o coste entre los lotes vivos: liberadas, *splits*, derechos, primas) y `convert` (los lotes pasan a otro valor). El formulario de cada tipo de operación genera sus efectos, que quedan guardados y son editables; el motor solo entiende efectos, no tipos. El coste que **sale** en una venta no se guarda: lo calcula el motor (§4.2).
 - **Contravalor en euros guardado**, no recalculado: es el que se usó al registrar la operación.
 - **Calendario de dividendos versionado** por `valid_from`: cada cambio de dividendo crea una versión nueva y conserva las anteriores, de modo que el PADI de una fecha pasada se puede reconstruir.
 - **Registro de auditoría**: cada alta, edición o borrado guarda el antes y el después, para poder deshacer un error.
@@ -246,16 +230,19 @@ La copia externa funciona así: tras cada cambio se marca la base de datos como 
 
 ## 10. Cuestiones abiertas
 
-### 10.1 Reconciliación del coste con la hoja
+### 10.1 Reconciliación con la hoja (resuelto)
 
-La hoja no aplica FIFO: en una venta parcial resta del coste del valor el importe obtenido en la venta, y en una venta total pone el coste a cero a mano. Al aplicar FIFO a todo el histórico (§4.2), el coste calculado **diferirá del de la hoja** en los valores que hayan tenido ventas parciales y sigan en cartera, y en los que conserven un coste residual tras una venta total. En el registro principal son, según el análisis de la hoja:
+Decisiones tomadas con el propietario y aplicadas en el importador:
 
-- con ventas parciales y posición actual: ENG, MMM, UNA, SPG, PFE y CVS;
-- con coste residual tras una venta total y posición actual: DIS y KHC.
+- **FIFO en todo el histórico.** La hoja restaba del coste el importe de cada venta parcial; la aplicación da de baja los lotes más antiguos a su coste original.
+- **Venta y recompra el mismo día = traspaso.** Las parejas de venta en un broker y compra en otro se migran como traspaso de valores: los lotes conservan fecha y coste, y solo se mueve el efectivo. Si la recompra es mayor que la venta, el exceso es una compra normal.
+- **Fechas.** Las operaciones se ordenan por fecha; la hoja tiene algunas filas fuera de orden, que el informe de importación lista para revisarlas.
 
-En los registros de los hijos también hay ventas parciales. El importador emite para cada uno de estos valores un informe con el coste según la hoja, el coste FIFO y los lotes que lo componen, para revisarlo. El resto de magnitudes (efectivo, capital, acciones, y el coste de los demás valores) debe coincidir con la hoja.
+Diferencias esperadas frente a la hoja, que el informe de importación detalla:
 
-Queda por confirmar durante la importación si algunas de esas ventas son en realidad **traspasos de valores entre brokers** anotados como venta y compra: en ese caso se migran como traspaso, que conserva los lotes y su fecha.
+- el coste de los valores traspasados difiere en la diferencia de precio entre la venta y la recompra, que la hoja sumaba al coste;
+- el «capital invertido» del registro principal difiere en céntimos desde mediados de 2022, por una fila de la hoja a la que le falta la fórmula del resultado;
+- el registro principal suma al capital invertido el resultado de cada año cerrado y los registros secundarios no. La aplicación calcula las dos magnitudes: capital aportado, y capital invertido con resultados capitalizados.
 
 ### 10.2 Otras
 

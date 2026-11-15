@@ -1,0 +1,64 @@
+name: Desplegar
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desplegar
+  cancel-in-progress: false
+
+jobs:
+  desplegar:
+    runs-on: ubuntu-latest
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Comprobar y probar
+        run: |
+          npm ci
+          npm run check
+          npm test
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      # Solo hace falta la primera vez; con un token de aplicación este paso no crea nada.
+      - name: Crear la aplicación si no existe
+        run: flyctl status >/dev/null 2>&1 || flyctl apps create investsheet --org "${{ vars.FLY_ORG || 'personal' }}"
+
+      - name: Configurar secretos
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          ALLOWED_EMAIL: ${{ secrets.ALLOWED_EMAIL }}
+        run: |
+          flyctl secrets set --stage \
+            GOOGLE_CLIENT_ID="$GOOGLE_CLIENT_ID" \
+            GOOGLE_CLIENT_SECRET="$GOOGLE_CLIENT_SECRET" \
+            ALLOWED_EMAIL="$ALLOWED_EMAIL"
+          # La clave de sesión se genera una sola vez y no sale de Fly.
+          if ! flyctl secrets list | grep -q SESSION_SECRET; then
+            flyctl secrets set --stage SESSION_SECRET="$(openssl rand -hex 32)"
+          fi
+
+      - name: Desplegar
+        run: flyctl deploy --remote-only --ha=false
+
+      - name: Certificado del dominio
+        run: |
+          flyctl certs show invest.jdmuriel.com >/dev/null 2>&1 || flyctl certs add invest.jdmuriel.com
+          flyctl certs setup invest.jdmuriel.com || true

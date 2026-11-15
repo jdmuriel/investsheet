@@ -12,7 +12,8 @@
 
 <header class="app">
 	<strong>Inversión</strong>
-	<nav><a href="/movimientos">Movimientos</a></nav>
+	<nav><a href="/movimientos">Movimientos</a> <a href="/ajustes">Ajustes</a></nav>
+	<form method="POST" action="/auth/logout"><button>Salir</button></form>
 </header>
 <main>{@render children()}</main>
 
@@ -53,6 +54,19 @@
 		align-items: baseline;
 		padding: 0.6rem 1rem;
 		border-bottom: 1px solid var(--line);
+	}
+	nav {
+		display: flex;
+		gap: 1rem;
+		flex: 1;
+	}
+	header.app button {
+		font: inherit;
+		background: none;
+		border: 1px solid var(--line);
+		border-radius: 4px;
+		color: var(--muted);
+		cursor: pointer;
 	}
 	main {
 		padding: 1rem;

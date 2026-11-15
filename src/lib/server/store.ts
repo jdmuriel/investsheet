@@ -1,7 +1,11 @@
-import type { DatabaseSync } from 'node:sqlite';
+import { DatabaseSync } from 'node:sqlite';
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Operation } from '../engine/types.ts';
 import { openDatabase } from './db.ts';
+import { MIGRATIONS } from './migrations.ts';
+
+const LATEST_VERSION = Math.max(...MIGRATIONS.map((m) => m.version));
 
 let db: DatabaseSync | null = null;
 
@@ -72,4 +76,64 @@ export function loadOperations(portfolioId: number): OperationRow[] {
 		.all(portfolioId) as unknown as ({ op: number } & Operation['positions'][number])[];
 	for (const { op, ...leg } of legs) byId.get(op)?.positions.push({ ...leg, proceeds: leg.proceeds ?? undefined, toSecurityId: leg.toSecurityId ?? undefined });
 	return rows;
+}
+
+// ---------- Copia y restauración ----------
+
+const dataDir = () => process.env.DATA_DIR ?? 'data';
+const dbFile = () => join(dataDir(), 'invest.db');
+
+/** Copia consistente de la base de datos en un único fichero, lista para descargar. */
+export function exportDatabase(): Buffer {
+	const tmp = join(dataDir(), `copia-${Date.now()}.tmp`);
+	getDb().exec(`VACUUM INTO '${tmp.replaceAll("'", "''")}'`);
+	try {
+		return readFileSync(tmp);
+	} finally {
+		rmSync(tmp, { force: true });
+	}
+}
+
+export interface RestoreResult {
+	portfolios: number;
+	operations: number;
+	previous: string;
+}
+
+/**
+ * Sustituye la base de datos por la del fichero recibido. Antes la valida y guarda una copia
+ * de la actual junto a ella (`invest.anterior-<fecha>.db`).
+ */
+export function restoreDatabase(data: Uint8Array): RestoreResult {
+	const dir = dataDir();
+	mkdirSync(dir, { recursive: true });
+	const incoming = join(dir, `restaurar-${Date.now()}.tmp`);
+	writeFileSync(incoming, data);
+	let portfolios = 0;
+	let operations = 0;
+	try {
+		const candidate = new DatabaseSync(incoming);
+		try {
+			const check = candidate.prepare('PRAGMA integrity_check').get() as { integrity_check: string };
+			if (check.integrity_check !== 'ok') throw new Error('el fichero está dañado');
+			const version = (candidate.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
+			if (version < 1 || version > LATEST_VERSION) throw new Error(`versión de esquema no admitida (${version})`);
+			portfolios = (candidate.prepare('SELECT count(*) AS n FROM portfolio').get() as { n: number }).n;
+			operations = (candidate.prepare('SELECT count(*) AS n FROM operation').get() as { n: number }).n;
+		} finally {
+			candidate.close();
+		}
+	} catch (e) {
+		rmSync(incoming, { force: true });
+		throw new Error(`No es una copia válida: ${e instanceof Error ? e.message : e}`);
+	}
+
+	const previous = `invest.anterior-${new Date().toISOString().replace(/[:.]/g, '-')}.db`;
+	getDb().exec(`VACUUM INTO '${join(dir, previous).replaceAll("'", "''")}'`);
+	getDb().close();
+	db = null;
+	for (const suffix of ['-wal', '-shm']) rmSync(dbFile() + suffix, { force: true });
+	renameSync(incoming, dbFile());
+	getDb();
+	return { portfolios, operations, previous };
 }

@@ -1,0 +1,12 @@
+.git
+.github
+node_modules
+.svelte-kit
+build
+data
+legacy
+docs
+*.db
+*.xlsx
+.env
+.env.*

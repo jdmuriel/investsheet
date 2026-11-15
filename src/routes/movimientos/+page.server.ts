@@ -1,4 +1,4 @@
-import { error } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import { investedCapital, run } from '#lib/engine/engine.ts';
 import type { YearMetrics } from '#lib/engine/types.ts';
 import { listAccounts, listPortfolios, loadOperations } from '#lib/server/store.ts';
@@ -6,7 +6,7 @@ import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ url }) => {
 	const portfolios = listPortfolios();
-	if (portfolios.length === 0) error(503, 'La base de datos está vacía: falta importar los datos.');
+	if (portfolios.length === 0) redirect(303, '/ajustes');
 	const portfolioId = Number(url.searchParams.get('cartera')) || portfolios[0].id;
 	if (!portfolios.some((p) => p.id === portfolioId)) error(404, 'Cartera no encontrada');
 

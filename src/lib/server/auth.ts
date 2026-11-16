@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
 export const SESSION_COOKIE = 'sesion';
 export const STATE_COOKIE = 'oauth_state';
@@ -79,4 +79,14 @@ export async function exchangeCode(config: AuthConfig, code: string, redirectUri
 	const issuerOk = c.iss === 'https://accounts.google.com' || c.iss === 'accounts.google.com';
 	if (!issuerOk || c.aud !== config.clientId || !c.exp || c.exp * 1000 < Date.now() || c.nonce !== nonce || !c.email || c.email_verified !== true) return null;
 	return c.email.toLowerCase();
+}
+
+/**
+ * Comprueba la cabecera `Authorization: Bearer …` de la API contra el token configurado
+ * (`API_TOKEN`). Un token de menos de 32 caracteres no se acepta: la API queda desactivada.
+ */
+export function apiTokenValid(header: string | null, token: string | undefined): boolean {
+	if (!token || token.length < 32 || !header?.startsWith('Bearer ')) return false;
+	const digest = (value: string) => createHash('sha256').update(value).digest();
+	return timingSafeEqual(digest(header.slice(7).trim()), digest(token));
 }

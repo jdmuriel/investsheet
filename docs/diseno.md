@@ -169,6 +169,7 @@ Un selector de cartera en la cabecera fija a cuál se refiere todo lo demás. En
 - Inicio de sesión con Google (OpenID Connect). Solo se admite **una dirección de correo**, configurada como secreto; cualquier otra cuenta se rechaza.
 - Sesión en *cookie* firmada, `HttpOnly`, `Secure`, `SameSite=Lax`, de 30 días.
 - Todas las rutas exigen sesión, salvo el inicio de sesión y una comprobación de salud sin datos.
+- La API para asistentes (`/api/v1`, [documentación](api.md)) es la excepción: no usa la sesión, sino un token propio (`API_TOKEN`) en la cabecera `Authorization`, comparado en tiempo constante. Sin token configurado está desactivada.
 - HTTPS forzado; el certificado lo emite y renueva Fly con Let's Encrypt.
 - Secretos (cliente de Google, clave de sesión, URL de la hoja de precios, credencial de la copia) como secretos de Fly, nunca en el repositorio.
 - Cada máquina de Fly es una microVM Firecracker aislada, y las instantáneas de volumen se guardan cifradas.

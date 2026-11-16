@@ -7,7 +7,21 @@ import { buildOperation, type BuildContext, type BuiltOperation } from '../engin
 import type { Operation } from '../engine/types.ts';
 import { listAccounts, listSecurities, loadOperations } from './store.ts';
 
-export type SubmitResult = { ok: true; id: number } | { ok: false; errors: string[]; warnings: string[] };
+/** Saldo en que queda una cuenta tocada por la operación, justo tras ella. */
+export interface ResultingBalance {
+	accountId: number;
+	amount: number;
+}
+export type SubmitResult = { ok: true; id: number; description?: string; balances?: ResultingBalance[]; operation?: BuiltOperation } | { ok: false; errors: string[]; warnings: string[] };
+
+export interface SaveOptions {
+	/** Acepta los avisos (saldo negativo). */
+	confirmed?: boolean;
+	/** Valida y calcula, pero no guarda nada. */
+	dryRun?: boolean;
+	/** Origen que se anota en la operación: `manual` (formulario) o `api`. */
+	source?: 'manual' | 'api';
+}
 
 /** Operación guardada, con lo necesario para rellenar el formulario de edición. */
 export interface OperationRecord {
@@ -123,7 +137,7 @@ function checkAgainstLedger(db: DatabaseSync, portfolioId: number, before: Opera
  * descripción y notas; si no, los efectos se generan de nuevo. Los avisos (saldo negativo)
  * necesitan `confirmed`.
  */
-function submit(db: DatabaseSync, portfolioId: number, id: number | null, form: RawInput, confirmed = false): SubmitResult {
+function submit(db: DatabaseSync, portfolioId: number, id: number | null, form: RawInput, { confirmed = false, dryRun = false, source = 'manual' }: SaveOptions): SubmitResult {
 	const raw: RawInput = Object.fromEntries(Object.entries(form).map(([k, v]) => [k, v.trim()]));
 	const keepEffects = raw.keepEffects === '1';
 	const notes = raw.notes ?? '';
@@ -145,6 +159,7 @@ function submit(db: DatabaseSync, portfolioId: number, id: number | null, form: 
 			const current = before.find((o) => o.id === id)!;
 			const problem = checkAgainstLedger(db, portfolioId, before, before.map((o) => (o.id === id ? { ...current, date, seq } : o)), confirmed);
 			if (problem) fail(problem.errors, problem.warnings);
+			if (dryRun) throw new Rejected({ ok: true, id: id!, description: raw.description || existing.description });
 			const old = snapshot(db, id!);
 			db.prepare("UPDATE operation SET date = ?, seq = ?, description = ?, notes = ?, updated_at = datetime('now') WHERE id = ?").run(date, seq, raw.description || existing.description, notes || null, id);
 			audit(db, id!, 'update', old, snapshot(db, id!));
@@ -172,14 +187,22 @@ function submit(db: DatabaseSync, portfolioId: number, id: number | null, form: 
 		const problem = checkAgainstLedger(db, portfolioId, before, after, confirmed);
 		if (problem) fail(problem.errors, problem.warnings);
 
+		const balances: ResultingBalance[] = [];
+		run(after, {
+			onRow: (op, state) => {
+				if (op.id === candidate.id) for (const leg of built.cash) balances.push({ accountId: leg.accountId, amount: state.cash.get(leg.accountId) ?? 0 });
+			}
+		});
+		if (dryRun) throw new Rejected({ ok: true, id: id ?? 0, description: built.description, balances, operation: built });
+
 		const old = id == null ? null : snapshot(db, id);
-		const savedId = write(db, portfolioId, id, seq, built, notes, raw);
+		const savedId = write(db, portfolioId, id, seq, built, notes, raw, source);
 		audit(db, savedId, id == null ? 'create' : 'update', old, snapshot(db, savedId));
-		return { ok: true, id: savedId };
+		return { ok: true, id: savedId, description: built.description, balances, operation: built };
 	});
 }
 
-/** Rechazo de validación: deshace la transacción y se devuelve como resultado, no como error. */
+/** Rechazo de validación o simulación: deshace la transacción y se devuelve como resultado, no como error. */
 class Rejected extends Error {
 	result: SubmitResult;
 	constructor(result: SubmitResult) {
@@ -196,7 +219,7 @@ function rejected<T extends SubmitResult>(work: () => T): SubmitResult {
 	}
 }
 
-function write(db: DatabaseSync, portfolioId: number, id: number | null, seq: number, op: BuiltOperation, notes: string, raw: RawInput): number {
+function write(db: DatabaseSync, portfolioId: number, id: number | null, seq: number, op: BuiltOperation, notes: string, raw: RawInput, source: string): number {
 	const values = [
 		op.date, seq, op.type, op.accountId, op.securityId, op.quantity, op.price, op.currency, op.fxRate,
 		op.amountLocal, op.taxLocal, op.whtSourceLocal, op.whtDestLocal, op.feesLocal,
@@ -209,10 +232,10 @@ function write(db: DatabaseSync, portfolioId: number, id: number | null, seq: nu
 	let savedId: number;
 	if (id == null) {
 		const marks = values.map(() => '?').join(',');
-		savedId = Number(db.prepare(`INSERT INTO operation (portfolio_id, source, ${columns}) VALUES (?, 'manual', ${marks})`).run(portfolioId, ...values).lastInsertRowid);
+		savedId = Number(db.prepare(`INSERT INTO operation (portfolio_id, source, ${columns}) VALUES (?, ?, ${marks})`).run(portfolioId, source, ...values).lastInsertRowid);
 	} else {
 		const sets = columns.split(',').map((c) => `${c.trim()} = ?`).join(', ');
-		db.prepare(`UPDATE operation SET ${sets}, source = 'manual', updated_at = datetime('now') WHERE id = ?`).run(...values, id);
+		db.prepare(`UPDATE operation SET ${sets}, source = ?, updated_at = datetime('now') WHERE id = ?`).run(...values, source, id);
 		db.prepare('DELETE FROM cash_leg WHERE operation_id = ?').run(id);
 		db.prepare('DELETE FROM position_leg WHERE operation_id = ?').run(id);
 		savedId = id;
@@ -224,8 +247,8 @@ function write(db: DatabaseSync, portfolioId: number, id: number | null, seq: nu
 	return savedId;
 }
 
-export function saveOperation(db: DatabaseSync, portfolioId: number, id: number | null, form: RawInput, confirmed = false): SubmitResult {
-	return rejected(() => submit(db, portfolioId, id, form, confirmed));
+export function saveOperation(db: DatabaseSync, portfolioId: number, id: number | null, form: RawInput, options: boolean | SaveOptions = {}): SubmitResult {
+	return rejected(() => submit(db, portfolioId, id, form, typeof options === 'boolean' ? { confirmed: options } : options));
 }
 
 export function deleteOperation(db: DatabaseSync, portfolioId: number, id: number, confirmed = false): SubmitResult {

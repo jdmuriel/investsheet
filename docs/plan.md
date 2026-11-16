@@ -9,8 +9,8 @@ Dificultad orientativa de cada tarea, para elegir modelo: 🟢 mecánica y acota
 ## Estado actual
 
 - **En producción**: <https://invest.jdmuriel.com>, con inicio de sesión de Google y los datos históricos cargados (3 carteras, 2.918 operaciones).
-- **Funciona**: listado de movimientos con acumulados y métricas anuales; descarga y restauración de la base de datos.
-- **En la rama, pendiente de visto bueno para fusionar**: alta, edición y borrado de operaciones (tarea 1.8). Incluye las migraciones de esquema 2 y 3, que se aplican solas al arrancar.
+- **Funciona**: listado de movimientos con acumulados y métricas anuales; alta, edición y borrado de operaciones; descarga y restauración de la base de datos.
+- **En la rama, pendiente de visto bueno para fusionar**: API para asistentes (tarea 1.18) y devolución de prima sin retención.
 - **No existe todavía**: alta rápida por lotes, mantenimiento de cuentas y valores, precios, cuadro de cartera, copias automáticas externas.
 - La hoja de cálculo sigue siendo la fuente de verdad hasta completar la fase 1 y validar un mes en paralelo.
 
@@ -56,6 +56,9 @@ Objetivo: poder dejar de usar la solapa `Log`.
 - [ ] **1.14 Objetivos anuales** (RF-26): importar los de la cabecera de `Log`, editarlos y mostrar el % de consecución junto a las métricas. 🟢
 - [ ] **1.15 Aplicación instalable**: manifiesto e icono. 🟢
 - [ ] **1.16 Pruebas de extremo a extremo** de los flujos principales con Playwright. 🟡
+- [x] **1.18 API para asistentes** ([documentación](api.md)): consulta de estado y operaciones, y alta, edición y borrado con simulación previa, en `/api/v1` con token (`API_TOKEN`). Lógica en `src/lib/server/api.ts`. 🔴
+  - [ ] *Propietario*: crear el secreto `API_TOKEN` en Fly y guardarlo como secreto de red del entorno de Claude Code.
+- [ ] **1.19 Servidor MCP con OAuth** sobre la lógica de la API, para usarlo como conector desde la aplicación de Claude (también en el móvil). Antes de empezar, consultar la documentación vigente de conectores personalizados. 🔴
 - [ ] **1.17 Periodo en paralelo**: un mes registrando en la hoja y en la aplicación, comparando con la exportación de validación.
 
 ## Fase 2 — Cartera y dividendos
@@ -114,6 +117,7 @@ Objetivo: poder dejar de usar la hoja.
   - En un cambio de divisa se teclea lo que sale y lo que entra de verdad en cada cuenta; los gastos, en euros, son informativos y ya van incluidos en esos importes.
   - Las operaciones **importadas** conservan sus efectos al editarlas (solo cambian fecha, descripción y notas) salvo que se marque «recalcular». Las nuevas guardan los campos tecleados en `operation.input_json` y siempre se regeneran.
   - Las validaciones comparan el registro recalculado con y sin el cambio: solo bloquea o avisa lo que el cambio empeora, no los avisos que ya traía el histórico.
+- **API**: escritura directa (decisión del propietario), sin propuestas pendientes de confirmar; la red de seguridad es la simulación (`dryRun`), las validaciones y el registro de auditoría. Solo se entra con su token, nunca con la sesión del navegador.
 - **Fly.io**: región `cdg` (Madrid está retirada). La máquina se para sola sin tráfico.
 - **SvelteKit 3** cambia nombres respecto a versiones anteriores: alias `#lib` (no `$lib`), `$app/env` (no `$app/environment`), tipo `Handle` en `@sveltejs/kit/hooks`, y `redirect` no admite destinos externos.
 
@@ -125,3 +129,4 @@ Objetivo: poder dejar de usar la hoja.
 | 2026-11-16 | Tarea 1.8: generación de efectos por tipo de operación, escritura con auditoría, formularios de alta y edición, borrado, orden dentro del día y validaciones. Migración de esquema 2 (`input_json`). |
 | 2026-11-16 | Regla de la venta de derechos: solo rebaja el coste reducido si no lleva retención. |
 | 2026-11-16 | Opciones: la prima pasa a ser renta del año; tipos genéricos de venta y compra de opción; migración de esquema 3. Confirmada la regla de gastos de compra dentro del coste. |
+| 2026-11-16 | Devolución de prima sin retención. Tarea 1.18: API JSON con token para consultar y anotar operaciones desde un asistente. |

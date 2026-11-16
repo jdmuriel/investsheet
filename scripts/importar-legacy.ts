@@ -349,8 +349,9 @@ if (cc) {
 	const rReinvest = rowOf('reinvertir');
 	const rSector = rowOf('sector');
 	for (let c = 3; c < cc[1].length; c++) {
-		const priceTicker = text(cc[1][c]);
-		if (!priceTicker || priceTicker.endsWith(':')) continue;
+		// A la derecha de los valores hay celdas sueltas (fecha de actualización, totales): solo valen los textos con forma de ticker.
+		const priceTicker = typeof cc[1][c] === 'string' ? text(cc[1][c]) : '';
+		if (!/^[A-Z0-9.]+(:[A-Z0-9.]+)?$/i.test(priceTicker)) continue;
 		const ticker = baseTicker(priceTicker);
 		if (securities.has(ticker)) continue;
 		securities.set(ticker, {

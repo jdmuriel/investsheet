@@ -10,7 +10,7 @@ Dificultad orientativa de cada tarea, para elegir modelo: 🟢 mecánica y acota
 
 - **En producción**: <https://invest.jdmuriel.com>, con inicio de sesión de Google y los datos históricos cargados (3 carteras, 2.918 operaciones).
 - **Funciona**: listado de movimientos con acumulados y métricas anuales; alta, edición, duplicado y borrado de operaciones; API para asistentes; descarga y restauración de la base de datos.
-- **En la rama, pendiente de visto bueno para fusionar**: cartera fija en la barra superior, mantenimiento de cuentas y valores, exportación de validación con el formato de `Log`, conciliación de saldos y mejoras del listado (acumulados fijos, vista de móvil). Incluye la migración de esquema 4.
+- **En la rama, pendiente de visto bueno para fusionar**: cartera fija en la barra superior, mantenimiento de cuentas y valores, exportación de validación con el formato de `Log`, conciliación de saldos y mejoras del listado (acumulados fijos, vista de móvil). Incluye las migraciones de esquema 4 y 5.
 - **No existe todavía**: alta rápida por lotes, objetivos anuales, precios, cuadro de cartera, copias automáticas externas.
 - La hoja de cálculo sigue siendo la fuente de verdad hasta completar la fase 1 y validar un mes en paralelo.
 
@@ -148,3 +148,4 @@ Objetivo: poder dejar de usar la hoja.
 | 2026-11-16 | Tareas 1.10, 1.12 y 1.13: mantenimiento de cuentas y valores, exportación de validación con solapa de diferencias, conciliación de saldos (migración de esquema 4), acumulados fijos, vista de móvil y lo más reciente a la vista. |
 | 2026-11-16 | La cartera queda fija: se elige en la barra superior y se recuerda entre visitas; desaparece el selector de cada pantalla. |
 | 2026-11-16 | Formato de importes: separador de miles siempre (salvo en campos de entrada) y sin mezclar código y símbolo de moneda: código en las pantallas de entrada, símbolo en los listados. Norma añadida a `CLAUDE.md`. |
+| 2026-11-16 | Tres totales numéricos de `Control cartera` se habían importado como valores: el importador ya solo acepta textos con forma de ticker y la migración 5 los borra. |

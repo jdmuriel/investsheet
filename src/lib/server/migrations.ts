@@ -150,5 +150,17 @@ CREATE TABLE reconciliation (
 );
 CREATE INDEX reconciliation_account ON reconciliation (account_id, date);
 `
+	},
+	{
+		version: 5,
+		sql: `
+-- La importación tomó por valores tres totales numéricos de la fila de tickers de «Control cartera».
+-- Se borran los «valores» sin ninguna letra en el ticker que nadie usa.
+DELETE FROM security
+WHERE ticker NOT GLOB '*[A-Za-z]*'
+	AND id NOT IN (SELECT security_id FROM operation WHERE security_id IS NOT NULL)
+	AND id NOT IN (SELECT security_id FROM position_leg)
+	AND id NOT IN (SELECT to_security_id FROM position_leg WHERE to_security_id IS NOT NULL);
+`
 	}
 ];

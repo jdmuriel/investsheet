@@ -1,4 +1,5 @@
 import { error, fail, redirect } from '@sveltejs/kit';
+import { isOperationType } from '#lib/engine/operations.ts';
 import { formContext, getOperation, rawFromForm, saveOperation } from '#lib/server/operations.ts';
 import { getDb, listPortfolios } from '#lib/server/store.ts';
 import type { Actions, PageServerLoad } from './$types';
@@ -16,12 +17,20 @@ export const load: PageServerLoad = ({ url }) => {
 	const db = getDb();
 	const context = formContext(db, portfolioId);
 	const previous = getOperation(db, Number(url.searchParams.get('guardado')));
-	const initial = {
+	let initial: Record<string, string> = {
 		type: url.searchParams.get('tipo') ?? 'DIVIDENDOS',
 		date: url.searchParams.get('fecha') ?? context.today,
 		account: url.searchParams.get('cuenta') ?? ''
 	};
-	return { portfolios, portfolioId, ...context, initial, saved: previous?.portfolioId === portfolioId ? { id: previous.id, description: previous.description, accountIds: previous.cash.map((c) => c.accountId) } : null };
+	// Duplicar: los campos de otra operación de la cartera, con la fecha de hoy.
+	const source = getOperation(db, Number(url.searchParams.get('copiar')));
+	const copied = source?.portfolioId === portfolioId && isOperationType(source.type) ? source : null;
+	if (copied) {
+		// Una descripción importada con cifras (acciones, precios) quedaría desfasada: se deja que se genere de nuevo.
+		const description = copied.imported && /\d/.test(copied.raw.description ?? '') ? '' : (copied.raw.description ?? '');
+		initial = { ...copied.raw, date: context.today, notes: '', description };
+	}
+	return { portfolios, portfolioId, ...context, initial, copied: copied ? { id: copied.id, description: copied.description, date: copied.date } : null, saved: previous?.portfolioId === portfolioId ? { id: previous.id, description: previous.description, accountIds: previous.cash.map((c) => c.accountId) } : null };
 };
 
 export const actions: Actions = {

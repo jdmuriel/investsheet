@@ -10,7 +10,7 @@ Dificultad orientativa de cada tarea, para elegir modelo: 🟢 mecánica y acota
 
 - **En producción**: <https://invest.jdmuriel.com>, con inicio de sesión de Google y los datos históricos cargados (3 carteras, 2.918 operaciones).
 - **Funciona**: listado de movimientos con acumulados y métricas anuales; alta, edición y borrado de operaciones; descarga y restauración de la base de datos.
-- **En la rama, pendiente de visto bueno para fusionar**: API para asistentes (tarea 1.18) y devolución de prima sin retención.
+- **En la rama, pendiente de visto bueno para fusionar**: duplicar movimientos y tipo de cambio inverso.
 - **No existe todavía**: alta rápida por lotes, mantenimiento de cuentas y valores, precios, cuadro de cartera, copias automáticas externas.
 - La hoja de cálculo sigue siendo la fuente de verdad hasta completar la fase 1 y validar un mes en paralelo.
 
@@ -41,6 +41,8 @@ Objetivo: poder dejar de usar la solapa `Log`.
   - [x] Edición y borrado desde la fila del listado (`/movimientos/[id]`, enlazado desde la fecha).
   - [x] Orden dentro del día (`seq`): nuevo al final del día, ajustable desde la pantalla de edición.
   - [x] Validaciones: no vender más de lo que hay (bloquea), aviso de saldo negativo (pide confirmación).
+  - [x] Duplicar un movimiento desde su fila del listado (⧉), con la fecha de hoy: las acciones se ponen al día y el importe y las retenciones se recalculan con la misma proporción.
+  - [x] Tipo de cambio tecleable al revés (euros por unidad de la moneda); se guarda siempre «moneda por euro» y el navegador recuerda la preferencia.
 - [ ] **1.9 Alta rápida por lotes** (RF-06): fijar cuenta y tipo e introducir varias líneas seguidas, en cualquier orden de fecha. 🟡
 - [ ] **1.10 Mantenimiento de cuentas y valores**: alta y edición desde Ajustes. 🟢
 - [ ] **1.11 Copia externa automática a Google Cloud Storage** (diseño §8.2). 🟡
@@ -130,3 +132,4 @@ Objetivo: poder dejar de usar la hoja.
 | 2026-11-16 | Regla de la venta de derechos: solo rebaja el coste reducido si no lleva retención. |
 | 2026-11-16 | Opciones: la prima pasa a ser renta del año; tipos genéricos de venta y compra de opción; migración de esquema 3. Confirmada la regla de gastos de compra dentro del coste. |
 | 2026-11-16 | Devolución de prima sin retención. Tarea 1.18: API JSON con token para consultar y anotar operaciones desde un asistente. |
+| 2026-11-16 | Duplicar movimientos desde el listado y tipo de cambio inverso en el formulario. |

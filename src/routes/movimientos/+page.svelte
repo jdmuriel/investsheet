@@ -109,6 +109,7 @@
 	<table>
 		<thead>
 			<tr>
+				<th class="l" aria-label="Acciones"></th>
 				<th class="l">Fecha</th>
 				<th class="l">Descripción</th>
 				<th class="l">Operación</th>
@@ -134,6 +135,9 @@
 		<tbody>
 			{#each visible as r (r.id)}
 				<tr id="op-{r.id}" class:saved={r.id === data.saved?.id}>
+					<td class="l actions">
+						{#if r.canCopy}<a href="/movimientos/nuevo?cartera={data.portfolioId}&copiar={r.id}" title="Duplicar con la fecha de hoy" aria-label="Duplicar {r.description}">⧉</a>{/if}
+					</td>
 					<td class="l nowrap"><a href="/movimientos/{r.id}" title="Editar">{date(r.date)}</a></td>
 					<td class="l desc" title={r.description}>{r.description}</td>
 					<td class="l">{r.type}</td>
@@ -210,6 +214,17 @@
 	}
 	tr.saved td {
 		background: color-mix(in srgb, var(--accent) 18%, transparent);
+	}
+	td.actions {
+		padding-right: 0;
+	}
+	td.actions a {
+		display: inline-block;
+		padding: 0 0.3rem;
+		font-size: 15px;
+		line-height: 1;
+		color: var(--accent);
+		text-decoration: none;
 	}
 	td a {
 		color: inherit;

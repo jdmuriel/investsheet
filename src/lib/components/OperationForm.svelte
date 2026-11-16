@@ -19,8 +19,10 @@
 		supported?: boolean;
 		action?: string;
 		allowAnother?: boolean;
+		/** Copia de otra operación: se adapta a la posición actual y los importes derivados se recalculan. */
+		duplicate?: boolean;
 	}
-	let { accounts, securities, holdings, balances, initial, rejected = null, imported = false, supported = true, action = '', allowAnother = false }: Props = $props();
+	let { accounts, securities, holdings, balances, initial, rejected = null, imported = false, supported = true, action = '', allowAnother = false, duplicate = false }: Props = $props();
 
 	const CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF', 'CAD', 'DKK', 'SEK', 'NOK'];
 	const NEW = 'nuevo';
@@ -54,8 +56,62 @@
 	});
 	const text = (n: number) => n.toFixed(2).replace('.', ',');
 
+	/** Porcentajes de retención de la operación copiada, cuando difieren de los del valor. */
+	let copiedRates = $state<{ source: number; dest: number } | null>(null);
+	// svelte-ignore state_referenced_locally
+	if (duplicate && !rejected) {
+		// Lo que salía de una cuenta (acciones × dividendo, retención por porcentaje) vuelve a calcularse solo al tocar los campos.
+		const amount = parseDecimal(raw.amount);
+		const sameAmount = amount != null && computedAmount != null && Math.abs(amount - computedAmount) < 0.006;
+		if (type === 'DIVIDENDOS' && security && amount) {
+			// Si las retenciones copiadas no son las del valor (cada broker retiene distinto), se mantiene su proporción.
+			const matches = (value: string, pct: number | null) => Math.abs((parseDecimal(value) ?? 0) - amount * (pct ?? 0)) < 0.011;
+			const rate = (value: string) => Math.round(((parseDecimal(value) ?? 0) / amount) * 1000) / 1000;
+			if (!(matches(raw.whtSource, security.whtSourcePct) && matches(raw.whtDest, security.whtDestPct))) copiedRates = { source: rate(raw.whtSource), dest: rate(raw.whtDest) };
+			whtTouched = false;
+		}
+		if (sameAmount) raw.amount = '';
+		// Los gastos de una renta suelen ser el ajuste de céntimos de aquel cobro: no se copian.
+		if (type === 'DIVIDENDOS' || type === 'INTERESES') raw.fees = raw.cashTotal = '';
+		if (type === 'DIVIDENDOS' && held > 0 && raw.quantity) {
+			raw.quantity = String(held / MICRO).replace('.', ',');
+			suggestWithholding();
+		}
+	}
+
+	// Tipo de cambio: se puede teclear al revés (euros por unidad de la moneda), pero siempre se guarda «moneda por euro».
+	const FX_KEY = 'tipo-de-cambio-inverso';
+	const invert = (value: string) => {
+		const n = parseDecimal(value);
+		return n && Number.isFinite(n) && n > 0 ? String(Math.round(1e9 / n) / 1e9).replace('.', ',') : '';
+	};
+	let fxInverse = $state(false);
+	// svelte-ignore state_referenced_locally
+	let fxText = $state(raw.fxRate);
+	function setFxInverse(value: boolean) {
+		if (value === fxInverse) return;
+		fxInverse = value;
+		fxText = value ? invert(raw.fxRate) : raw.fxRate;
+		try {
+			localStorage.setItem(FX_KEY, value ? '1' : '');
+		} catch {
+			// Sin almacenamiento local solo se pierde la preferencia.
+		}
+	}
+	function fxTyped() {
+		raw.fxRate = fxInverse ? invert(fxText) : fxText;
+	}
+	$effect(() => {
+		try {
+			if (localStorage.getItem(FX_KEY) === '1') setFxInverse(true);
+		} catch {
+			// Igual que arriba.
+		}
+	});
+
 	function securityChanged() {
 		if (!security) return;
+		copiedRates = null;
 		if (has('currency')) raw.currency = security.currency ?? account?.currency ?? 'EUR';
 		if (type === 'DIVIDENDOS' && !raw.quantity && held > 0) raw.quantity = String(held / MICRO).replace('.', ',');
 		suggestWithholding();
@@ -68,8 +124,10 @@
 		if (type !== 'DIVIDENDOS' || whtTouched || !security) return;
 		const amount = parseDecimal(raw.amount) ?? computedAmount;
 		if (!amount) return;
-		raw.whtSource = security.whtSourcePct ? text(amount * security.whtSourcePct) : '';
-		raw.whtDest = security.whtDestPct ? text(amount * security.whtDestPct) : '';
+		const source = copiedRates?.source ?? security.whtSourcePct;
+		const dest = copiedRates?.dest ?? security.whtDestPct;
+		raw.whtSource = source ? text(amount * source) : '';
+		raw.whtDest = dest ? text(amount * dest) : '';
 	}
 
 	// Vista previa: el mismo generador que usa el servidor, con los saldos y acciones actuales.
@@ -208,8 +266,12 @@
 			{#if needsFx}
 				<label>
 					Tipo de cambio
-					<input name="fxRate" bind:value={raw.fxRate} inputmode="decimal" autocomplete="off" required />
-					<small>{currency} por euro</small>
+					<span class="fx">
+						<input bind:value={fxText} oninput={fxTyped} inputmode="decimal" autocomplete="off" required aria-label="Tipo de cambio, {fxInverse ? `euros por ${currency}` : `${currency} por euro`}" />
+						<button type="button" onclick={() => setFxInverse(!fxInverse)} title="Teclear el cambio al revés">⇄ {fxInverse ? `€ por ${currency}` : `${currency} por €`}</button>
+					</span>
+					<input type="hidden" name="fxRate" value={raw.fxRate} />
+					<small>{#if fxInverse}euros por {currency}; se guarda {raw.fxRate || '…'} {currency} por euro{:else}{currency} por euro{/if}</small>
 				</label>
 			{/if}
 		</div>
@@ -321,6 +383,15 @@
 	}
 	small {
 		color: var(--muted);
+	}
+	.fx {
+		display: flex;
+		gap: 0.4rem;
+	}
+	.fx button {
+		padding: 0.3rem 0.5rem;
+		font-size: 12px;
+		white-space: nowrap;
 	}
 	.ratio {
 		display: flex;

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import OperationForm from '#lib/components/OperationForm.svelte';
-	import { eur } from '#lib/format.ts';
+	import { date, eur } from '#lib/format.ts';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
@@ -27,8 +27,12 @@
 	</p>
 {/if}
 
-{#key data.saved?.id}
-	<OperationForm accounts={data.accounts} securities={data.securities} holdings={data.holdings} balances={data.balances} initial={data.initial} rejected={form} allowAnother />
+{#if data.copied}
+	<p class="saved">Copia de «{data.copied.description}» del {date(data.copied.date)}, con la fecha de hoy. Revisa los campos antes de guardar.</p>
+{/if}
+
+{#key `${data.saved?.id}-${data.copied?.id}`}
+	<OperationForm accounts={data.accounts} securities={data.securities} holdings={data.holdings} balances={data.balances} initial={data.initial} rejected={form} allowAnother duplicate={data.copied != null} />
 {/key}
 
 <style>

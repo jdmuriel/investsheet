@@ -15,6 +15,7 @@
 	<h1>Editar movimiento</h1>
 	<span class="muted">{data.portfolio.name} · {date(data.record.date)}</span>
 	<a href="/movimientos?cartera={data.portfolioId}&anio={data.record.date.slice(0, 4)}&op={data.record.id}">Volver al listado</a>
+	{#if data.record.supported}<a href="/movimientos/nuevo?cartera={data.portfolioId}&copiar={data.record.id}">Duplicar con la fecha de hoy</a>{/if}
 </header>
 
 <OperationForm

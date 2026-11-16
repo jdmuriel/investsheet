@@ -1,5 +1,6 @@
 import { error, redirect } from '@sveltejs/kit';
 import { investedCapital, run } from '#lib/engine/engine.ts';
+import { isOperationType } from '#lib/engine/operations.ts';
 import type { YearMetrics } from '#lib/engine/types.ts';
 import { listAccounts, listPortfolios, loadOperations } from '#lib/server/store.ts';
 import type { PageServerLoad } from './$types';
@@ -38,6 +39,7 @@ export const load: PageServerLoad = ({ url }) => {
 		.filter((op) => year == null || op.date.startsWith(String(year)))
 		.map((op) => ({
 			id: op.id,
+			canCopy: isOperationType(op.type),
 			date: op.date,
 			type: op.type,
 			description: op.description,

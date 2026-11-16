@@ -109,6 +109,7 @@ Objetivo: poder dejar de usar la hoja.
   - Los **gastos de una compra forman parte del coste** del lote (y además restan del resultado del año), como en la hoja.
   - Si se teclea el total abonado o cargado en la cuenta, los gastos son la diferencia: es la forma de cuadrar céntimos con el broker.
   - La **venta de derechos rebaja el coste reducido** en su importe bruto solo si no lleva retención. Con retención se considera un dividendo y no rebaja coste (decisión del propietario).
+  - La **devolución de prima** rebaja siempre el coste reducido y no lleva retención (el formulario no la pide).
   - Las **opciones** (`VENTAOPCION`, `COMPRAOPCION`, valen para *put* y *call*): la prima es renta del año al cobrarla y renta negativa al pagarla. No se llevan como posición: un vencimiento no se anota, un cierre anticipado es la operación contraria y un ejercicio es una compra o venta normal. La hoja anotaba la prima como compra; la migración 3 y el importador convierten las dos operaciones de 2025.
   - En un cambio de divisa se teclea lo que sale y lo que entra de verdad en cada cuenta; los gastos, en euros, son informativos y ya van incluidos en esos importes.
   - Las operaciones **importadas** conservan sus efectos al editarlas (solo cambian fecha, descripción y notas) salvo que se marque «recalcular». Las nuevas guardan los campos tecleados en `operation.input_json` y siempre se regeneran.

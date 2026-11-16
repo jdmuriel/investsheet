@@ -75,7 +75,7 @@ export const OPERATION_TYPES = {
 	RETIRADA: { label: 'Retirada', fields: { account: 'Cuenta', amount: 'Importe' } },
 	DEVOLUCIONPRIMA: {
 		label: 'Devolución de prima',
-		fields: { account: 'Cuenta', security: 'Valor', quantity: 'Acciones' + OPTIONAL, price: 'Importe por acción' + OPTIONAL, currency: 'Moneda', amount: 'Importe', whtDest: 'Retención', fees: 'Gastos' }
+		fields: { account: 'Cuenta', security: 'Valor', quantity: 'Acciones' + OPTIONAL, price: 'Importe por acción' + OPTIONAL, currency: 'Moneda', amount: 'Importe', fees: 'Gastos' }
 	},
 	COMPRADERECHOS: {
 		label: 'Compra de derechos',

@@ -117,5 +117,12 @@ CREATE TABLE audit_log (
 	after_json TEXT
 );
 `
+	},
+	{
+		version: 2,
+		sql: `
+-- Campos del formulario tal como se teclearon, para poder reeditar la operación.
+ALTER TABLE operation ADD COLUMN input_json TEXT;
+`
 	}
 ];

@@ -19,7 +19,7 @@ Aplicación web personal para llevar una cartera de acciones de dividendos; sust
 
 ## Estructura
 
-- `src/lib/engine/` — motor de cálculo puro (sin base de datos ni red). Importes en céntimos enteros, acciones en millonésimas.
+- `src/lib/engine/` — motor de cálculo puro (sin base de datos ni red). Importes en céntimos enteros, acciones en millonésimas. `operations.ts` genera los efectos de cada tipo de operación a partir del formulario; lo usan igual el servidor y la vista previa del navegador.
 - `src/lib/server/` — SQLite (`node:sqlite`), migraciones en `migrations.ts` (no modificar una ya desplegada: añadir otra), acceso y copias.
 - `src/routes/` — pantallas. `scripts/` — importador de la hoja antigua.
 

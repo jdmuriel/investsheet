@@ -53,7 +53,7 @@ operation(id, portfolio_id, date, seq, type, account_id, security_id,
           amount_local, tax_local, wht_source_local, wht_dest_local, fees_local,
           gross_eur, tax_eur, fees_eur,                   -- contravalor guardado
           capital_in_eur, capital_out_eur, purchase_eur,
-          description, notes, source, legacy_ref, created_at, updated_at)
+          description, notes, source, legacy_ref, input_json, created_at, updated_at)
 cash_leg(operation_id, account_id, amount)                -- efecto en efectivo
 position_leg(operation_id, security_id, kind, shares, cost_eur, reduced_cost_eur,
              proceeds_eur, to_security_id)                -- efecto en la posición
@@ -71,6 +71,7 @@ Puntos de diseño:
 - **Operación = cabecera + efectos**: cada operación guarda sus efectos como filas aparte. Un `cash_leg` es un movimiento de efectivo en una cuenta (un cambio de divisa o un traspaso tienen dos). Un `position_leg` es un efecto sobre un valor, de cuatro clases: `buy` (lote nuevo), `sell` (baja por FIFO), `adjust` (reparto de acciones o coste entre los lotes vivos: liberadas, *splits*, derechos, primas) y `convert` (los lotes pasan a otro valor). El formulario de cada tipo de operación genera sus efectos, que quedan guardados y son editables; el motor solo entiende efectos, no tipos. El coste que **sale** en una venta no se guarda: lo calcula el motor (§4.2).
 - **Contravalor en euros guardado**, no recalculado: es el que se usó al registrar la operación.
 - **Calendario de dividendos versionado** por `valid_from`: cada cambio de dividendo crea una versión nueva y conserva las anteriores, de modo que el PADI de una fecha pasada se puede reconstruir.
+- **Campos del formulario guardados** (`input_json`): las operaciones dadas de alta en la aplicación conservan lo tecleado, para reeditarlas y regenerar sus efectos. Las importadas no lo tienen y conservan sus efectos al editarlas, salvo que se pida recalcularlos.
 - **Registro de auditoría**: cada alta, edición o borrado guarda el antes y el después, para poder deshacer un error.
 
 ## 4. Motor de cálculo
@@ -95,7 +96,7 @@ De ese recorrido salen el listado de movimientos (RF-07), el estado a cualquier 
 
 | Tipo | Efectivo | Acciones | Coste | Coste reducido | Resultado |
 |---|---|---|---|---|---|
-| Compra | − importe − gastos | + cantidad | + importe | + importe | − gastos |
+| Compra | − importe − gastos | + cantidad | + importe + gastos | + importe + gastos | − gastos |
 | Venta | + importe − gastos | − cantidad | − coste FIFO de lo vendido | − coste reducido FIFO de lo vendido | − gastos |
 | Dividendo, interés, promoción | + bruto − retenciones − gastos | | | | + neto |
 | Devolución de prima | + importe | | | − importe | + importe |
@@ -103,7 +104,7 @@ De ese recorrido salen el listado de movimientos (RF-07), el estado a cualquier 
 | Traspaso | − en origen, + en destino | | | | |
 | Cambio de divisa | − en una cuenta, + en otra | | | | − gastos |
 | Gasto o comisión | − importe | | | | − importe |
-| Compra de derechos | − importe − gastos | | + importe | + importe | − gastos |
+| Compra de derechos | − importe − gastos | | + importe + gastos | + importe + gastos | − gastos |
 | Venta de derechos | + bruto − retención − gastos | | | − bruto | + neto |
 | Conversión de derechos, ampliación liberada | | + cantidad, repartida entre los lotes | | | |
 | Traspaso de valores entre cuentas | | sin cambio | sin cambio | sin cambio | − gastos |
@@ -113,7 +114,7 @@ De ese recorrido salen el listado de movimientos (RF-07), el estado a cualquier 
 | Opciones (venta de *put*, compra de *call*) | ± prima − gastos | | | | − gastos |
 | Pérdidas / compensación de fondos | ± importe | | | | ± importe |
 
-Esta tabla reproduce lo observado en la hoja. La migración la valida: si el motor no da los mismos saldos y posiciones que la hoja a cierre de cada año, la regla está mal.
+Los gastos de una compra forman parte del coste del lote y, además, restan del resultado del año: así lo hace la hoja. Esta tabla reproduce lo observado en ella. La migración la valida: si el motor no da los mismos saldos y posiciones que la hoja a cierre de cada año, la regla está mal.
 
 ### 4.2 Lotes y FIFO
 

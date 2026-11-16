@@ -40,12 +40,24 @@ export function listPortfolios(): Portfolio[] {
 	return getDb().prepare('SELECT id, name FROM portfolio ORDER BY sort_order, id').all() as unknown as Portfolio[];
 }
 
-export function listAccounts(portfolioId: number): Account[] {
-	return getDb().prepare('SELECT id, code, name, currency FROM account WHERE portfolio_id = ? ORDER BY sort_order, id').all(portfolioId) as unknown as Account[];
+export function listAccounts(portfolioId: number, d: DatabaseSync = getDb()): Account[] {
+	return d.prepare('SELECT id, code, name, currency FROM account WHERE portfolio_id = ? ORDER BY sort_order, id').all(portfolioId) as unknown as Account[];
 }
 
-export function loadOperations(portfolioId: number): OperationRow[] {
-	const d = getDb();
+export interface Security {
+	id: number;
+	ticker: string;
+	name: string | null;
+	currency: string | null;
+	whtSourcePct: number | null;
+	whtDestPct: number | null;
+}
+
+export function listSecurities(d: DatabaseSync = getDb()): Security[] {
+	return d.prepare('SELECT id, ticker, name, currency, wht_source_pct AS whtSourcePct, wht_dest_pct AS whtDestPct FROM security ORDER BY ticker').all() as unknown as Security[];
+}
+
+export function loadOperations(portfolioId: number, d: DatabaseSync = getDb()): OperationRow[] {
 	const rows = d
 		.prepare(
 			`SELECT o.id, o.date, o.seq, o.type, o.security_id AS securityId, o.gross_eur AS grossEur, o.tax_eur AS taxEur, o.fees_eur AS feesEur,

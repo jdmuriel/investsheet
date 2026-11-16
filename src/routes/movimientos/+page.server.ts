@@ -29,6 +29,11 @@ export const load: PageServerLoad = ({ url }) => {
 	const param = url.searchParams.get('anio');
 	const year = param === 'todos' ? null : Number(param) || years[0]?.year || null;
 
+	// Operación recién guardada: se resalta y se muestra el saldo en que deja sus cuentas (RF-05).
+	const savedOp = operations.find((op) => op.id === Number(url.searchParams.get('op')));
+	const savedBalances = savedOp && balances.get(savedOp.id);
+	const saved = savedOp && savedBalances ? { id: savedOp.id, description: savedOp.description, balances: accounts.map((a, i) => ({ name: a.name, currency: a.currency, amount: savedBalances.cash[i], touched: savedOp.cash.some((c) => c.accountId === a.id) })).filter((b) => b.touched) } : null;
+
 	const rows = operations
 		.filter((op) => year == null || op.date.startsWith(String(year)))
 		.map((op) => ({
@@ -51,5 +56,5 @@ export const load: PageServerLoad = ({ url }) => {
 			...balances.get(op.id)!
 		}));
 
-	return { portfolios, portfolioId, accounts, years, year, rows, warnings: warnings.length };
+	return { portfolios, portfolioId, accounts, years, year, rows, warnings: warnings.length, saved };
 };

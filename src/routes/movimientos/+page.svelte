@@ -17,6 +17,10 @@
 		})
 	);
 	const current = $derived(data.years.find((y) => y.year === data.year));
+
+	$effect(() => {
+		if (data.saved) document.getElementById(`op-${data.saved.id}`)?.scrollIntoView({ block: 'center' });
+	});
 </script>
 
 <form method="GET" class="filters">
@@ -51,7 +55,17 @@
 		<input type="search" bind:value={search} placeholder="descripción, valor o cuenta" />
 	</label>
 	<span class="count">{visible.length} de {data.rows.length} movimientos</span>
+	<a class="new" href="/movimientos/nuevo?cartera={data.portfolioId}">Nuevo movimiento</a>
 </form>
+
+{#if data.saved}
+	<p class="saved">
+		Guardado: {data.saved.description}.
+		{#each data.saved.balances as b (b.name)}
+			Saldo de {b.name} tras la operación: <strong class:neg={b.amount < 0}>{eur(b.amount)} {b.currency}</strong>.
+		{/each}
+	</p>
+{/if}
 
 {#if data.warnings > 0}
 	<p class="warning">El motor ha emitido {data.warnings} avisos al recalcular esta cartera.</p>
@@ -119,8 +133,8 @@
 		</thead>
 		<tbody>
 			{#each visible as r (r.id)}
-				<tr>
-					<td class="l nowrap">{date(r.date)}</td>
+				<tr id="op-{r.id}" class:saved={r.id === data.saved?.id}>
+					<td class="l nowrap"><a href="/movimientos/{r.id}" title="Editar">{date(r.date)}</a></td>
 					<td class="l desc" title={r.description}>{r.description}</td>
 					<td class="l">{r.type}</td>
 					<td class="l">{r.ticker ?? ''}</td>
@@ -178,6 +192,28 @@
 	}
 	.warning {
 		color: var(--neg);
+	}
+	.new {
+		padding: 0.3rem 0.8rem;
+		border-radius: 4px;
+		background: var(--accent);
+		color: var(--bg);
+		font-weight: 600;
+		text-decoration: none;
+	}
+	p.saved {
+		margin: 0 0 0.75rem;
+		padding: 0.5rem 0.8rem;
+		border: 1px solid var(--line);
+		border-radius: 6px;
+		background: var(--soft);
+	}
+	tr.saved td {
+		background: color-mix(in srgb, var(--accent) 18%, transparent);
+	}
+	td a {
+		color: inherit;
+		text-decoration-color: var(--muted);
 	}
 	.metrics {
 		margin-bottom: 0.75rem;

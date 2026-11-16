@@ -11,8 +11,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { applyOperation, emptyState, investedCapital, run, totalCost, totalReducedCost, totalShares } from '../src/lib/engine/engine.ts';
 import { MICRO, type Operation, type PositionLeg, type State, type Warning } from '../src/lib/engine/types.ts';
-import { colIndex, goalsFromReference, type SheetCell, type SheetRows } from '../src/lib/engine/log-export.ts';
+import { colIndex, type SheetCell, type SheetRows } from '../src/lib/engine/log-export.ts';
 import { openDatabase } from '../src/lib/server/db.ts';
+import { applyExtras, extrasFromSheets } from '../src/lib/server/legacy-extras.ts';
 import { readSheets } from '../src/lib/server/legacy-sheet.ts';
 
 type Cell = SheetCell;
@@ -199,7 +200,11 @@ function importMainLog(sheetName: string, sheet: Sheet, nextId: () => number): P
 				else d.legs.push({ ticker: x.ticker, kind: 'adjust', shares: x.dShares, cost: x.dCost, reducedCost: x.dReduced });
 			}
 		}
-		if (!tracked && row.ticker) {
+		if (!tracked && row.ticker && row.type === 'COMPRA' && changed.length === 1 && d.legs.length === 1 && d.legs[0].kind === 'buy') {
+			// Errata en el ticker de una compra: la hoja la anotó en la columna de otro valor, que es el bueno.
+			notes.push(`fila ${row.rowNumber} (${row.date}): ticker «${row.ticker}» sin columna; se toma ${changed[0].ticker}, donde lo anotó la hoja`);
+			row.ticker = changed[0].ticker;
+		} else if (!tracked && row.ticker) {
 			legsFromFields(d);
 			// Valores sin columna propia (spin-offs vendidos al recibirlos): se da de alta a coste cero lo que falte.
 			const held = untracked.get(row.ticker) ?? 0;
@@ -311,7 +316,7 @@ if (!xlsxPath) {
 	process.exit(1);
 }
 
-const sheets = await readSheets(xlsxPath, (n) => n.startsWith('Log') || n === 'Control cartera');
+const sheets = await readSheets(xlsxPath, (n) => n.startsWith('Log') || n === 'Control cartera' || n === 'Variación divs');
 let idCounter = 0;
 const nextId = () => ++idCounter;
 
@@ -398,11 +403,6 @@ const insOp = db.prepare(`INSERT INTO operation (id, portfolio_id, date, seq, ty
 const insCash = db.prepare('INSERT INTO cash_leg (operation_id, account_id, amount) VALUES (?,?,?)');
 const insLeg = db.prepare('INSERT INTO position_leg (operation_id, security_id, kind, shares, cost_eur, reduced_cost_eur, proceeds_eur, to_security_id) VALUES (?,?,?,?,?,?,?,?)');
 
-const insGoal = db.prepare('INSERT INTO goal (portfolio_id, year, metric, amount_eur) VALUES (?,?,?,?)');
-// Los objetivos de la cabecera son los vigentes: se anotan en el año del último movimiento del libro,
-// porque los rótulos de años de los registros secundarios pueden estar desfasados.
-const goalYear = Number(portfolios.flatMap((p) => p.drafts.map((d) => d.op.date)).reduce((a, b) => (a > b ? a : b), '').slice(0, 4));
-
 const summaries: string[] = [];
 portfolios.forEach((p, index) => {
 	const portfolioId = Number(insPortfolio.run(p.name, index).lastInsertRowid);
@@ -426,14 +426,10 @@ portfolios.forEach((p, index) => {
 		for (const leg of op.positions) insLeg.run(op.id, leg.securityId, leg.kind, leg.shares, leg.cost, leg.reducedCost, leg.proceeds ?? null, leg.toSecurityId ?? null);
 	}
 
-	const goals = Object.entries(goalsFromReference(sheets.get(p.sheetName)!, p.sheetName === 'Log'));
-	if (goalYear) for (const [metric, amount] of goals) insGoal.run(portfolioId, goalYear, metric, amount);
-
 	// ---- Validación contra la hoja ----
 	say(`## Cartera «${p.name}» (${p.drafts.length} operaciones)`);
 	say();
 	if (unknownAccounts.size) say(`- Cuentas citadas en operaciones que no tienen columna de saldo: ${[...unknownAccounts].join(', ')}`);
-	say(`- Objetivos de ${goalYear} importados: ${goals.length}`);
 	say(`- Fechas fuera de orden: ${outOfOrder.length}`);
 	for (const line of outOfOrder) say(`  - ${line}`);
 
@@ -519,6 +515,17 @@ portfolios.forEach((p, index) => {
 	);
 });
 db.exec('COMMIT');
+
+// Objetivos, precios, cambios y dividendos previstos. Los precios de la hoja se fechan en el último movimiento del libro;
+// los objetivos de la cabecera son los vigentes y van a ese mismo año (los rótulos de los registros secundarios pueden estar desfasados).
+const lastDate = portfolios.flatMap((p) => p.drafts.map((d) => d.op.date)).reduce((a, b) => (a > b ? a : b), '');
+const extras = lastDate ? applyExtras(db, extrasFromSheets(sheets), lastDate) : null;
+if (extras) {
+	say('## Otros datos de la hoja');
+	say();
+	say(`- A fecha ${lastDate}: ${extras.prices} precios, ${extras.fxRates} tipos de cambio, ${extras.schedules} calendarios de dividendos, ${extras.changes} cambios de dividendo y ${extras.goals} objetivos.`);
+	if (extras.unknown.length) say(`- Tickers de la hoja sin valor en la aplicación: ${extras.unknown.join(', ')}`);
+}
 db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
 db.close();
 

@@ -36,6 +36,33 @@
 </section>
 
 <section>
+	<h2>Importar datos de la hoja</h2>
+	<p>
+		Completa la aplicación con lo que la hoja tiene además de las operaciones: objetivos del año, último precio y tipo de cambio, calendario de dividendos previstos e histórico de cambios de dividendo. <strong>No pisa
+		nada</strong>: solo rellena lo que falta, así que se puede repetir. Las operaciones no se tocan.
+	</p>
+	<form method="POST" action="?/hoja" enctype="multipart/form-data">
+		<input type="file" name="hoja" accept=".xlsx" required aria-label="Copia de la hoja" />
+		<label>Los precios de la hoja son del <input type="date" name="fecha" value={data.today} max={data.today} /></label>
+		<button>Importar</button>
+	</form>
+	{#if form?.sheetError}
+		<p class="error">{form.sheetError}</p>
+	{/if}
+	{#if form?.sheet}
+		<p class="ok">
+			Importado: {form.sheet.prices} precios, {form.sheet.fxRates} tipos de cambio, {form.sheet.schedules} calendarios de dividendos, {form.sheet.changes} cambios de dividendo y {form.sheet.goals} objetivos.
+			{#if form.sheet.unknown.length}Tickers de la hoja sin valor en la aplicación: {form.sheet.unknown.join(', ')}.{/if}
+		</p>
+	{/if}
+</section>
+
+<section>
+	<h2>Precios</h2>
+	<p><a href="/precios">Precios y tipos de cambio</a>: estado de las fuentes y corrección de un precio a mano.</p>
+</section>
+
+<section>
 	<h2>Copia de seguridad</h2>
 	<p><a href="/ajustes/copia" download>Descargar una copia de la base de datos</a></p>
 </section>

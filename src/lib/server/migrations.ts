@@ -162,5 +162,75 @@ WHERE ticker NOT GLOB '*[A-Za-z]*'
 	AND id NOT IN (SELECT security_id FROM position_leg)
 	AND id NOT IN (SELECT to_security_id FROM position_leg WHERE to_security_id IS NOT NULL);
 `
+	},
+	{
+		version: 6,
+		sql: `
+-- Fase 2: precios, tipos de cambio y dividendos previstos.
+-- Precio de un valor en una fecha, en unidades de su moneda (los que cotizan en peniques se guardan en libras).
+-- \`source\`: 'sheet' (hoja de precios), 'manual' (tecleado) o 'legacy' (hoja antigua).
+CREATE TABLE price (
+	security_id INTEGER NOT NULL REFERENCES security(id),
+	date TEXT NOT NULL,
+	price REAL NOT NULL,
+	currency TEXT NOT NULL,
+	source TEXT NOT NULL,
+	fetched_at TEXT NOT NULL DEFAULT (datetime('now')),
+	PRIMARY KEY (security_id, date)
+);
+
+-- Unidades de la moneda por euro, como en el resto de la aplicación. \`source\`: 'ecb' o 'legacy'.
+CREATE TABLE fx_rate (
+	currency TEXT NOT NULL,
+	date TEXT NOT NULL,
+	rate REAL NOT NULL,
+	source TEXT NOT NULL DEFAULT 'ecb',
+	PRIMARY KEY (currency, date)
+);
+
+-- Calendario de dividendos previstos, versionado: una fila por valor y fecha de entrada en vigor,
+-- con el importe por acción de cada mes (de enero a diciembre) en \`months_json\`.
+CREATE TABLE dividend_schedule (
+	security_id INTEGER NOT NULL REFERENCES security(id),
+	valid_from TEXT NOT NULL,
+	currency TEXT NOT NULL,
+	months_json TEXT NOT NULL,
+	PRIMARY KEY (security_id, valid_from)
+);
+
+-- Cambio de dividendo: dividendo anual por acción antes y después, y el cambio de la moneda en esa fecha.
+-- Las acciones y el efecto en euros no se guardan: se calculan por cartera a partir del registro.
+CREATE TABLE dividend_change (
+	id INTEGER PRIMARY KEY,
+	security_id INTEGER NOT NULL REFERENCES security(id),
+	date TEXT NOT NULL,
+	old_annual REAL NOT NULL,
+	new_annual REAL NOT NULL,
+	currency TEXT NOT NULL,
+	fx_rate REAL NOT NULL,
+	url TEXT,
+	note TEXT,
+	created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX dividend_change_date ON dividend_change (date);
+`
+	},
+	{
+		version: 7,
+		sql: `
+-- La importación duplicó algunas compras cuyo ticker tenía una errata: además del lote del valor en cuya
+-- columna las anotó la hoja, creó otro igual a nombre del ticker tecleado. Se borra el lote sobrante
+-- y la operación pasa a citar el valor bueno.
+CREATE TEMP TABLE phantom_leg AS
+SELECT l.id AS leg_id, l.operation_id, m.security_id AS real_security
+FROM position_leg l
+JOIN operation o ON o.id = l.operation_id AND o.source = 'legacy' AND o.security_id = l.security_id
+JOIN position_leg m ON m.operation_id = l.operation_id AND m.id <> l.id AND m.kind = 'buy' AND m.security_id <> l.security_id AND m.shares = l.shares
+WHERE l.kind = 'buy' AND (SELECT count(*) FROM position_leg x WHERE x.operation_id = l.operation_id) = 2;
+UPDATE operation SET security_id = (SELECT real_security FROM phantom_leg WHERE operation_id = operation.id), updated_at = datetime('now')
+WHERE id IN (SELECT operation_id FROM phantom_leg);
+DELETE FROM position_leg WHERE id IN (SELECT leg_id FROM phantom_leg);
+DROP TABLE phantom_leg;
+`
 	}
 ];

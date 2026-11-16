@@ -64,7 +64,18 @@ setting(key, value)
 audit_log(id, at, entity, entity_id, action, before_json, after_json)
 ```
 
-Las tablas de fases posteriores (ficha de estudio, calendario y cambios de dividendo, precios, tipos de cambio, selección y fotos) se añaden con su propia migración cuando se implementen.
+Fase 2 (migración 6):
+
+```
+price(security_id, date, price, currency, source)          -- source: sheet | manual | legacy
+fx_rate(currency, date, rate, source)                      -- unidades de la moneda por euro; source: ecb | legacy
+dividend_schedule(security_id, valid_from, currency, months_json)   -- 12 importes por acción, enero a diciembre
+dividend_change(id, security_id, date, old_annual, new_annual, currency, fx_rate, url, note)
+```
+
+Los precios y dividendos de valores que cotizan en peniques se guardan en libras. Las acciones y el efecto en euros de un cambio de dividendo no se guardan: se calculan por cartera con las acciones que había en la fecha.
+
+Las tablas de fases posteriores (ficha de estudio, selección y fotos) se añaden con su propia migración cuando se implementen.
 
 Puntos de diseño:
 
@@ -146,7 +157,7 @@ El cuadro de cartera combina el estado del motor con el último precio, el tipo 
 | `actual` | ticker, precio, moneda, fecha y hora | `GOOGLEFINANCE(ticker; "price")` |
 | `cierre` | ticker, fecha de cierre, precio | precio de cierre en el último fin de trimestre, con la fecha calculada en la propia hoja |
 
-La aplicación lee `actual` cuando el último precio guardado tiene más de 60 minutos y alguien abre una vista que lo necesita. La pestaña `cierre` permite generar la foto trimestral aunque la aplicación estuviera parada ese día. La URL de la hoja es un secreto de configuración. Si la lectura falla se usa el último precio guardado, mostrando su fecha, y cualquier precio se puede corregir a mano.
+La aplicación lee `actual` cuando la última lectura tiene más de 60 minutos y alguien abre el cuadro de cartera, sin hacerle esperar más de 4 segundos (si tarda más, se pinta con lo guardado). Cómo montar la hoja: [hoja-precios.md](hoja-precios.md). La pestaña `cierre` permite generar la foto trimestral aunque la aplicación estuviera parada ese día. La URL de la hoja es un secreto de configuración. Si la lectura falla se usa el último precio guardado, mostrando su fecha, y cualquier precio se puede corregir a mano.
 
 **Tipos de cambio**: fichero diario de referencia del BCE, con su histórico. Se descargan las fechas que falten al arrancar y se guardan en `fx_rate`. Al registrar una operación en divisa se sugiere el cambio de su fecha (o el del último día hábil anterior).
 
@@ -154,11 +165,12 @@ La aplicación lee `actual` cuando el último precio guardado tiene más de 60 m
 
 | Ruta | Pantalla | Requisitos |
 |---|---|---|
-| `/` | Cuadro de cartera: totales, tabla por valor, previsión mensual | RF-19 a RF-24 |
+| `/` | Cuadro de cartera: totales, tabla por valor, previsión mensual, distribución | RF-19 a RF-24 |
+| `/precios` | Estado de las fuentes de precios y cambios, y precio a mano | RF-43 a RF-46 |
 | `/movimientos` | Listado de movimientos con acumulados, métricas y objetivos en cabecera | RF-07, RF-25, RF-26 |
 | `/movimientos/nuevo` | Alta por tipo de operación, y alta rápida por lotes | RF-01 a RF-06 |
 | `/valores` y `/valores/[ticker]` | Lista de valores en estudio y ficha de cada uno | RF-27 a RF-30 |
-| `/dividendos` | Calendario por valor, cambios de dividendo, cobros por mes y año | RF-16 a RF-18, RF-38 |
+| `/dividendos` y `/dividendos/[id]` | Calendario por valor y cambios de dividendo por año; alta de un cambio (cobros por mes y año, en la fase 4) | RF-16 a RF-18, RF-38 |
 | `/seleccion` | Listas ordenables, revisión mensual, texto para copiar | RF-31 a RF-36 |
 | `/informes` | Top 50 y su evolución, evolución de la inversión, crecimiento de dividendos | RF-37 a RF-40 |
 | `/conciliacion` | Saldo real de cada cuenta frente al calculado, e historial de conciliaciones | RF-12 |

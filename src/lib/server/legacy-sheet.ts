@@ -18,8 +18,8 @@ export function plain(v: unknown): SheetCell {
 	return null;
 }
 
-/** Lee las solapas que acepta `wanted`, leyendo el libro en flujo para no cargarlo entero en memoria. */
-export async function readSheets(path: string, wanted: (name: string) => boolean): Promise<Map<string, SheetRows>> {
+/** Lee las solapas que acepta `wanted`, leyendo el libro en flujo para no cargarlo entero en memoria. De cada una se guardan como mucho `maxRows` filas. */
+export async function readSheets(path: string, wanted: (name: string) => boolean, maxRows: (name: string) => number = () => Infinity): Promise<Map<string, SheetRows>> {
 	const out = new Map<string, SheetRows>();
 	const reader = new ExcelJS.stream.xlsx.WorkbookReader(path, { sharedStrings: 'cache', styles: 'cache', worksheets: 'emit', hyperlinks: 'ignore' } as never);
 	for await (const ws of reader as AsyncIterable<{ name: string } & AsyncIterable<{ number: number; values: unknown[] }>>) {
@@ -28,7 +28,8 @@ export async function readSheets(path: string, wanted: (name: string) => boolean
 			continue;
 		}
 		const sheet: SheetRows = [];
-		for await (const row of ws) sheet[row.number] = (row.values as unknown[]).map(plain);
+		const limit = maxRows(ws.name);
+		for await (const row of ws) if (row.number <= limit) sheet[row.number] = (row.values as unknown[]).map(plain);
 		out.set(ws.name, sheet);
 	}
 	return out;

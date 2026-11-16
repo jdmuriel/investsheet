@@ -109,6 +109,34 @@
 		}
 	});
 
+	// Cambio oficial de la fecha (RF-03): se sugiere y, si el campo está vacío, se rellena; siempre se puede cambiar.
+	let fxOfficial = $state<{ rate: number; date: string } | null>(null);
+	const fxOfficialText = $derived(fxOfficial ? String(fxOfficial.rate).replace('.', ',') : '');
+	function useOfficial() {
+		if (!fxOfficial) return;
+		raw.fxRate = fxOfficialText;
+		fxText = fxInverse ? invert(raw.fxRate) : raw.fxRate;
+	}
+	$effect(() => {
+		const [moneda, fecha] = [currency, raw.date];
+		fxOfficial = null;
+		if (!needsFx || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return;
+		let stale = false;
+		fetch(`/movimientos/cambio?moneda=${moneda}&fecha=${fecha}`)
+			.then((r) => (r.ok ? r.json() : null))
+			.then((found: { rate: number; date: string } | null) => {
+				if (stale || !found) return;
+				fxOfficial = found;
+				if (!raw.fxRate) useOfficial();
+			})
+			.catch(() => {
+				// Sin sugerencia: el cambio se teclea a mano, como siempre.
+			});
+		return () => {
+			stale = true;
+		};
+	});
+
 	function securityChanged() {
 		if (!security) return;
 		copiedRates = null;
@@ -271,7 +299,13 @@
 						<button type="button" onclick={() => setFxInverse(!fxInverse)} title="Teclear el cambio al revés">⇄ {fxInverse ? `EUR por ${currency}` : `${currency} por EUR`}</button>
 					</span>
 					<input type="hidden" name="fxRate" value={raw.fxRate} />
-					<small>{#if fxInverse}euros por {currency}; se guarda {raw.fxRate || '…'} {currency} por euro{:else}{currency} por euro{/if}</small>
+					<small>
+						{#if fxInverse}euros por {currency}; se guarda {raw.fxRate || '…'} {currency} por euro{:else}{currency} por euro{/if}
+						{#if fxOfficial}
+							· cambio de referencia del {fxOfficial.date.slice(8, 10)}/{fxOfficial.date.slice(5, 7)}: {fxOfficialText}
+							{#if raw.fxRate !== fxOfficialText}<button type="button" class="hint" onclick={useOfficial}>usar</button>{/if}
+						{/if}
+					</small>
 				</label>
 			{/if}
 		</div>
@@ -387,6 +421,15 @@
 	.fx {
 		display: flex;
 		gap: 0.4rem;
+	}
+	button.hint {
+		font: inherit;
+		background: none;
+		border: none;
+		padding: 0;
+		color: var(--accent);
+		text-decoration: underline;
+		cursor: pointer;
 	}
 	.fx button {
 		padding: 0.3rem 0.5rem;

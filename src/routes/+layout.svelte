@@ -17,7 +17,7 @@
 
 <header class="app">
 	<strong>Inversión</strong>
-	<nav><a href="/movimientos">Movimientos</a> <a href="/conciliacion">Conciliación</a> <a href="/ajustes">Ajustes</a></nav>
+	<nav><a href="/">Cartera</a> <a href="/movimientos">Movimientos</a> <a href="/dividendos">Dividendos</a> <a href="/conciliacion">Conciliación</a> <a href="/ajustes">Ajustes</a></nav>
 	{#if data.portfolios.length > 1}
 		<form method="GET" action={target} class="portfolio">
 			{#each kept as [key, value] (key)}<input type="hidden" name={key} {value} />{/each}
@@ -78,8 +78,9 @@
 	}
 	nav {
 		display: flex;
-		gap: 1rem;
+		gap: 0.2rem 1rem;
 		flex: 1;
+		flex-wrap: wrap;
 	}
 	.portfolio label {
 		display: flex;

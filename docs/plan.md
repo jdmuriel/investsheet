@@ -10,7 +10,8 @@ Dificultad orientativa de cada tarea, para elegir modelo: 🟢 mecánica y acota
 
 - **En producción**: <https://invest.jdmuriel.com>, con inicio de sesión de Google y los datos históricos cargados (3 carteras, 2.918 operaciones).
 - **Funciona**: listado de movimientos con acumulados y métricas anuales, con vista de móvil; alta, edición, duplicado y borrado de operaciones; cartera fija en la barra superior; mantenimiento de cuentas y valores; conciliación de saldos; objetivos anuales; exportación de validación con el formato de `Log`; API para asistentes; descarga y restauración de la base de datos.
-- **No existe todavía**: precios, cuadro de cartera, copias automáticas externas.
+- **En la rama, pendiente de visto bueno para fusionar**: objetivos anuales y casi toda la fase 2 (cuadro de cartera, precios, tipos de cambio, calendario y cambios de dividendo). Incluye las migraciones de esquema 6 y 7.
+- **No existe todavía**: copias automáticas externas, exportación de validación de `Control cartera`, valores en estudio, selección, informes.
 - La hoja de cálculo sigue siendo la fuente de verdad hasta completar la fase 1 y validar un mes en paralelo.
 
 ## Cómo retomar el trabajo en una sesión nueva
@@ -66,14 +67,19 @@ Objetivo: poder dejar de usar la solapa `Log`.
 
 Objetivo: poder dejar de usar `Control cartera` y `Variación divs`.
 
-- [ ] **2.1 Migración de esquema**: tablas `price`, `fx_rate`, `dividend_schedule`, `dividend_change`. 🟢
-- [ ] **2.2 Hoja de precios.** 🟡
-  - [ ] Definir el formato (pestañas `actual` y `cierre`, diseño §5) y dar instrucciones al propietario para crearla y publicarla como CSV.
-  - [ ] Lectura con caché de 60 minutos, último precio conocido si falla y corrección manual (RF-43, RF-46).
-- [ ] **2.3 Tipos de cambio del BCE** con histórico, y sugerencia del cambio al registrar una operación (RF-03, RF-45). 🟡
-- [ ] **2.4 Importar el calendario de dividendos** desde `Control cartera` (dividendo por acción de cada mes). 🟡
-- [ ] **2.5 Cuadro de cartera** en `/` (RF-19 a RF-24): tabla por valor, totales, PADI, yields, % recuperado, previsión mensual, gráficos. 🔴
-- [ ] **2.6 Cambios de dividendo** (RF-16 a RF-18): una sola acción que versiona el calendario y registra el efecto anual; importar el histórico de `Variación divs`. 🟡
+- [x] **2.1 Migración de esquema** (6): tablas `price`, `fx_rate`, `dividend_schedule`, `dividend_change`. 🟢
+- [x] **2.2 Hoja de precios.** 🟡
+  - [x] Formato e instrucciones para crearla y publicarla como CSV: [hoja-precios.md](hoja-precios.md).
+  - [x] Lectura con caché de 60 minutos, último precio conocido si falla y corrección manual en `/precios` (RF-43, RF-46). `src/lib/server/market.ts`.
+  - [ ] *Propietario*: crear la hoja, publicarla y guardar su dirección como secreto `PRICES_CSV_URL` en Fly. Hasta entonces el cuadro usa los precios importados de la hoja antigua o tecleados a mano.
+  - [ ] Pestaña `cierre` (precio de cierre de fin de trimestre): se hará con las fotos de cartera (4.1).
+- [x] **2.3 Tipos de cambio del BCE** con histórico (se descargan solos; el histórico completo la primera vez), y sugerencia del cambio al registrar una operación (RF-03, RF-45). 🟡
+  - [ ] Comprobar en producción que la descarga del BCE funciona: desde el entorno de desarrollo no hay acceso a ese servidor y solo está probada con ficheros de ejemplo.
+- [x] **2.4 Importar el calendario de dividendos** desde `Control cartera`, junto con el último precio y cambio de cada valor (`src/lib/server/legacy-extras.ts`). Lo hace el importador y, sobre una base ya en uso, Ajustes → «Importar datos de la hoja». 🟡
+- [x] **2.5 Cuadro de cartera** en `/` (RF-19 a RF-24): totales, tabla por valor ordenable y filtrable, previsión de 12 meses y distribución por valor, sector, supersector y país; vista de móvil. Cálculo en `src/lib/engine/portfolio.ts`. 🔴
+  - [ ] Zona y *tier* de cada valor: los campos existen pero están vacíos (la hoja los lleva en `Selección`); se rellenarán al importar esa solapa (3.2) o a mano en Ajustes → Valores. Los filtros aparecen solos cuando haya datos.
+  - [ ] RF-22 completo: hoy se muestra lo cobrado desde la última compra en los valores que se reinvierten; falta definir con el propietario qué es «mantener el equilibrio».
+- [x] **2.6 Cambios de dividendo** (RF-16 a RF-18) en `/dividendos`: una sola acción versiona el calendario y deja constancia; efecto anual por cartera y total por año; histórico de `Variación divs` importado. 🟡
 - [ ] **2.7 Exportación de validación con el formato de `Control cartera`.** 🟡
 
 ## Fase 3 — Estudio y selección
@@ -105,11 +111,14 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 - [ ] Decidir si las carteras secundarias muestran el «capital invertido» con el resultado de los años cerrados, como la principal, o solo lo aportado.
 - [ ] Medir cuánto tarda el primer arranque tras un rato con la máquina parada.
 - [ ] Probar el alta de operaciones con unas cuantas reales.
-- [ ] Teclear en Ajustes → Objetivos los objetivos del año de cada cartera: en producción no hay ninguno, porque los datos se cargaron antes de que el importador los leyera.
+- [ ] Tras desplegar la fase 2: en Ajustes → «Importar datos de la hoja», subir una copia de la hoja indicando la fecha de sus precios. Carga objetivos, precios, cambios, calendario de dividendos e histórico de cambios de dividendo sin tocar las operaciones.
+- [ ] Crear la hoja de precios según [hoja-precios.md](hoja-precios.md) y guardar su dirección en el secreto `PRICES_CSV_URL`.
+- [ ] Repasar el cuadro de cartera contra `Control cartera`. Diferencias esperadas: el coste (FIFO y valores traspasados), el «capital aportado» (la hoja no cuenta la apertura de 2014) y los dividendos cobrados históricos (la hoja los copia a mano).
+- [ ] La compra del 9 de octubre de 2026 anotada con ticker `AMS` no entra en ninguna columna de la hoja: decidir a qué valor corresponde y corregirla en la aplicación (y en la hoja).
 - [ ] Descargar la exportación de validación adjuntando la hoja y repasar la solapa «Diferencias»: debería mostrar solo las diferencias conocidas (ver más abajo).
 - [ ] Rellenar en Ajustes → Valores el nombre de cada valor y marcar como inactivos los que ya no se siguen; revisar nombre y broker de las cuentas.
 - [ ] Las solapas de las carteras secundarias no tienen movimientos de 2026 y sus cabeceras de años están desfasadas: ponerlas al día antes del periodo en paralelo, si se quieren validar.
-- [ ] Siete compras importadas tienen en la cabecera un ticker distinto del de sus efectos, por erratas de la hoja (`REE`/`RED`, `HCP`/`PEAK`, `3M`/`MMM`, `AMS`/`PM`). Las posiciones están bien; solo afecta a la columna «Valor» del listado.
+- [ ] Los valores `REE`, `HCP` y `3M` eran erratas de la hoja (por `RED`, `PEAK` y `MMM`) y ya no tienen movimientos: marcarlos como inactivos en Ajustes → Valores.
 
 ## Decisiones y hallazgos que conviene recordar
 
@@ -139,6 +148,15 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
   - El de **gastos es un tope**: va bien mientras lo gastado no supere la parte del año transcurrida; en las demás, al revés.
   - El año transcurrido se mide por días (la hoja lo hacía por meses completos).
   - El importador anota los objetivos de la cabecera en el año del último movimiento del libro, no en el que digan los rótulos, que en los registros secundarios están desfasados.
+- **Fase 2**:
+  - El cuadro usa el **coste reducido** para precio medio, P/G y YOC, como la hoja; el «% recuperado» va sobre el coste de compra.
+  - «Capital aportado» es aportaciones menos retiradas según el registro; el resultado total es valor de mercado + liquidez − capital aportado.
+  - Con los datos de la hoja de noviembre de 2026 el cuadro da el mismo valor de mercado, liquidez, PADI bruto y neto y tipo de retención que `Control cartera`.
+  - **Peniques**: precios y dividendos de Londres llegan en `GBX`; se convierten a libras al leerlos (hoja antigua y hoja de precios) y dentro todo va en `GBP`.
+  - Un **precio a mano** no lo pisa la hoja de precios ese mismo día; al día siguiente vuelve a mandar la hoja.
+  - La importación de datos de la hoja **nunca pisa**: solo añade precio o cambio a quien no tenga uno de esa fecha o posterior, calendario al valor que no tiene ninguno, cambios de dividendo si no hay ninguno anotado y objetivos a la cartera que no los tiene ese año.
+  - El calendario importado entra en vigor en la fecha de los precios de la hoja: el PADI de fechas anteriores no se puede reconstruir, solo los cambios.
+  - **Fallo de importación corregido**: cinco compras con el ticker mal tecleado (`REE`, `HCP`, `3M`) se habían importado dos veces, una en el valor bueno y otra en uno fantasma. La migración 7 borra el lote sobrante y el importador ya no lo crea.
 - **Cartera en uso**: se elige en la barra superior y queda recordada en una *cookie* (`src/hooks.server.ts` la deja en `locals.portfolioId`). Un parámetro `cartera` en la dirección manda sobre ella y pasa a ser la recordada; los formularios lo llevan en su dirección de envío para que una pestaña antigua guarde siempre en la cartera que mostraba. Las cargas que dependen de la cartera leen ese parámetro para repetirse al cambiarla.
 - **API**: escritura directa (decisión del propietario), sin propuestas pendientes de confirmar; la red de seguridad es la simulación (`dryRun`), las validaciones y el registro de auditoría. Solo se entra con su token, nunca con la sesión del navegador.
 - **Fly.io**: región `cdg` (Madrid está retirada). La máquina se para sola sin tráfico.
@@ -161,3 +179,4 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 | 2026-11-16 | Tres totales numéricos de `Control cartera` se habían importado como valores: el importador ya solo acepta textos con forma de ticker y la migración 5 los borra. |
 | 2026-11-16 | Fusionado en `main` lo pendiente de la rama. La tarea 1.9 (alta rápida por lotes) queda aplazada por decisión del propietario. |
 | 2026-11-16 | Tarea 1.14: objetivos anuales por cartera, con edición en Ajustes, consecución en el listado de movimientos e importación desde la cabecera de la hoja. |
+| 2026-11-16 | Fase 2, tareas 2.1 a 2.6: precios (hoja publicada y a mano), tipos de cambio del BCE con sugerencia en el formulario, calendario y cambios de dividendo, cuadro de cartera e importación de los datos de `Control cartera` y `Variación divs`. Corregida la duplicación de cinco compras importadas (migración 7). |

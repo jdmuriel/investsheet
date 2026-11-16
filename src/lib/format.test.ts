@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { amount, eur, num, pct, symbol, typed } from './format.ts';
+import { amount, eur, num, pct, price, symbol, typed } from './format.ts';
 
 describe('formato de importes', () => {
 	it('pone siempre el separador de miles, también con cuatro cifras', () => {
@@ -14,6 +14,13 @@ describe('formato de importes', () => {
 		expect(pct(0.4375).replace(/\s/g, ' ')).toBe('43,8 %');
 		expect(pct(12.5).replace(/\s/g, ' ')).toBe('1.250,0 %');
 		expect(pct(null)).toBe('');
+	});
+
+	it('da los precios con entre dos y cuatro decimales', () => {
+		expect(price(12.5)).toBe('12,50');
+		expect(price(0.52345)).toBe('0,5235');
+		expect(price(1250, 'USD')).toBe('1.250,00 $');
+		expect(price(null)).toBe('');
 	});
 
 	it('en listados usa el símbolo de la moneda, o el código si no lo tiene', () => {

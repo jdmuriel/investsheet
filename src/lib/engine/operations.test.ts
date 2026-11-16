@@ -157,14 +157,17 @@ describe('compras y ventas', () => {
 		expect(errors('VENTA', { securityId: ACME, quantity: sh(1) })).toMatch(/Importe/);
 	});
 
-	it('opciones: la prima cuenta como compra y solo los gastos van al resultado', () => {
-		const put = built('VENTAPUT', { accountId: BROKER_USD, securityId: ACME, quantity: sh(1), price: 250, currency: 'USD', fxRate: 1.25, fees: 100 });
-		expect(put).toMatchObject({ purchaseEur: -20000, feesEur: 80, grossEur: 0 });
-		expect(put.cash).toEqual([{ accountId: BROKER_USD, amount: 24900 }]);
-		expect(put.positions).toEqual([]);
-		const call = built('COMPRACALL', { accountId: BROKER_USD, amount: 10000, fxRate: 1.25, fees: 100 });
-		expect(call).toMatchObject({ purchaseEur: 8000, feesEur: 80 });
-		expect(call.cash).toEqual([{ accountId: BROKER_USD, amount: -10100 }]);
+	it('opciones: la prima es renta del año, positiva al venderla y negativa al comprarla', () => {
+		const sold = built('VENTAOPCION', { accountId: BROKER_USD, securityId: ACME, quantity: sh(1), price: 250, currency: 'USD', fxRate: 1.25, fees: 100 });
+		expect(sold).toMatchObject({ grossEur: 20000, feesEur: 80, purchaseEur: 0, taxEur: 0 });
+		expect(sold.cash).toEqual([{ accountId: BROKER_USD, amount: 24900 }]);
+		expect(sold.positions).toEqual([]);
+		expect(sold.description).toBe('Venta 1 x opción ACME @ 250 USD');
+		const bought = built('COMPRAOPCION', { accountId: BROKER_USD, amount: 10000, fxRate: 1.25, fees: 100 });
+		expect(bought).toMatchObject({ grossEur: -8000, feesEur: 80, purchaseEur: 0 });
+		expect(bought.cash).toEqual([{ accountId: BROKER_USD, amount: -10100 }]);
+		// No cuentan como dividendo del subyacente.
+		expect(run(ledger(sold)).state.positions.get(ACME)?.dividendsGross ?? 0).toBe(0);
 	});
 });
 
@@ -294,8 +297,8 @@ describe('invariantes de todos los tipos', () => {
 			DEVOLUCIONPRIMA: { securityId: ACME, amount: 777 },
 			COMPRADERECHOS: { securityId: ACME, quantity: sh(10), price: 0.31, fees: 5 },
 			VENTADERECHOS: { securityId: ACME, quantity: sh(10), price: 0.31, whtDest: 59, fees: 5 },
-			VENTAPUT: { amount: 2000, fees: 9 },
-			COMPRACALL: { amount: 2000, fees: 9 },
+			VENTAOPCION: { amount: 2000, fees: 9 },
+			COMPRAOPCION: { amount: 2000, fees: 9 },
 			INGRESOPROMOCION: { amount: 4000, whtDest: 760 },
 			PERDIDASFONDOS: { amount: 40 },
 			COMPENSACIONFONDOS: { amount: 40 },

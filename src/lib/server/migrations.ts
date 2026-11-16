@@ -124,5 +124,15 @@ CREATE TABLE audit_log (
 -- Campos del formulario tal como se teclearon, para poder reeditar la operación.
 ALTER TABLE operation ADD COLUMN input_json TEXT;
 `
+	},
+	{
+		version: 3,
+		sql: `
+-- Opciones: la prima pasa de contarse como compra a ser renta del año (negativa si se pagó),
+-- con dos tipos genéricos en lugar de «venta de put» y «compra de call».
+UPDATE operation SET type = CASE type WHEN 'VENTAPUT' THEN 'VENTAOPCION' ELSE 'COMPRAOPCION' END,
+	gross_eur = gross_eur - purchase_eur, purchase_eur = 0, updated_at = datetime('now')
+WHERE type IN ('VENTAPUT', 'COMPRACALL');
+`
 	}
 ];

@@ -10,7 +10,7 @@ Dificultad orientativa de cada tarea, para elegir modelo: 🟢 mecánica y acota
 
 - **En producción**: <https://invest.jdmuriel.com>, con inicio de sesión de Google y los datos históricos cargados (3 carteras, 2.918 operaciones).
 - **Funciona**: listado de movimientos con acumulados y métricas anuales; descarga y restauración de la base de datos.
-- **En la rama, pendiente de visto bueno para fusionar**: alta, edición y borrado de operaciones (tarea 1.8). Incluye la migración de esquema 2, que se aplica sola al arrancar.
+- **En la rama, pendiente de visto bueno para fusionar**: alta, edición y borrado de operaciones (tarea 1.8). Incluye las migraciones de esquema 2 y 3, que se aplican solas al arrancar.
 - **No existe todavía**: alta rápida por lotes, mantenimiento de cuentas y valores, precios, cuadro de cartera, copias automáticas externas.
 - La hoja de cálculo sigue siendo la fuente de verdad hasta completar la fase 1 y validar un mes en paralelo.
 
@@ -94,7 +94,7 @@ Objetivo: poder dejar de usar la hoja.
 - [ ] Revisar en el informe de importación las filas con fechas fuera de orden (31 en la cartera principal, 16 y 2 en las otras).
 - [ ] Decidir si las carteras secundarias muestran el «capital invertido» con el resultado de los años cerrados, como la principal, o solo lo aportado.
 - [ ] Medir cuánto tarda el primer arranque tras un rato con la máquina parada.
-- [ ] Probar el alta de operaciones con unas cuantas reales y confirmar las reglas de la tarea 1.8 anotadas en «Decisiones» que siguen sin confirmar (coste con gastos, opciones).
+- [ ] Probar el alta de operaciones con unas cuantas reales.
 - [ ] Siete compras importadas tienen en la cabecera un ticker distinto del de sus efectos, por erratas de la hoja (`REE`/`RED`, `HCP`/`PEAK`, `3M`/`MMM`, `AMS`/`PM`). Las posiciones están bien; solo afecta a la columna «Valor» del listado.
 
 ## Decisiones y hallazgos que conviene recordar
@@ -103,13 +103,13 @@ Objetivo: poder dejar de usar la hoja.
 - **Venta y recompra el mismo día = traspaso de valores**: los lotes conservan fecha y coste.
 - **Modelo de datos**: operación = cabecera + efectos (`cash_leg`, `position_leg`). El motor solo entiende efectos, no tipos de operación.
 - **Capital**: la hoja principal suma al capital invertido el resultado de cada año cerrado; las secundarias no. El motor calcula las dos magnitudes.
-- **Diferencias conocidas con la hoja**: 0,34 € en capital desde julio de 2022 (a una fila de la hoja le falta una fórmula) y el coste de los valores traspasados.
+- **Diferencias conocidas con la hoja**: el resultado de 2025 y, desde enero de 2026, el capital invertido de la cartera principal difieren en el neto de las primas de las dos opciones de 2025; 0,34 € en capital desde julio de 2022 (a una fila de la hoja le falta una fórmula) y el coste de los valores traspasados.
 - **Alta de operaciones** (1.8), reglas tomadas de cómo quedaron los datos importados:
   - El cambio es siempre «unidades de la moneda por euro». Importe y retenciones van en la moneda de la operación y los gastos en la de la cuenta. Una cuenta en divisa solo admite operaciones en su moneda.
   - Los **gastos de una compra forman parte del coste** del lote (y además restan del resultado del año), como en la hoja.
   - Si se teclea el total abonado o cargado en la cuenta, los gastos son la diferencia: es la forma de cuadrar céntimos con el broker.
   - La **venta de derechos rebaja el coste reducido** en su importe bruto solo si no lleva retención. Con retención se considera un dividendo y no rebaja coste (decisión del propietario).
-  - Las **opciones** anotan la prima como compra (negativa si se cobra) y solo los gastos van al resultado, igual que las dos que hay en la hoja.
+  - Las **opciones** (`VENTAOPCION`, `COMPRAOPCION`, valen para *put* y *call*): la prima es renta del año al cobrarla y renta negativa al pagarla. No se llevan como posición: un vencimiento no se anota, un cierre anticipado es la operación contraria y un ejercicio es una compra o venta normal. La hoja anotaba la prima como compra; la migración 3 y el importador convierten las dos operaciones de 2025.
   - En un cambio de divisa se teclea lo que sale y lo que entra de verdad en cada cuenta; los gastos, en euros, son informativos y ya van incluidos en esos importes.
   - Las operaciones **importadas** conservan sus efectos al editarlas (solo cambian fecha, descripción y notas) salvo que se marque «recalcular». Las nuevas guardan los campos tecleados en `operation.input_json` y siempre se regeneran.
   - Las validaciones comparan el registro recalculado con y sin el cambio: solo bloquea o avisa lo que el cambio empeora, no los avisos que ya traía el histórico.
@@ -123,3 +123,4 @@ Objetivo: poder dejar de usar la hoja.
 | 2026-11-15 | Análisis de la hoja, especificación 1.0 y diseño. Tareas 1.1 a 1.7: motor, importador, listado, inicio de sesión, copia manual y primer despliegue. Datos históricos cargados en producción. |
 | 2026-11-16 | Tarea 1.8: generación de efectos por tipo de operación, escritura con auditoría, formularios de alta y edición, borrado, orden dentro del día y validaciones. Migración de esquema 2 (`input_json`). |
 | 2026-11-16 | Regla de la venta de derechos: solo rebaja el coste reducido si no lleva retención. |
+| 2026-11-16 | Opciones: la prima pasa a ser renta del año; tipos genéricos de venta y compra de opción; migración de esquema 3. Confirmada la regla de gastos de compra dentro del coste. |

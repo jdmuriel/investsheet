@@ -112,12 +112,12 @@ export const OPERATION_TYPES = {
 	},
 	CONVERSION: { label: 'Conversión de ticker', fields: { security: 'Valor de origen', toSecurity: 'Valor nuevo', sharesAfter: 'Acciones del valor nuevo' + OPTIONAL } },
 	TRASPASOVALORES: { label: 'Traspaso de valores', fields: { account: 'Cuenta que paga los gastos' + OPTIONAL, security: 'Valor', quantity: 'Acciones' + OPTIONAL, fees: 'Gastos' } },
-	VENTAPUT: {
-		label: 'Venta de opción (put)',
+	VENTAOPCION: {
+		label: 'Venta de opción',
 		fields: { account: 'Cuenta', security: 'Subyacente' + OPTIONAL, quantity: 'Contratos' + OPTIONAL, price: 'Prima por contrato' + OPTIONAL, currency: 'Moneda', amount: 'Prima', fees: 'Gastos', cashTotal: 'Neto abonado en cuenta' + OPTIONAL }
 	},
-	COMPRACALL: {
-		label: 'Compra de opción (call)',
+	COMPRAOPCION: {
+		label: 'Compra de opción',
 		fields: { account: 'Cuenta', security: 'Subyacente' + OPTIONAL, quantity: 'Contratos' + OPTIONAL, price: 'Prima por contrato' + OPTIONAL, currency: 'Moneda', amount: 'Prima', fees: 'Gastos', cashTotal: 'Total cargado en cuenta' + OPTIONAL }
 	},
 	INGRESOPROMOCION: { label: 'Ingreso por promoción', fields: { account: 'Cuenta', amount: 'Importe bruto', whtDest: 'Retención' } },
@@ -395,14 +395,15 @@ function build(input: OperationInput, ctx: BuildContext): BuiltOperation {
 			op.description = `Venta ${fmt(qty)} x ${ticker} @ ${fmt(input.price || amount / 100 / qty)} ${currency}`;
 			break;
 		}
-		case 'VENTAPUT':
-		case 'COMPRACALL': {
-			// Como en la hoja: la prima cuenta como compra (negativa si se cobra) y solo los gastos van al resultado.
-			const sold = type === 'VENTAPUT';
+		case 'VENTAOPCION':
+		case 'COMPRAOPCION': {
+			// La prima es renta del año al cobrarla o pagarla (negativa si se paga). Sirve para put y call, y para
+			// cerrar antes del vencimiento con la operación contraria; un ejercicio se anota como compra o venta normal.
+			const sold = type === 'VENTAOPCION';
 			const f = fees(sold ? 'in' : 'out');
-			op.purchaseEur = sold ? -toEur(amount) : toEur(amount);
+			op.grossEur = sold ? toEur(amount) : -toEur(amount);
 			cash(input.accountId, sold ? toAcc(amount) - f : -(toAcc(amount) + f));
-			op.description = `${sold ? 'Venta' : 'Compra'} ${input.quantity ? fmt(qty) + ' x ' : ''}${sold ? 'PUT' : 'CALL'}${ticker ? ' ' + ticker : ''}${input.price ? ` @ ${fmt(input.price)} ${currency}` : ''}`;
+			op.description = `${sold ? 'Venta' : 'Compra'} ${input.quantity ? fmt(qty) + ' x ' : ''}opción${ticker ? ' ' + ticker : ''}${input.price ? ` @ ${fmt(input.price)} ${currency}` : ''}`;
 			break;
 		}
 		case 'APORTACION':

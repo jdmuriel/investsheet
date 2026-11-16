@@ -112,10 +112,10 @@ De ese recorrido salen el listado de movimientos (RF-07), el estado a cualquier 
 | *Split* / contrasplit | | × factor | | | |
 | *Spin-off* | + picos, si los hay | + en el valor nuevo | reparto manual | reparto manual | + picos |
 | Conversión de ticker | | pasa al valor nuevo | pasa al valor nuevo | pasa al valor nuevo | |
-| Opciones (venta de *put*, compra de *call*) | ± prima − gastos | | | | − gastos |
+| Venta / compra de opción (*put* o *call*) | ± prima − gastos | | | | ± prima − gastos |
 | Pérdidas / compensación de fondos | ± importe | | | | ± importe |
 
-Los gastos de una compra forman parte del coste del lote y, además, restan del resultado del año: así lo hace la hoja. Esta tabla reproduce lo observado en ella. La migración la valida: si el motor no da los mismos saldos y posiciones que la hoja a cierre de cada año, la regla está mal.
+La prima de una opción es renta del año al cobrarla o pagarla; la hoja la anotaba como compra. Un vencimiento sin ejercer no se anota, un cierre anticipado es la operación contraria y un ejercicio es una compra o venta normal al precio de ejercicio. Los gastos de una compra forman parte del coste del lote y, además, restan del resultado del año: así lo hace la hoja. Esta tabla reproduce lo observado en ella. La migración la valida: si el motor no da los mismos saldos y posiciones que la hoja a cierre de cada año, la regla está mal.
 
 ### 4.2 Lotes y FIFO
 

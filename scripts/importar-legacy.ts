@@ -401,6 +401,15 @@ for (const p of portfolios) for (const d of p.drafts) for (const t of [d.row.tic
 
 for (const p of portfolios) pairTransfers(p);
 
+// Opciones: la hoja anota la prima como compra; aquí es renta del año, negativa si se pagó (igual que la migración 3).
+for (const p of portfolios)
+	for (const { op } of p.drafts)
+		if (op.type === 'VENTAPUT' || op.type === 'COMPRACALL') {
+			op.type = op.type === 'VENTAPUT' ? 'VENTAOPCION' : 'COMPRAOPCION';
+			op.grossEur -= op.purchaseEur;
+			op.purchaseEur = 0;
+		}
+
 // Escritura
 if (existsSync(dbPath)) for (const suffix of ['', '-wal', '-shm']) rmSync(dbPath + suffix, { force: true });
 const db = openDatabase(dbPath);

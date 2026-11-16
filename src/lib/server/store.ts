@@ -24,6 +24,8 @@ export interface Account {
 	code: string;
 	name: string;
 	currency: string;
+	/** 1 si la cuenta está cerrada: no se ofrece para operaciones nuevas. */
+	closed: number;
 }
 /** Operación con los campos informativos que muestra el listado, además de sus efectos. */
 export interface OperationRow extends Operation {
@@ -34,14 +36,18 @@ export interface OperationRow extends Operation {
 	price: number | null;
 	currency: string | null;
 	fxRate: number | null;
+	/** Importe, impuestos y gastos en la moneda de la operación, si se registraron. */
+	amountLocal: number | null;
+	taxLocal: number | null;
+	feesLocal: number | null;
 }
 
-export function listPortfolios(): Portfolio[] {
-	return getDb().prepare('SELECT id, name FROM portfolio ORDER BY sort_order, id').all() as unknown as Portfolio[];
+export function listPortfolios(d: DatabaseSync = getDb()): Portfolio[] {
+	return d.prepare('SELECT id, name FROM portfolio ORDER BY sort_order, id').all() as unknown as Portfolio[];
 }
 
 export function listAccounts(portfolioId: number, d: DatabaseSync = getDb()): Account[] {
-	return d.prepare('SELECT id, code, name, currency FROM account WHERE portfolio_id = ? ORDER BY sort_order, id').all(portfolioId) as unknown as Account[];
+	return d.prepare('SELECT id, code, name, currency, closed FROM account WHERE portfolio_id = ? ORDER BY sort_order, id').all(portfolioId) as unknown as Account[];
 }
 
 export interface Security {
@@ -51,10 +57,12 @@ export interface Security {
 	currency: string | null;
 	whtSourcePct: number | null;
 	whtDestPct: number | null;
+	/** 0 si el valor ya no se sigue: no se ofrece para operaciones nuevas salvo que haya posición. */
+	active: number;
 }
 
 export function listSecurities(d: DatabaseSync = getDb()): Security[] {
-	return d.prepare('SELECT id, ticker, name, currency, wht_source_pct AS whtSourcePct, wht_dest_pct AS whtDestPct FROM security ORDER BY ticker').all() as unknown as Security[];
+	return d.prepare('SELECT id, ticker, name, currency, wht_source_pct AS whtSourcePct, wht_dest_pct AS whtDestPct, active FROM security ORDER BY ticker').all() as unknown as Security[];
 }
 
 export function loadOperations(portfolioId: number, d: DatabaseSync = getDb()): OperationRow[] {
@@ -62,7 +70,8 @@ export function loadOperations(portfolioId: number, d: DatabaseSync = getDb()): 
 		.prepare(
 			`SELECT o.id, o.date, o.seq, o.type, o.security_id AS securityId, o.gross_eur AS grossEur, o.tax_eur AS taxEur, o.fees_eur AS feesEur,
 				o.capital_in_eur AS capitalInEur, o.capital_out_eur AS capitalOutEur, o.purchase_eur AS purchaseEur,
-				o.description, s.ticker, a.code AS accountCode, o.quantity, o.price, o.currency, o.fx_rate AS fxRate
+				o.description, s.ticker, a.code AS accountCode, o.quantity, o.price, o.currency, o.fx_rate AS fxRate,
+				o.amount_local AS amountLocal, o.tax_local AS taxLocal, o.fees_local AS feesLocal
 			FROM operation o LEFT JOIN security s ON s.id = o.security_id LEFT JOIN account a ON a.id = o.account_id
 			WHERE o.portfolio_id = ? ORDER BY o.date, o.seq, o.id`
 		)

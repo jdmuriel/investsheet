@@ -15,7 +15,8 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"test": "vitest run",
-		"importar": "node --disable-warning=ExperimentalWarning scripts/importar-legacy.ts"
+		"importar": "node --disable-warning=ExperimentalWarning scripts/importar-legacy.ts",
+		"validar": "node --disable-warning=ExperimentalWarning scripts/exportar-validacion.ts"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-node": "^6.0.2",

@@ -58,6 +58,7 @@ cash_leg(operation_id, account_id, amount)                -- efecto en efectivo
 position_leg(operation_id, security_id, kind, shares, cost_eur, reduced_cost_eur,
              proceeds_eur, to_security_id)                -- efecto en la posición
 
+reconciliation(id, account_id, date, real_balance, computed_balance, notes, created_at)
 goal(portfolio_id, year, metric, amount_eur)
 setting(key, value)
 audit_log(id, at, entity, entity_id, action, before_json, after_json)
@@ -160,7 +161,8 @@ La aplicación lee `actual` cuando el último precio guardado tiene más de 60 m
 | `/dividendos` | Calendario por valor, cambios de dividendo, cobros por mes y año | RF-16 a RF-18, RF-38 |
 | `/seleccion` | Listas ordenables, revisión mensual, texto para copiar | RF-31 a RF-36 |
 | `/informes` | Top 50 y su evolución, evolución de la inversión, crecimiento de dividendos | RF-37 a RF-40 |
-| `/ajustes` | Cuentas, objetivos, límites por *tier*, exportación, copias y restauración | RF-12, RF-47, RF-49 |
+| `/conciliacion` | Saldo real de cada cuenta frente al calculado, e historial de conciliaciones | RF-12 |
+| `/ajustes` | Cuentas y valores, objetivos, límites por *tier*, exportación de validación, copias y restauración | RF-47, RF-49 |
 
 Un selector de cartera en la cabecera fija a cuál se refiere todo lo demás. En el móvil, las tablas anchas se reducen a las columnas esenciales con detalle al tocar una fila, y el alta de operaciones es un formulario de una columna.
 

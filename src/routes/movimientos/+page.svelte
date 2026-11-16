@@ -18,9 +18,25 @@
 	);
 	const current = $derived(data.years.find((y) => y.year === data.year));
 
+	// En móvil la lista va de lo más reciente a lo más antiguo.
+	const newestFirst = $derived([...visible].reverse());
+	// Las columnas de acumulados quedan fijas a la derecha; cada una necesita saber cuántas tiene detrás.
+	const accCount = $derived(2 + data.accounts.length);
+
+	let ledger: HTMLDivElement | undefined = $state();
+	let metricsOpen = $state(true);
+	const isMobile = () => window.matchMedia('(max-width: 700px)').matches;
 	$effect(() => {
-		if (data.saved) document.getElementById(`op-${data.saved.id}`)?.scrollIntoView({ block: 'center' });
+		if (isMobile()) metricsOpen = false;
 	});
+	$effect(() => {
+		// Al abrir (o cambiar de periodo o cartera) queda a la vista lo más reciente; tras guardar, la operación guardada.
+		void data.rows;
+		const saved = data.saved && document.getElementById(`${isMobile() ? 'm' : 'op'}-${data.saved.id}`);
+		if (saved) saved.scrollIntoView({ block: 'center' });
+		else if (ledger) ledger.scrollTop = ledger.scrollHeight;
+	});
+	const signed = (cents: number) => `${cents > 0 ? '+' : ''}${eur(cents)}`;
 </script>
 
 <form method="GET" class="filters">
@@ -59,7 +75,16 @@
 	</label>
 	<span class="count">{visible.length} de {data.rows.length} movimientos</span>
 	<a class="new" href="/movimientos/nuevo?cartera={data.portfolioId}">Nuevo movimiento</a>
+	<a class="reconcile" href="/conciliacion?cartera={data.portfolioId}">Conciliar saldos</a>
 </form>
+
+<dl class="summary mobile">
+	{#each data.summary.cash as c (c.name)}
+		<div><dt>{c.name}</dt><dd class:neg={c.amount < 0}>{eur(c.amount)} {c.currency}</dd></div>
+	{/each}
+	<div><dt>Capital invertido</dt><dd>{eur(data.summary.invested)} €</dd></div>
+	<div><dt>Ganancias {data.currentYear}</dt><dd class:neg={data.summary.yearResult < 0}>{eur(data.summary.yearResult)} €</dd></div>
+</dl>
 
 {#if data.saved}
 	<p class="saved">
@@ -74,7 +99,7 @@
 	<p class="warning">El motor ha emitido {data.warnings} avisos al recalcular esta cartera.</p>
 {/if}
 
-<details class="metrics" open>
+<details class="metrics" bind:open={metricsOpen}>
 	<summary>Métricas anuales</summary>
 	<div class="scroll">
 		<table>
@@ -108,7 +133,7 @@
 	</div>
 </details>
 
-<div class="scroll ledger">
+<div class="scroll ledger desktop" bind:this={ledger} style="--acc-count: {accCount}">
 	<table>
 		<thead>
 			<tr>
@@ -128,10 +153,10 @@
 				<th>Resultado €</th>
 				<th>Capital ±</th>
 				<th>Compra €</th>
-				<th class="acc">Capital invertido</th>
-				<th class="acc">Ganancias año</th>
-				{#each data.accounts as a (a.id)}
-					<th class="acc">{a.name} ({a.currency})</th>
+				<th class="acc first" style="--acc-i: 0">Capital invertido</th>
+				<th class="acc" style="--acc-i: 1">Ganancias año</th>
+				{#each data.accounts as a, i (a.id)}
+					<th class="acc" style="--acc-i: {i + 2}">{a.name} ({a.currency})</th>
 				{/each}
 			</tr>
 		</thead>
@@ -156,16 +181,61 @@
 					<td class:neg={r.netEur < 0}>{eur(r.netEur, true)}</td>
 					<td class:neg={r.capitalEur < 0}>{eur(r.capitalEur, true)}</td>
 					<td class:neg={r.purchaseEur < 0}>{eur(r.purchaseEur, true)}</td>
-					<td class="acc">{eur(r.invested)}</td>
-					<td class="acc" class:neg={r.yearResult < 0}>{eur(r.yearResult)}</td>
+					<td class="acc first" style="--acc-i: 0">{eur(r.invested)}</td>
+					<td class="acc" style="--acc-i: 1" class:neg={r.yearResult < 0}>{eur(r.yearResult)}</td>
 					{#each r.cash as c, i (i)}
-						<td class="acc" class:neg={c < 0}>{eur(c)}</td>
+						<td class="acc" style="--acc-i: {i + 2}" class:neg={c < 0}>{eur(c)}</td>
 					{/each}
 				</tr>
 			{/each}
 		</tbody>
 	</table>
 </div>
+
+<!-- Vista reducida para móvil: lo esencial de cada movimiento, y el detalle al tocarlo. -->
+<ul class="cards mobile">
+	{#each newestFirst as r (r.id)}
+		<li id="m-{r.id}" class:saved={r.id === data.saved?.id}>
+			<details>
+				<summary>
+					<span class="when">{date(r.date).slice(0, 5)}<small>{r.date.slice(0, 4)}</small></span>
+					<span class="what">
+						<span class="desc">{r.description || r.type}</span>
+						<small>{[r.type, r.ticker, r.account].filter(Boolean).join(' · ')}</small>
+					</span>
+					<span class="amounts">
+						{#each r.moves as m (m.account)}
+							<span class:neg={m.amount < 0}>{signed(m.amount)} {m.currency}</span>
+							<small>saldo {eur(m.balance)}</small>
+						{:else}
+							<small>sin efectivo</small>
+						{/each}
+					</span>
+				</summary>
+				<dl>
+					{#if r.quantity != null}<div><dt>Cantidad</dt><dd>{num(r.quantity)}</dd></div>{/if}
+					{#if r.price != null}<div><dt>Precio</dt><dd>{num(r.price)} {r.currency ?? ''}</dd></div>{/if}
+					{#if r.fxRate != null && r.fxRate !== 1}<div><dt>Cambio</dt><dd>{num(r.fxRate)}</dd></div>{/if}
+					{#if r.grossEur}<div><dt>Bruto</dt><dd>{eur(r.grossEur)} €</dd></div>{/if}
+					{#if r.taxEur}<div><dt>Impuestos</dt><dd>{eur(r.taxEur)} €</dd></div>{/if}
+					{#if r.feesEur}<div><dt>Gastos</dt><dd>{eur(r.feesEur)} €</dd></div>{/if}
+					{#if r.netEur}<div><dt>Resultado</dt><dd class:neg={r.netEur < 0}>{eur(r.netEur)} €</dd></div>{/if}
+					{#if r.capitalEur}<div><dt>Capital ±</dt><dd class:neg={r.capitalEur < 0}>{eur(r.capitalEur)} €</dd></div>{/if}
+					{#if r.purchaseEur}<div><dt>Compra</dt><dd class:neg={r.purchaseEur < 0}>{eur(r.purchaseEur)} €</dd></div>{/if}
+					<div><dt>Capital invertido</dt><dd>{eur(r.invested)} €</dd></div>
+					<div><dt>Ganancias del año</dt><dd class:neg={r.yearResult < 0}>{eur(r.yearResult)} €</dd></div>
+					{#each data.accounts as a, i (a.id)}
+						<div><dt>{a.name}</dt><dd class:neg={r.cash[i] < 0}>{eur(r.cash[i])} {a.currency}</dd></div>
+					{/each}
+				</dl>
+				<p class="links">
+					<a href="/movimientos/{r.id}">Editar</a>
+					{#if r.canCopy}<a href="/movimientos/nuevo?cartera={data.portfolioId}&copiar={r.id}">Duplicar con la fecha de hoy</a>{/if}
+				</p>
+			</details>
+		</li>
+	{/each}
+</ul>
 
 <style>
 	.filters {
@@ -283,8 +353,126 @@
 	.acc {
 		background: var(--soft);
 	}
-	th.acc {
-		border-left: 1px solid var(--line);
+	.reconcile {
+		font-size: 12px;
+	}
+	.mobile {
+		display: none;
+	}
+	/* Acumulados siempre a la vista: columnas de ancho fijo pegadas al borde derecho. */
+	@media (min-width: 1100px) {
+		.ledger .acc {
+			--acc-w: 6.6rem;
+			position: sticky;
+			right: calc(var(--acc-w) * (var(--acc-count) - 1 - var(--acc-i)));
+			box-sizing: border-box;
+			width: var(--acc-w);
+			min-width: var(--acc-w);
+			max-width: var(--acc-w);
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+		.ledger th.acc {
+			z-index: 2;
+			white-space: normal;
+			vertical-align: bottom;
+		}
+		.ledger .acc.first {
+			box-shadow: inset 1px 0 0 var(--line);
+		}
+		.ledger tbody tr:hover td.acc {
+			background: color-mix(in srgb, var(--accent) 8%, var(--soft));
+		}
+		.ledger tr.saved td.acc {
+			background: color-mix(in srgb, var(--accent) 18%, var(--soft));
+		}
+	}
+	@media (max-width: 700px) {
+		.desktop {
+			display: none;
+		}
+		.mobile {
+			display: block;
+		}
+		.count {
+			flex-basis: 100%;
+		}
+		dl.summary {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 0.4rem 1rem;
+			margin: 0 0 0.75rem;
+			padding: 0.5rem 0.7rem;
+			border: 1px solid var(--line);
+			border-radius: 6px;
+			background: var(--soft);
+		}
+	}
+	dt {
+		font-size: 12px;
+		color: var(--muted);
+	}
+	dd {
+		margin: 0;
+		font-variant-numeric: tabular-nums;
+	}
+	.cards {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		border-top: 1px solid var(--line);
+	}
+	.cards li {
+		border-bottom: 1px solid var(--line);
+	}
+	.cards li.saved {
+		background: color-mix(in srgb, var(--accent) 18%, transparent);
+	}
+	.cards summary {
+		display: grid;
+		grid-template-columns: auto 1fr auto;
+		gap: 0.6rem;
+		align-items: start;
+		padding: 0.5rem 0.2rem;
+		cursor: pointer;
+		list-style: none;
+	}
+	.cards summary::-webkit-details-marker {
+		display: none;
+	}
+	.cards summary > span {
+		display: grid;
+		min-width: 0;
+	}
+	.cards small {
+		font-size: 11px;
+		color: var(--muted);
+	}
+	.cards .desc {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.cards details[open] .desc {
+		white-space: normal;
+	}
+	.cards .amounts {
+		text-align: right;
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	}
+	.cards details dl {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.3rem 1rem;
+		margin: 0;
+		padding: 0.2rem 0.2rem 0.5rem;
+	}
+	.cards .links {
+		display: flex;
+		gap: 1.5rem;
+		margin: 0;
+		padding: 0 0.2rem 0.7rem;
 	}
 	.neg {
 		color: var(--neg);

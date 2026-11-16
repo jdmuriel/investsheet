@@ -16,10 +16,11 @@ Aplicación web personal para llevar una cartera de acciones de dividendos; sust
 - `npm run check` — tipos. `npm test` — pruebas. Ambos deben pasar antes de cada *commit*.
 - `npm run build` y `node build` — versión de producción.
 - `npm run importar -- legacy/Inversión.xlsx data/invest.db` — reimportar la hoja antigua.
+- `npm run validar -- data/invest.db salida.xlsx [legacy/Inversión.xlsx] [desde]` — exportación de validación con el formato de la hoja; con la hoja como referencia añade la solapa de diferencias. El libro contiene datos reales: no versionarlo.
 
 ## Estructura
 
-- `src/lib/engine/` — motor de cálculo puro (sin base de datos ni red). Importes en céntimos enteros, acciones en millonésimas. `operations.ts` genera los efectos de cada tipo de operación a partir del formulario; lo usan igual el servidor y la vista previa del navegador.
+- `src/lib/engine/` — motor de cálculo puro (sin base de datos ni red). Importes en céntimos enteros, acciones en millonésimas. `operations.ts` genera los efectos de cada tipo de operación a partir del formulario; lo usan igual el servidor y la vista previa del navegador. `log-export.ts` calcula el registro con la disposición de la solapa `Log` y sus diferencias con la hoja.
 - `src/lib/server/` — SQLite (`node:sqlite`), migraciones en `migrations.ts` (no modificar una ya desplegada: añadir otra), acceso y copias.
 - `src/routes/` — pantallas, y la API para asistentes en `src/routes/api/v1` (lógica en `src/lib/server/api.ts`, uso en `docs/api.md`). `scripts/` — importador de la hoja antigua.
 

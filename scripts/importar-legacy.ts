@@ -6,16 +6,17 @@
  *
  * El Excel, la base de datos y el informe contienen datos reales: no se versionan.
  */
-import ExcelJS from 'exceljs';
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { applyOperation, emptyState, investedCapital, run, totalCost, totalReducedCost, totalShares } from '../src/lib/engine/engine.ts';
 import { MICRO, type Operation, type PositionLeg, type State, type Warning } from '../src/lib/engine/types.ts';
+import { colIndex, type SheetCell, type SheetRows } from '../src/lib/engine/log-export.ts';
 import { openDatabase } from '../src/lib/server/db.ts';
+import { readSheets } from '../src/lib/server/legacy-sheet.ts';
 
-type Cell = string | number | Date | null;
-type Sheet = Cell[][]; // filas y columnas con índice 1, como en la hoja
+type Cell = SheetCell;
+type Sheet = SheetRows; // filas y columnas con índice 1, como en la hoja
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const config = JSON.parse(readFileSync(join(HERE, 'legacy-config.json'), 'utf8')) as {
@@ -24,41 +25,9 @@ const config = JSON.parse(readFileSync(join(HERE, 'legacy-config.json'), 'utf8')
 	overrides: { sheet: string; match: { date: string; ticker: string }; set: { date: string } }[];
 };
 
-// ---------- Lectura ----------
-
-function plain(v: unknown): Cell {
-	if (v == null) return null;
-	if (v instanceof Date) return v;
-	if (typeof v === 'object') {
-		const o = v as { result?: unknown; richText?: { text: string }[]; text?: string; error?: string };
-		if ('result' in o) return plain(o.result);
-		if (o.richText) return o.richText.map((t) => t.text).join('');
-		if (o.error) return null;
-		if (typeof o.text === 'string') return o.text;
-		return null;
-	}
-	if (typeof v === 'string' || typeof v === 'number') return v;
-	return null;
-}
-
-async function readSheets(path: string, wanted: (name: string) => boolean): Promise<Map<string, Sheet>> {
-	const out = new Map<string, Sheet>();
-	const reader = new ExcelJS.stream.xlsx.WorkbookReader(path, { sharedStrings: 'cache', styles: 'cache', worksheets: 'emit', hyperlinks: 'ignore' } as never);
-	for await (const ws of reader as AsyncIterable<{ name: string } & AsyncIterable<{ number: number; values: unknown[] }>>) {
-		if (!wanted(ws.name)) {
-			for await (const _ of ws) void _;
-			continue;
-		}
-		const sheet: Sheet = [];
-		for await (const row of ws) sheet[row.number] = (row.values as unknown[]).map(plain);
-		out.set(ws.name, sheet);
-	}
-	return out;
-}
-
 // ---------- Utilidades ----------
 
-const col = (letters: string) => [...letters].reduce((n, c) => n * 26 + c.charCodeAt(0) - 64, 0);
+const col = colIndex;
 const num = (v: Cell): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 const cents = (v: Cell): number => Math.round(num(v) * 100);
 const micro = (v: Cell): number => Math.round(num(v) * MICRO);

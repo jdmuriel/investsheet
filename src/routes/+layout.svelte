@@ -12,7 +12,7 @@
 
 <header class="app">
 	<strong>Inversión</strong>
-	<nav><a href="/movimientos">Movimientos</a> <a href="/ajustes">Ajustes</a></nav>
+	<nav><a href="/movimientos">Movimientos</a> <a href="/conciliacion">Conciliación</a> <a href="/ajustes">Ajustes</a></nav>
 	<form method="POST" action="/auth/logout"><button>Salir</button></form>
 </header>
 <main>{@render children()}</main>
@@ -50,7 +50,8 @@
 	}
 	header.app {
 		display: flex;
-		gap: 1.5rem;
+		gap: 0.4rem 1.5rem;
+		flex-wrap: wrap;
 		align-items: baseline;
 		padding: 0.6rem 1rem;
 		border-bottom: 1px solid var(--line);

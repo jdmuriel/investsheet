@@ -5,8 +5,8 @@
 	import { eur, num } from '#lib/format.ts';
 
 	interface Props {
-		accounts: { id: number; code: string; name: string; currency: string }[];
-		securities: { id: number; ticker: string; name: string | null; currency: string | null; whtSourcePct: number | null; whtDestPct: number | null }[];
+		accounts: { id: number; code: string; name: string; currency: string; closed?: number }[];
+		securities: { id: number; ticker: string; name: string | null; currency: string | null; whtSourcePct: number | null; whtDestPct: number | null; active?: number }[];
 		/** Acciones por valor y saldo por cuenta, sin contar la operación que se edita. */
 		holdings: Record<number, number>;
 		balances: Record<number, number>;
@@ -210,7 +210,7 @@
 						{label}
 						<select name={field} bind:value={raw[field]} onchange={accountChanged}>
 							<option value="">—</option>
-							{#each accounts as a (a.id)}<option value={String(a.id)}>{a.name} ({a.currency})</option>{/each}
+							{#each accounts.filter((a) => !a.closed || String(a.id) === raw[field]) as a (a.id)}<option value={String(a.id)}>{a.name} ({a.currency})</option>{/each}
 						</select>
 						{#if field === 'account' && account}<small>Saldo actual: {eur(balances[account.id] ?? 0)} {account.currency}</small>{/if}
 					</label>
@@ -221,7 +221,7 @@
 						<select name={field} bind:value={raw[field]} onchange={field === 'security' ? securityChanged : undefined}>
 							<option value="">—</option>
 							<option value={NEW}>Valor nuevo…</option>
-							{#each securities as s (s.id)}<option value={String(s.id)}>{s.ticker}{s.name ? ` · ${s.name}` : ''}</option>{/each}
+							{#each securities.filter((s) => s.active !== 0 || holdings[s.id] || String(s.id) === raw[field]) as s (s.id)}<option value={String(s.id)}>{s.ticker}{s.name ? ` · ${s.name}` : ''}</option>{/each}
 						</select>
 						{#if raw[field] === NEW}
 							<input name={tickerField} bind:value={raw[tickerField]} placeholder="Ticker" maxlength="12" autocapitalize="characters" />

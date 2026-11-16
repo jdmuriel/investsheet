@@ -41,28 +41,48 @@ export const load: PageServerLoad = ({ url }) => {
 	const currentYear = Number(today.slice(0, 4));
 	const pastYears = years.map((y) => y.year).filter((y) => y !== currentYear);
 
-	const rows = operations
+	const index = new Map(accounts.map((a, i) => [a.id, i]));
+	const allRows = operations
 		.filter((op) => inPeriod(op.date, period))
-		.map((op) => ({
-			id: op.id,
-			canCopy: isOperationType(op.type),
-			date: op.date,
-			type: op.type,
-			description: op.description,
-			ticker: op.ticker,
-			account: op.accountCode,
-			quantity: op.quantity,
-			price: op.price,
-			currency: op.currency,
-			fxRate: op.fxRate,
-			grossEur: op.grossEur,
-			taxEur: op.taxEur,
-			feesEur: op.feesEur,
-			netEur: op.grossEur - op.taxEur - op.feesEur,
-			capitalEur: op.capitalInEur - op.capitalOutEur,
-			purchaseEur: op.purchaseEur,
-			...balances.get(op.id)!
-		}));
+		.map((op) => {
+			const after = balances.get(op.id)!;
+			// Efectivo que mueve la operación en cada cuenta y saldo en que la deja, para la vista de móvil.
+			const moved = new Map<number, number>();
+			for (const leg of op.cash) moved.set(leg.accountId, (moved.get(leg.accountId) ?? 0) + leg.amount);
+			return {
+				id: op.id,
+				canCopy: isOperationType(op.type),
+				date: op.date,
+				type: op.type,
+				description: op.description,
+				ticker: op.ticker,
+				account: op.accountCode,
+				quantity: op.quantity,
+				price: op.price,
+				currency: op.currency,
+				fxRate: op.fxRate,
+				grossEur: op.grossEur,
+				taxEur: op.taxEur,
+				feesEur: op.feesEur,
+				netEur: op.grossEur - op.taxEur - op.feesEur,
+				capitalEur: op.capitalInEur - op.capitalOutEur,
+				purchaseEur: op.purchaseEur,
+				moves: [...moved].filter(([id]) => index.has(id)).map(([id, amount]) => ({ account: accounts[index.get(id)!].name, currency: accounts[index.get(id)!].currency, amount, balance: after.cash[index.get(id)!] })),
+				...after
+			};
+		});
 
-	return { portfolios, portfolioId, accounts, years, year: period.year, period: period.key, pastYears, rows, warnings: warnings.length, saved };
+	// Las cuentas cerradas solo ocupan columna si tienen saldo en alguna fila del periodo.
+	const shown = accounts.map((a, i) => i).filter((i) => !accounts[i].closed || allRows.some((r) => r.cash[i] !== 0));
+	const rows = allRows.map((r) => ({ ...r, cash: shown.map((i) => r.cash[i]) }));
+	const columns = shown.map((i) => accounts[i]);
+
+	// Situación actual, para la cabecera de la vista de móvil.
+	const summary = {
+		invested: investedCapital(state),
+		yearResult: state.year === currentYear ? state.yearResult : 0,
+		cash: accounts.filter((a) => !a.closed || (state.cash.get(a.id) ?? 0) !== 0).map((a) => ({ name: a.name, currency: a.currency, amount: state.cash.get(a.id) ?? 0 }))
+	};
+
+	return { portfolios, portfolioId, accounts: columns, summary, currentYear, years, year: period.year, period: period.key, pastYears, rows, warnings: warnings.length, saved };
 };

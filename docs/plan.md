@@ -9,9 +9,9 @@ Dificultad orientativa de cada tarea, para elegir modelo: 🟢 mecánica y acota
 ## Estado actual
 
 - **En producción**: <https://invest.jdmuriel.com>, con inicio de sesión de Google y los datos históricos cargados (3 carteras, 2.918 operaciones).
-- **Funciona**: listado de movimientos con acumulados y métricas anuales; alta, edición y borrado de operaciones; descarga y restauración de la base de datos.
-- **En la rama, pendiente de visto bueno para fusionar**: duplicar movimientos, tipo de cambio inverso y periodos del listado.
-- **No existe todavía**: alta rápida por lotes, mantenimiento de cuentas y valores, precios, cuadro de cartera, copias automáticas externas.
+- **Funciona**: listado de movimientos con acumulados y métricas anuales; alta, edición, duplicado y borrado de operaciones; API para asistentes; descarga y restauración de la base de datos.
+- **En la rama, pendiente de visto bueno para fusionar**: mantenimiento de cuentas y valores, exportación de validación con el formato de `Log`, conciliación de saldos y mejoras del listado (acumulados fijos, vista de móvil). Incluye la migración de esquema 4.
+- **No existe todavía**: alta rápida por lotes, objetivos anuales, precios, cuadro de cartera, copias automáticas externas.
 - La hoja de cálculo sigue siendo la fuente de verdad hasta completar la fase 1 y validar un mes en paralelo.
 
 ## Cómo retomar el trabajo en una sesión nueva
@@ -44,18 +44,18 @@ Objetivo: poder dejar de usar la solapa `Log`.
   - [x] Duplicar un movimiento desde su fila del listado (⧉), con la fecha de hoy: las acciones se ponen al día y el importe y las retenciones se recalculan con la misma proporción.
   - [x] Tipo de cambio tecleable al revés (euros por unidad de la moneda); se guarda siempre «moneda por euro» y el navegador recuerda la preferencia.
 - [ ] **1.9 Alta rápida por lotes** (RF-06): fijar cuenta y tipo e introducir varias líneas seguidas, en cualquier orden de fecha. 🟡
-- [ ] **1.10 Mantenimiento de cuentas y valores**: alta y edición desde Ajustes. 🟢
+- [x] **1.10 Mantenimiento de cuentas y valores**: alta y edición desde Ajustes (`/ajustes/cuentas`, `/ajustes/valores`; lógica en `src/lib/server/masters.ts`), con auditoría. Las cuentas cerradas y los valores inactivos dejan de ofrecerse al dar de alta movimientos. 🟢
 - [ ] **1.11 Copia externa automática a Google Cloud Storage** (diseño §8.2). 🟡
   - [ ] *Propietario*: crear el *bucket* y una cuenta de servicio con permiso solo sobre él; guardar su clave como secreto.
   - [ ] Subida tras cada cambio (con espera de 2 minutos) y al recibir la señal de parada. 🟡
   - [ ] Regla de ciclo de vida: 60 copias diarias, mensuales indefinidas. 🟢
-- [ ] **1.12 Exportación de validación con el formato de `Log`** (RF-49), con solapa de diferencias. 🟡
-- [ ] **1.13 Mejoras del listado.** 🟢
-  - [ ] Columnas de acumulados siempre visibles (fijas a la derecha o reordenadas).
-  - [ ] Vista reducida en móvil.
+- [x] **1.12 Exportación de validación con el formato de `Log`** (RF-49), con solapa de diferencias. Desde Ajustes o con `npm run validar`; cálculo en `src/lib/engine/log-export.ts`, libro en `src/lib/server/validation.ts`. 🟡
+- [x] **1.13 Mejoras del listado.** 🟢
+  - [x] Columnas de acumulados siempre visibles: fijas a la derecha en pantallas anchas.
+  - [x] Vista reducida en móvil: resumen de saldos y una línea por movimiento, de lo más reciente a lo más antiguo, con el detalle al tocarla.
   - [x] Periodos del listado: por defecto «Últimos movimientos» (mes anterior completo y mes en curso); además mes, trimestre y año en curso, años anteriores y todos (`src/lib/period.ts`).
-  - [ ] Lo más reciente a la vista al abrir.
-  - [ ] Conciliación: introducir el saldo real del broker y ver la diferencia (RF-12).
+  - [x] Lo más reciente a la vista al abrir.
+  - [x] Conciliación (`/conciliacion`): introducir el saldo real del broker y ver la diferencia (RF-12). Queda anotada en la tabla `reconciliation` (migración 4).
 - [ ] **1.14 Objetivos anuales** (RF-26): importar los de la cabecera de `Log`, editarlos y mostrar el % de consecución junto a las métricas. 🟢
 - [ ] **1.15 Aplicación instalable**: manifiesto e icono. 🟢
 - [ ] **1.16 Pruebas de extremo a extremo** de los flujos principales con Playwright. 🟡
@@ -101,6 +101,9 @@ Objetivo: poder dejar de usar la hoja.
 - [ ] Decidir si las carteras secundarias muestran el «capital invertido» con el resultado de los años cerrados, como la principal, o solo lo aportado.
 - [ ] Medir cuánto tarda el primer arranque tras un rato con la máquina parada.
 - [ ] Probar el alta de operaciones con unas cuantas reales.
+- [ ] Descargar la exportación de validación adjuntando la hoja y repasar la solapa «Diferencias»: debería mostrar solo las diferencias conocidas (ver más abajo).
+- [ ] Rellenar en Ajustes → Valores el nombre de cada valor y marcar como inactivos los que ya no se siguen; revisar nombre y broker de las cuentas.
+- [ ] Las solapas de las carteras secundarias no tienen movimientos de 2026 y sus cabeceras de años están desfasadas: ponerlas al día antes del periodo en paralelo, si se quieren validar.
 - [ ] Siete compras importadas tienen en la cabecera un ticker distinto del de sus efectos, por erratas de la hoja (`REE`/`RED`, `HCP`/`PEAK`, `3M`/`MMM`, `AMS`/`PM`). Las posiciones están bien; solo afecta a la columna «Valor» del listado.
 
 ## Decisiones y hallazgos que conviene recordar
@@ -120,6 +123,12 @@ Objetivo: poder dejar de usar la hoja.
   - En un cambio de divisa se teclea lo que sale y lo que entra de verdad en cada cuenta; los gastos, en euros, son informativos y ya van incluidos en esos importes.
   - Las operaciones **importadas** conservan sus efectos al editarlas (solo cambian fecha, descripción y notas) salvo que se marque «recalcular». Las nuevas guardan los campos tecleados en `operation.input_json` y siempre se regeneran.
   - Las validaciones comparan el registro recalculado con y sin el cambio: solo bloquea o avisa lo que el cambio empeora, no los avisos que ya traía el histórico.
+- **Exportación de validación** (1.12):
+  - La comparación con la hoja no va fila a fila (el orden dentro del día y las filas de cierre no coinciden): se comparan los importes sumados por fecha, los acumulados al cierre de cada fecha en que la hoja está ordenada y las métricas de la cabecera. Una diferencia que se arrastra solo aparece cuando cambia, y las que siguen vivas se listan al principio como «diferencia vigente».
+  - La hoja reinicia las ganancias del año en filas elegidas a mano: el 31 de diciembre y el 1 de enero se admite que lo haya hecho o no.
+  - Con la hoja adjunta, las columnas (cuentas, valores, años de la cabecera) se toman de ella; sin ella se usa la disposición conocida (`MAIN_LOG_TICKERS`).
+  - Con la hoja de noviembre de 2026 solo salen las diferencias ya conocidas: las de la lista anterior, la apertura de 2014 (la hoja no la anota como aportación) y el coste de los valores traspasados.
+  - El libro se escribe en flujo (`WorkbookWriter`): montarlo entero en memoria necesitaba más de los 512 MB de la máquina; así el pico queda en unos 240 MB.
 - **API**: escritura directa (decisión del propietario), sin propuestas pendientes de confirmar; la red de seguridad es la simulación (`dryRun`), las validaciones y el registro de auditoría. Solo se entra con su token, nunca con la sesión del navegador.
 - **Fly.io**: región `cdg` (Madrid está retirada). La máquina se para sola sin tráfico.
 - **SvelteKit 3** cambia nombres respecto a versiones anteriores: alias `#lib` (no `$lib`), `$app/env` (no `$app/environment`), tipo `Handle` en `@sveltejs/kit/hooks`, y `redirect` no admite destinos externos.
@@ -135,3 +144,4 @@ Objetivo: poder dejar de usar la hoja.
 | 2026-11-16 | Devolución de prima sin retención. Tarea 1.18: API JSON con token para consultar y anotar operaciones desde un asistente. |
 | 2026-11-16 | Duplicar movimientos desde el listado y tipo de cambio inverso en el formulario. |
 | 2026-11-16 | Periodos en el listado de movimientos, con «últimos movimientos» por defecto. |
+| 2026-11-16 | Tareas 1.10, 1.12 y 1.13: mantenimiento de cuentas y valores, exportación de validación con solapa de diferencias, conciliación de saldos (migración de esquema 4), acumulados fijos, vista de móvil y lo más reciente a la vista. |

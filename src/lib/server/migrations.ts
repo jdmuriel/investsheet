@@ -134,5 +134,21 @@ UPDATE operation SET type = CASE type WHEN 'VENTAPUT' THEN 'VENTAOPCION' ELSE 'C
 	gross_eur = gross_eur - purchase_eur, purchase_eur = 0, updated_at = datetime('now')
 WHERE type IN ('VENTAPUT', 'COMPRACALL');
 `
+	},
+	{
+		version: 4,
+		sql: `
+-- Conciliación: saldo real de una cuenta según el broker en una fecha, junto al que calculaba la aplicación.
+CREATE TABLE reconciliation (
+	id INTEGER PRIMARY KEY,
+	account_id INTEGER NOT NULL REFERENCES account(id),
+	date TEXT NOT NULL,
+	real_balance INTEGER NOT NULL,
+	computed_balance INTEGER NOT NULL,
+	notes TEXT,
+	created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX reconciliation_account ON reconciliation (account_id, date);
+`
 	}
 ];

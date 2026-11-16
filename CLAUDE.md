@@ -2,7 +2,7 @@
 
 Aplicación web personal para llevar una cartera de acciones de dividendos; sustituye a una hoja de cálculo. Un solo usuario. Idioma del proyecto: español (código en inglés, textos, comentarios y documentación en español).
 
-**Antes de empezar, lee `docs/plan.md`**: estado, tareas pendientes y decisiones. Al terminar una tarea, márcala allí y añade una línea al diario. Requisitos en `docs/especificacion.md`, arquitectura en `docs/diseno.md`.
+**Antes de empezar, lee `docs/plan.md`**: estado, tareas pendientes y decisiones. Al terminar una tarea, márcala allí y añade una línea al diario. Requisitos en `docs/especificacion.md`, arquitectura en `docs/diseno.md`. Las diferencias con la hoja antigua, sus erratas y los fallos de importación se anotan en `docs/incidencias-migracion.md`: consúltalo antes de investigar una diferencia y añade allí las nuevas.
 
 ## Privacidad: el repositorio es público
 

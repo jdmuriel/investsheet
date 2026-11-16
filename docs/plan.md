@@ -2,16 +2,18 @@
 
 Estado del proyecto y pasos pendientes. **Se actualiza en cada sesión**: al terminar una tarea se marca `[x]` y se añade una línea al [diario](#diario-de-sesiones).
 
-Documentos de referencia: [especificación](especificacion.md) (qué hay que hacer, requisitos `RF-nn`), [diseño](diseno.md) (cómo) y [descripción de la hoja actual](descripcion-hoja-actual.md).
+Documentos de referencia: [especificación](especificacion.md) (qué hay que hacer, requisitos `RF-nn`, y su [grado de avance](especificacion.md#12-grado-de-avance)), [diseño](diseno.md) (cómo), [descripción de la hoja actual](descripcion-hoja-actual.md), [incidencias de la migración](incidencias-migracion.md) (diferencias con la hoja, erratas y fallos de importación) y [hoja de precios](hoja-precios.md).
 
 Dificultad orientativa de cada tarea, para elegir modelo: 🟢 mecánica y acotada · 🟡 normal · 🔴 delicada (cálculo financiero, seguridad o migración de datos).
 
 ## Estado actual
 
-- **En producción**: <https://invest.jdmuriel.com>, con inicio de sesión de Google y los datos históricos cargados (3 carteras, 2.918 operaciones).
-- **Funciona**: listado de movimientos con acumulados y métricas anuales, con vista de móvil; alta, edición, duplicado y borrado de operaciones; cartera fija en la barra superior; mantenimiento de cuentas y valores; conciliación de saldos; objetivos anuales; exportación de validación con el formato de `Log`; API para asistentes; descarga y restauración de la base de datos.
-- **En la rama, pendiente de visto bueno para fusionar**: objetivos anuales y casi toda la fase 2 (cuadro de cartera, precios, tipos de cambio, calendario y cambios de dividendo). Incluye las migraciones de esquema 6 y 7.
-- **No existe todavía**: copias automáticas externas, exportación de validación de `Control cartera`, valores en estudio, selección, informes.
+- **En producción**: <https://invest.jdmuriel.com>, con inicio de sesión de Google y los datos históricos cargados (3 carteras, 2.918 operaciones). Todo lo hecho está fusionado en `main`; el esquema va por la migración 7.
+- **Funciona (fase 1)**: listado de movimientos con acumulados, métricas anuales y objetivos, con vista de móvil; alta, edición, duplicado y borrado de operaciones; cartera fija en la barra superior; mantenimiento de cuentas y valores; conciliación de saldos; exportación de validación con el formato de `Log`; API para asistentes; descarga y restauración de la base de datos.
+- **Funciona (fase 2)**: cuadro de cartera en la portada, calendario y cambios de dividendo, precios (hoja publicada o a mano), tipos de cambio del BCE e importación de los datos de la hoja que no son operaciones.
+- **Recién desplegado y sin probar en producción**: la fase 2 entera. Falta que el propietario importe la hoja desde Ajustes (hasta entonces el cuadro sale sin precios ni dividendos), cree la hoja de precios y compruebe que la descarga del BCE funciona.
+- **No existe todavía**: copias automáticas externas (1.11), aplicación instalable (1.15), pruebas de extremo a extremo (1.16), servidor MCP (1.19), exportación de validación de `Control cartera` (2.7), valores en estudio, selección e informes.
+- **Siguiente paso propuesto**: revisar con el propietario el cuadro de cartera ya con sus datos y resolver las incidencias pendientes ([P1 a P7](incidencias-migracion.md#5-pendiente-de-decidir-o-de-hacer)); después, la 2.7 y la copia externa (1.11), que es lo que más riesgo quita antes del periodo en paralelo.
 - La hoja de cálculo sigue siendo la fuente de verdad hasta completar la fase 1 y validar un mes en paralelo.
 
 ## Cómo retomar el trabajo en una sesión nueva
@@ -20,6 +22,8 @@ Dificultad orientativa de cada tarea, para elegir modelo: 🟢 mecánica y acota
 2. `npm ci`, y después `npm run check` y `npm test` para confirmar que todo parte en verde.
 3. Los datos reales **no están en el repositorio**. Para trabajar con ellos hay que pedir al propietario una copia descargada desde Ajustes → «Descargar una copia» y dejarla en `data/invest.db`. El Excel original solo hace falta para volver a ejecutar el importador (`legacy/Inversión.xlsx`).
 4. Sin datos reales se puede desarrollar igual: las pruebas usan datos inventados.
+5. Antes de dar por nueva una diferencia con la hoja, mirar [incidencias-migracion.md](incidencias-migracion.md); si lo es, anotarla allí.
+6. Desde el entorno de desarrollo en la nube no hay acceso al servidor del BCE ni a la hoja de precios: esas lecturas solo se prueban con ficheros de ejemplo.
 
 ## Fase 1 — Registro de operaciones
 
@@ -126,7 +130,7 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 - **Venta y recompra el mismo día = traspaso de valores**: los lotes conservan fecha y coste.
 - **Modelo de datos**: operación = cabecera + efectos (`cash_leg`, `position_leg`). El motor solo entiende efectos, no tipos de operación.
 - **Capital**: la hoja principal suma al capital invertido el resultado de cada año cerrado; las secundarias no. El motor calcula las dos magnitudes.
-- **Diferencias conocidas con la hoja**: el resultado de 2025 y, desde enero de 2026, el capital invertido de la cartera principal difieren en el neto de las primas de las dos opciones de 2025; 0,34 € en capital desde julio de 2022 (a una fila de la hoja le falta una fórmula) y el coste de los valores traspasados.
+- **Diferencias conocidas con la hoja** (la lista completa y al día está en [incidencias-migracion.md](incidencias-migracion.md)): el resultado de 2025 y, desde enero de 2026, el capital invertido de la cartera principal difieren en el neto de las primas de las dos opciones de 2025; 0,34 € en capital desde julio de 2022 (a una fila de la hoja le falta una fórmula) y el coste de los valores traspasados.
 - **Alta de operaciones** (1.8), reglas tomadas de cómo quedaron los datos importados:
   - El cambio es siempre «unidades de la moneda por euro». Importe y retenciones van en la moneda de la operación y los gastos en la de la cuenta. Una cuenta en divisa solo admite operaciones en su moneda.
   - Los **gastos de una compra forman parte del coste** del lote (y además restan del resultado del año), como en la hoja.
@@ -180,3 +184,4 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 | 2026-11-16 | Fusionado en `main` lo pendiente de la rama. La tarea 1.9 (alta rápida por lotes) queda aplazada por decisión del propietario. |
 | 2026-11-16 | Tarea 1.14: objetivos anuales por cartera, con edición en Ajustes, consecución en el listado de movimientos e importación desde la cabecera de la hoja. |
 | 2026-11-16 | Fase 2, tareas 2.1 a 2.6: precios (hoja publicada y a mano), tipos de cambio del BCE con sugerencia en el formulario, calendario y cambios de dividendo, cuadro de cartera e importación de los datos de `Control cartera` y `Variación divs`. Corregida la duplicación de cinco compras importadas (migración 7). |
+| 2026-11-16 | Fusionadas en `main` la tarea 1.14 y la fase 2. Nuevo fichero de incidencias de la migración y grado de avance por requisito en la especificación. |

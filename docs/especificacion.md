@@ -234,3 +234,32 @@ La fuente de precios es la pieza de más riesgo: las API gratuitas cubren bien E
 | Texto resumen | Se conserva, copiable, para el fichero externo de decisiones |
 | Tecnología | Sin preferencia; se propone en la fase de diseño |
 | Repositorio | Público; puede mostrar composición y parámetros, nunca volúmenes reales |
+
+## 12. Grado de avance
+
+Situación de cada requisito a 16 de noviembre de 2026. Los requisitos no cambian; esta tabla solo dice qué está hecho. Las tareas concretas están en el [plan](plan.md) y lo que difiere de la hoja en las [incidencias de la migración](incidencias-migracion.md).
+
+| Requisitos | Asunto | Estado |
+|---|---|---|
+| RF-01 a RF-05, RF-08 | Alta, edición y borrado de operaciones, retenciones, ajuste de céntimos y validaciones | Hecho |
+| RF-03 | Sugerencia del tipo de cambio oficial | Hecho; pendiente de verse en producción con datos del BCE |
+| RF-06 | Entrada en cualquier orden y por lotes | La entrada en cualquier orden, hecha. El **alta rápida por lotes queda aplazada** por decisión del propietario |
+| RF-07 | Listado de movimientos con acumulados | Hecho |
+| RF-09 | Importación de extractos CSV | Fase 4 |
+| RF-10 a RF-12 | Saldos, capital y conciliación | Hecho |
+| RF-13 a RF-15 | Posiciones, coste y lotes FIFO | Hecho |
+| RF-16 a RF-18 | Calendario y cambios de dividendo | Hecho. El calendario anterior a la migración no se puede reconstruir |
+| RF-19 a RF-21, RF-23, RF-24 | Cuadro de cartera, totales, previsión, orden y filtros, distribución | Hecho. Los filtros por zona y *tier* aparecerán cuando esos datos se importen (fase 3) |
+| RF-22 | Indicador de reinversión | Parcial: se muestra lo cobrado desde la última compra; falta definir «mantener el equilibrio» |
+| RF-25, RF-26 | Métricas anuales y objetivos | Hecho. La fracción de año se mide por días |
+| RF-27 a RF-36 | Valores en estudio y selección mensual | Fase 3, sin empezar |
+| RF-37 a RF-40, RF-42 | Informes y fotos de cartera | Fase 4, sin empezar |
+| RF-41 | Informe fiscal | Excluido |
+| RF-43, RF-46 | Precios con una hora de retraso, último conocido y precio a mano | Hecho; falta que el propietario cree la hoja de precios |
+| RF-44 | Precio de cierre histórico | Pendiente (pestaña `cierre`, con las fotos de la fase 4) |
+| RF-45 | Tipos de cambio del BCE | Hecho; sin probar contra el servidor real |
+| RF-47 | Exportación completa y copia automática | Parcial: descarga y restauración manual. Falta la copia externa automática y la exportación en formato abierto |
+| RF-48 | Importación de todo el histórico | Hecho: operaciones, objetivos, precios, calendario y cambios de dividendo. Faltan las solapas de las fases 3 y 4 |
+| RF-49 | Exportación de validación | Hecha la de `Log`; falta la de `Control cartera` |
+
+Por fases (§10): la **fase 1** está completa salvo el alta por lotes (aplazada), la copia externa y el periodo en paralelo; la **fase 2**, salvo la exportación de validación de `Control cartera`; las **fases 3 y 4**, sin empezar.

@@ -255,7 +255,7 @@ Decisiones tomadas con el propietario y aplicadas en el importador:
 - **Venta y recompra el mismo día = traspaso.** Las parejas de venta en un broker y compra en otro se migran como traspaso de valores: los lotes conservan fecha y coste, y solo se mueve el efectivo. Si la recompra es mayor que la venta, el exceso es una compra normal.
 - **Fechas.** Las operaciones se ordenan por fecha; la hoja tiene algunas filas fuera de orden, que el informe de importación lista para revisarlas.
 
-Diferencias esperadas frente a la hoja, que el informe de importación detalla:
+Diferencias esperadas frente a la hoja, que el informe de importación detalla (la lista completa, con erratas y fallos encontrados después, está en [incidencias-migracion.md](incidencias-migracion.md)):
 
 - el coste de los valores traspasados difiere en la diferencia de precio entre la venta y la recompra, que la hoja sumaba al coste;
 - el «capital invertido» del registro principal difiere en céntimos desde mediados de 2022, por una fila de la hoja a la que le falta la fórmula del resultado;

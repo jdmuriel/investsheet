@@ -25,7 +25,7 @@ Dificultad orientativa de cada tarea, para elegir modelo: 🟢 mecánica y acota
 Objetivo: poder dejar de usar la solapa `Log`.
 
 - [x] **1.1 Esqueleto del proyecto.** SvelteKit 3 + TypeScript, adaptador Node, Vitest.
-- [x] **1.2 Motor de cálculo** (`src/lib/engine`). Lotes FIFO, efectivo por cuenta, capital, resultado del año, métricas anuales. 15 pruebas.
+- [x] **1.2 Motor de cálculo** (`src/lib/engine`). Lotes FIFO, efectivo por cuenta, capital, resultado del año, métricas anuales. Con pruebas.
 - [x] **1.3 Esquema e importador** (`src/lib/server/migrations.ts`, `scripts/importar-legacy.ts`). Importa los tres registros, trata como traspaso las ventas con recompra y genera un informe de diferencias con la hoja.
 - [x] **1.4 Listado de movimientos** (`/movimientos`). Acumulados por fila, filtros por cartera, año, tipo y texto, métricas anuales.
 - [x] **1.5 Inicio de sesión** con Google, limitado a una dirección (`src/lib/server/auth.ts`, `src/hooks.server.ts`).

@@ -20,14 +20,7 @@
 <header class="page">
 	<h1>Conciliación</h1>
 	<form method="GET" class="filters">
-		<label>
-			Cartera
-			<select name="cartera" onchange={(e) => e.currentTarget.form?.requestSubmit()}>
-				{#each data.portfolios as p (p.id)}
-					<option value={p.id} selected={p.id === data.portfolioId}>{p.name}</option>
-				{/each}
-			</select>
-		</label>
+		<input type="hidden" name="cartera" value={data.portfolioId} />
 		<label>
 			Saldos al cierre del
 			<input type="date" name="fecha" value={data.date} max={data.today} onchange={(e) => e.currentTarget.form?.requestSubmit()} />
@@ -179,13 +172,11 @@
 		text-align: left;
 	}
 	input,
-	select,
 	button {
 		font: inherit;
 		padding: 0.3rem 0.4rem;
 	}
-	input,
-	select {
+	input {
 		border: 1px solid var(--line);
 		border-radius: 4px;
 		background: var(--bg);

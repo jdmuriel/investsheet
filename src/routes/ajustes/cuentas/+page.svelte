@@ -11,13 +11,7 @@
 
 <header class="page">
 	<h1>Cuentas</h1>
-	<form method="GET">
-		<select name="cartera" aria-label="Cartera" onchange={(e) => e.currentTarget.form?.requestSubmit()}>
-			{#each data.portfolios as p (p.id)}
-				<option value={p.id} selected={p.id === data.portfolioId}>{p.name}</option>
-			{/each}
-		</select>
-	</form>
+	<span class="muted">{data.portfolios.find((p) => p.id === data.portfolioId)?.name}</span>
 	<a href="/ajustes">Volver a Ajustes</a>
 </header>
 
@@ -89,6 +83,9 @@
 	h1 {
 		font-size: 1.3rem;
 		margin: 0;
+	}
+	.muted {
+		color: var(--muted);
 	}
 	.note {
 		max-width: 50rem;

@@ -1,19 +1,18 @@
-import { error, fail, redirect } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import { isOperationType } from '#lib/engine/operations.ts';
 import { formContext, getOperation, rawFromForm, saveOperation } from '#lib/server/operations.ts';
-import { getDb, listPortfolios } from '#lib/server/store.ts';
+import { getDb } from '#lib/server/store.ts';
 import type { Actions, PageServerLoad } from './$types';
 
-function portfolioFrom(url: URL) {
-	const portfolios = listPortfolios();
-	if (portfolios.length === 0) redirect(303, '/ajustes');
-	const portfolioId = Number(url.searchParams.get('cartera')) || portfolios[0].id;
-	if (!portfolios.some((p) => p.id === portfolioId)) error(404, 'Cartera no encontrada');
-	return { portfolios, portfolioId };
+function portfolioFrom(locals: App.Locals) {
+	if (locals.portfolioId == null) redirect(303, '/ajustes');
+	return locals.portfolioId;
 }
 
-export const load: PageServerLoad = ({ url }) => {
-	const { portfolios, portfolioId } = portfolioFrom(url);
+export const load: PageServerLoad = ({ url, locals }) => {
+	// La cartera llega por `locals`, pero depende del parámetro: leerlo hace que la carga se repita al cambiarla desde la barra.
+	void url.searchParams.get('cartera');
+	const portfolioId = portfolioFrom(locals);
 	const db = getDb();
 	const context = formContext(db, portfolioId);
 	const previous = getOperation(db, Number(url.searchParams.get('guardado')));
@@ -30,12 +29,12 @@ export const load: PageServerLoad = ({ url }) => {
 		const description = copied.imported && /\d/.test(copied.raw.description ?? '') ? '' : (copied.raw.description ?? '');
 		initial = { ...copied.raw, date: context.today, notes: '', description };
 	}
-	return { portfolios, portfolioId, ...context, initial, copied: copied ? { id: copied.id, description: copied.description, date: copied.date } : null, saved: previous?.portfolioId === portfolioId ? { id: previous.id, description: previous.description, accountIds: previous.cash.map((c) => c.accountId) } : null };
+	return { portfolioId, ...context, initial, copied: copied ? { id: copied.id, description: copied.description, date: copied.date } : null, saved: previous?.portfolioId === portfolioId ? { id: previous.id, description: previous.description, accountIds: previous.cash.map((c) => c.accountId) } : null };
 };
 
 export const actions: Actions = {
-	default: async ({ request, url }) => {
-		const { portfolioId } = portfolioFrom(url);
+	default: async ({ request, locals }) => {
+		const portfolioId = portfolioFrom(locals);
 		const raw = rawFromForm(await request.formData());
 		const result = saveOperation(getDb(), portfolioId, null, raw, raw.confirm === '1');
 		if (!result.ok) return fail(400, { errors: result.errors, warnings: result.warnings, raw });

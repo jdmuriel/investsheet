@@ -10,7 +10,7 @@ Dificultad orientativa de cada tarea, para elegir modelo: 🟢 mecánica y acota
 
 - **En producción**: <https://invest.jdmuriel.com>, con inicio de sesión de Google y los datos históricos cargados (3 carteras, 2.918 operaciones).
 - **Funciona**: listado de movimientos con acumulados y métricas anuales; alta, edición, duplicado y borrado de operaciones; API para asistentes; descarga y restauración de la base de datos.
-- **En la rama, pendiente de visto bueno para fusionar**: mantenimiento de cuentas y valores, exportación de validación con el formato de `Log`, conciliación de saldos y mejoras del listado (acumulados fijos, vista de móvil). Incluye la migración de esquema 4.
+- **En la rama, pendiente de visto bueno para fusionar**: cartera fija en la barra superior, mantenimiento de cuentas y valores, exportación de validación con el formato de `Log`, conciliación de saldos y mejoras del listado (acumulados fijos, vista de móvil). Incluye la migración de esquema 4.
 - **No existe todavía**: alta rápida por lotes, objetivos anuales, precios, cuadro de cartera, copias automáticas externas.
 - La hoja de cálculo sigue siendo la fuente de verdad hasta completar la fase 1 y validar un mes en paralelo.
 
@@ -129,6 +129,7 @@ Objetivo: poder dejar de usar la hoja.
   - Con la hoja adjunta, las columnas (cuentas, valores, años de la cabecera) se toman de ella; sin ella se usa la disposición conocida (`MAIN_LOG_TICKERS`).
   - Con la hoja de noviembre de 2026 solo salen las diferencias ya conocidas: las de la lista anterior, la apertura de 2014 (la hoja no la anota como aportación) y el coste de los valores traspasados.
   - El libro se escribe en flujo (`WorkbookWriter`): montarlo entero en memoria necesitaba más de los 512 MB de la máquina; así el pico queda en unos 240 MB.
+- **Cartera en uso**: se elige en la barra superior y queda recordada en una *cookie* (`src/hooks.server.ts` la deja en `locals.portfolioId`). Un parámetro `cartera` en la dirección manda sobre ella y pasa a ser la recordada; los formularios lo llevan en su dirección de envío para que una pestaña antigua guarde siempre en la cartera que mostraba. Las cargas que dependen de la cartera leen ese parámetro para repetirse al cambiarla.
 - **API**: escritura directa (decisión del propietario), sin propuestas pendientes de confirmar; la red de seguridad es la simulación (`dryRun`), las validaciones y el registro de auditoría. Solo se entra con su token, nunca con la sesión del navegador.
 - **Fly.io**: región `cdg` (Madrid está retirada). La máquina se para sola sin tráfico.
 - **SvelteKit 3** cambia nombres respecto a versiones anteriores: alias `#lib` (no `$lib`), `$app/env` (no `$app/environment`), tipo `Handle` en `@sveltejs/kit/hooks`, y `redirect` no admite destinos externos.
@@ -145,3 +146,4 @@ Objetivo: poder dejar de usar la hoja.
 | 2026-11-16 | Duplicar movimientos desde el listado y tipo de cambio inverso en el formulario. |
 | 2026-11-16 | Periodos en el listado de movimientos, con «últimos movimientos» por defecto. |
 | 2026-11-16 | Tareas 1.10, 1.12 y 1.13: mantenimiento de cuentas y valores, exportación de validación con solapa de diferencias, conciliación de saldos (migración de esquema 4), acumulados fijos, vista de móvil y lo más reciente a la vista. |
+| 2026-11-16 | La cartera queda fija: se elige en la barra superior y se recuerda entre visitas; desaparece el selector de cada pantalla. |

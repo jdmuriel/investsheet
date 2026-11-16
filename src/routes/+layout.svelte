@@ -1,8 +1,13 @@
 <script lang="ts">
 	import favicon from '#lib/assets/favicon.svg';
+	import { page } from '$app/state';
 	import type { LayoutProps } from './$types';
 
-	let { children }: LayoutProps = $props();
+	let { children, data }: LayoutProps = $props();
+
+	// Al cambiar de cartera se sigue en la misma pantalla, salvo en la ficha de una operación, que es de la cartera anterior.
+	const target = $derived(/^\/movimientos\/\d+/.test(page.url.pathname) ? '/movimientos' : page.url.pathname);
+	const kept = $derived(['periodo', 'fecha'].filter((key) => page.url.searchParams.has(key)).map((key) => [key, page.url.searchParams.get(key)!]));
 </script>
 
 <svelte:head>
@@ -13,6 +18,21 @@
 <header class="app">
 	<strong>Inversión</strong>
 	<nav><a href="/movimientos">Movimientos</a> <a href="/conciliacion">Conciliación</a> <a href="/ajustes">Ajustes</a></nav>
+	{#if data.portfolios.length > 1}
+		<form method="GET" action={target} class="portfolio">
+			{#each kept as [key, value] (key)}<input type="hidden" name={key} {value} />{/each}
+			<label>
+				Cartera
+				<select name="cartera" onchange={(e) => e.currentTarget.form?.requestSubmit()}>
+					{#each data.portfolios as p (p.id)}
+						<option value={p.id} selected={p.id === data.portfolioId}>{p.name}</option>
+					{/each}
+				</select>
+			</label>
+		</form>
+	{:else if data.portfolios.length === 1}
+		<span class="portfolio">{data.portfolios[0].name}</span>
+	{/if}
 	<form method="POST" action="/auth/logout"><button>Salir</button></form>
 </header>
 <main>{@render children()}</main>
@@ -60,6 +80,22 @@
 		display: flex;
 		gap: 1rem;
 		flex: 1;
+	}
+	.portfolio label {
+		display: flex;
+		gap: 0.4rem;
+		align-items: baseline;
+		font-size: 12px;
+		color: var(--muted);
+	}
+	.portfolio select {
+		font: inherit;
+		font-weight: 600;
+		padding: 0.15rem 0.3rem;
+		border: 1px solid var(--line);
+		border-radius: 4px;
+		background: var(--bg);
+		color: var(--fg);
 	}
 	header.app button {
 		font: inherit;

@@ -1,16 +1,16 @@
-import { error, redirect } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import { investedCapital, run } from '#lib/engine/engine.ts';
 import { isOperationType } from '#lib/engine/operations.ts';
 import { inPeriod, resolvePeriod } from '#lib/period.ts';
 import type { YearMetrics } from '#lib/engine/types.ts';
-import { listAccounts, listPortfolios, loadOperations } from '#lib/server/store.ts';
+import { listAccounts, loadOperations } from '#lib/server/store.ts';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = ({ url }) => {
-	const portfolios = listPortfolios();
-	if (portfolios.length === 0) redirect(303, '/ajustes');
-	const portfolioId = Number(url.searchParams.get('cartera')) || portfolios[0].id;
-	if (!portfolios.some((p) => p.id === portfolioId)) error(404, 'Cartera no encontrada');
+export const load: PageServerLoad = ({ url, locals }) => {
+	// La cartera llega por `locals`, pero depende del parámetro: leerlo hace que la carga se repita al cambiarla desde la barra.
+	void url.searchParams.get('cartera');
+	const portfolioId = locals.portfolioId;
+	if (portfolioId == null) redirect(303, '/ajustes');
 
 	const accounts = listAccounts(portfolioId);
 	const operations = loadOperations(portfolioId);
@@ -84,5 +84,5 @@ export const load: PageServerLoad = ({ url }) => {
 		cash: accounts.filter((a) => !a.closed || (state.cash.get(a.id) ?? 0) !== 0).map((a) => ({ name: a.name, currency: a.currency, amount: state.cash.get(a.id) ?? 0 }))
 	};
 
-	return { portfolios, portfolioId, accounts: columns, summary, currentYear, years, year: period.year, period: period.key, pastYears, rows, warnings: warnings.length, saved };
+	return { portfolioId, accounts: columns, summary, currentYear, years, year: period.year, period: period.key, pastYears, rows, warnings: warnings.length, saved };
 };

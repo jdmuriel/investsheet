@@ -10,8 +10,10 @@ function recordFrom(id: string) {
 	return record;
 }
 
-export const load: PageServerLoad = ({ params }) => {
+export const load: PageServerLoad = ({ params, locals }) => {
 	const record = recordFrom(params.id);
+	// Una operación de otra cartera cambia la cartera en uso, para que la barra superior diga dónde se está.
+	if (record.portfolioId !== locals.portfolioId) redirect(303, `/movimientos/${record.id}?cartera=${record.portfolioId}`);
 	const db = getDb();
 	const portfolio = listPortfolios().find((p) => p.id === record.portfolioId)!;
 	return {

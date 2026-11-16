@@ -8,13 +8,6 @@
 
 <header class="page">
 	<h1>Nuevo movimiento</h1>
-	<form method="GET">
-		<select name="cartera" aria-label="Cartera" onchange={(e) => e.currentTarget.form?.requestSubmit()}>
-			{#each data.portfolios as p (p.id)}
-				<option value={p.id} selected={p.id === data.portfolioId}>{p.name}</option>
-			{/each}
-		</select>
-	</form>
 	<a href="/movimientos?cartera={data.portfolioId}">Volver al listado</a>
 </header>
 
@@ -32,7 +25,7 @@
 {/if}
 
 {#key `${data.saved?.id}-${data.copied?.id}`}
-	<OperationForm accounts={data.accounts} securities={data.securities} holdings={data.holdings} balances={data.balances} initial={data.initial} rejected={form} allowAnother duplicate={data.copied != null} />
+	<OperationForm accounts={data.accounts} securities={data.securities} holdings={data.holdings} balances={data.balances} initial={data.initial} rejected={form} action="?cartera={data.portfolioId}" allowAnother duplicate={data.copied != null} />
 {/key}
 
 <style>
@@ -46,14 +39,6 @@
 	h1 {
 		font-size: 1.2rem;
 		margin: 0;
-	}
-	select {
-		font: inherit;
-		padding: 0.2rem 0.4rem;
-		border: 1px solid var(--line);
-		border-radius: 4px;
-		background: var(--bg);
-		color: var(--fg);
 	}
 	.saved {
 		padding: 0.5rem 0.8rem;

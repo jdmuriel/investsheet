@@ -105,7 +105,8 @@ De ese recorrido salen el listado de movimientos (RF-07), el estado a cualquier 
 | Cambio de divisa | − en una cuenta, + en otra | | | | − gastos |
 | Gasto o comisión | − importe | | | | − importe |
 | Compra de derechos | − importe − gastos | | + importe + gastos | + importe + gastos | − gastos |
-| Venta de derechos | + bruto − retención − gastos | | | − bruto | + neto |
+| Venta de derechos sin retención | + bruto − gastos | | | − bruto | + neto |
+| Venta de derechos con retención | + bruto − retención − gastos | | | | + neto |
 | Conversión de derechos, ampliación liberada | | + cantidad, repartida entre los lotes | | | |
 | Traspaso de valores entre cuentas | | sin cambio | sin cambio | sin cambio | − gastos |
 | *Split* / contrasplit | | × factor | | | |
@@ -125,7 +126,7 @@ El coste de un valor es la suma del coste de sus **lotes** vivos; el precio medi
 - FIFO se aplica por valor dentro de cada cartera, sin distinguir la cuenta o el broker donde estén las acciones.
 - Las acciones recibidas sin desembolso (ampliación liberada, conversión de derechos) se reparten entre los lotes existentes en proporción a sus acciones: cada lote tiene más acciones con el mismo coste. Si se compraron derechos para completar la suscripción, su importe se añade al coste de esos lotes.
 - Un *split* multiplica las acciones de cada lote; el coste no cambia.
-- La venta de derechos y la devolución de prima reducen el **coste reducido** de los lotes vivos en proporción; el coste original no se toca.
+- La venta de derechos sin retención y la devolución de prima reducen el **coste reducido** de los lotes vivos en proporción; el coste original no se toca. Una venta de derechos con retención se considera un dividendo y no rebaja coste.
 - Una conversión de ticker traslada los lotes al valor nuevo; un traspaso entre cuentas no los altera.
 - La **plusvalía realizada** de una venta (importe − coste FIFO − gastos) se calcula y se muestra como dato aparte. No se suma a las «ganancias del año», que siguen recogiendo solo rentas menos gastos, como en la hoja, para que los objetivos anuales sean comparables.
 

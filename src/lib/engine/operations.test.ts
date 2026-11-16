@@ -98,10 +98,16 @@ describe('rentas', () => {
 		const refund = built('DEVOLUCIONPRIMA', { securityId: ACME, amount: 2000 });
 		expect(refund).toMatchObject({ grossEur: 2000, taxEur: 0 });
 		expect(refund.positions).toEqual([{ securityId: ACME, kind: 'adjust', shares: 0, cost: 0, reducedCost: -2000 }]);
-		const rights = built('VENTADERECHOS', { securityId: ACME, quantity: sh(100), price: 0.3, whtDest: 570, fees: 30 });
-		expect(rights).toMatchObject({ grossEur: 3000, taxEur: 570, feesEur: 30 });
-		expect(rights.cash).toEqual([{ accountId: BANK, amount: 2400 }]);
-		const ops = ledger(built('COMPRA', { securityId: ACME, quantity: sh(100), price: 10, date: '2025-01-02' }), refund, rights);
+		const rights = built('VENTADERECHOS', { securityId: ACME, quantity: sh(100), price: 0.3, fees: 30 });
+		expect(rights).toMatchObject({ grossEur: 3000, taxEur: 0, feesEur: 30 });
+		expect(rights.cash).toEqual([{ accountId: BANK, amount: 2970 }]);
+		expect(rights.positions).toEqual([{ securityId: ACME, kind: 'adjust', shares: 0, cost: 0, reducedCost: -3000 }]);
+		// Con retención es como un dividendo: no toca el coste.
+		const withheld = built('VENTADERECHOS', { securityId: ACME, quantity: sh(100), price: 0.3, whtDest: 570, fees: 30 });
+		expect(withheld).toMatchObject({ grossEur: 3000, taxEur: 570, feesEur: 30 });
+		expect(withheld.cash).toEqual([{ accountId: BANK, amount: 2400 }]);
+		expect(withheld.positions).toEqual([]);
+		const ops = ledger(built('COMPRA', { securityId: ACME, quantity: sh(100), price: 10, date: '2025-01-02' }), refund, rights, withheld);
 		const position = run(ops).state.positions.get(ACME);
 		expect(totalCost(position)).toBe(100000);
 		expect(totalReducedCost(position)).toBe(95000);

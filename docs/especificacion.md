@@ -72,7 +72,7 @@ Los importes monetarios se guardan como decimales exactos con su moneda, nunca e
 
 ### 5.3 Posiciones y coste
 
-- **RF-13** Por valor y a cualquier fecha: nº de acciones, coste bruto, coste reducido (descontando ventas de derechos y devoluciones de prima) y precio medio.
+- **RF-13** Por valor y a cualquier fecha: nº de acciones, coste bruto, coste reducido (descontando ventas de derechos sin retención y devoluciones de prima) y precio medio.
 - **RF-14** Total invertido a cualquier fecha, completo y reducido.
 - **RF-15** El coste se lleva por **lotes de compra con criterio FIFO**: una venta da de baja las acciones más antiguas a su coste original, y lo que queda conserva el suyo. Se aplica a todo el histórico, también a las operaciones migradas. De los lotes salen el coste del valor, su precio medio y la plusvalía realizada de cada venta.
 
@@ -150,7 +150,7 @@ Con *fx* = unidades de moneda extranjera por euro.
 | Saldo de cuenta | Σ flujos de efectivo de las operaciones de esa cuenta hasta la fecha |
 | Nº de acciones | Σ compras − ventas + acciones por derechos y ampliaciones, aplicando *splits* |
 | Coste | Σ coste de los lotes de compra vivos (FIFO) |
-| Coste reducido | coste − ventas de derechos − devoluciones de prima |
+| Coste reducido | coste − ventas de derechos sin retención − devoluciones de prima |
 | Precio medio | coste reducido / nº de acciones |
 | Valor de mercado € | precio × acciones / fx |
 | P/G del valor | valor de mercado − coste reducido |

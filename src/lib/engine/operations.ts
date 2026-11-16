@@ -360,7 +360,8 @@ function build(input: OperationInput, ctx: BuildContext): BuiltOperation {
 			op.taxEur = toEur(tax);
 			cash(input.accountId, toAcc(amount) - toAcc(tax) - f);
 			// La devolución de prima y la venta de derechos rebajan el coste reducido, no el original.
-			if (type === 'DEVOLUCIONPRIMA' || type === 'VENTADERECHOS') op.positions.push({ securityId: input.securityId!, kind: 'adjust', shares: 0, cost: 0, reducedCost: -op.grossEur });
+			// Una venta de derechos con retención se trata como un dividendo y no rebaja coste.
+			if (type === 'DEVOLUCIONPRIMA' || (type === 'VENTADERECHOS' && tax === 0)) op.positions.push({ securityId: input.securityId!, kind: 'adjust', shares: 0, cost: 0, reducedCost: -op.grossEur });
 			const detail = input.quantity && input.price ? ` (${fmt(qty)}*${fmt(input.price)} ${currency})` : '';
 			op.description =
 				type === 'DIVIDENDOS' ? `Dividendos ${ticker}${detail}`

@@ -94,7 +94,7 @@ Objetivo: poder dejar de usar la hoja.
 - [ ] Revisar en el informe de importación las filas con fechas fuera de orden (31 en la cartera principal, 16 y 2 en las otras).
 - [ ] Decidir si las carteras secundarias muestran el «capital invertido» con el resultado de los años cerrados, como la principal, o solo lo aportado.
 - [ ] Medir cuánto tarda el primer arranque tras un rato con la máquina parada.
-- [ ] Probar el alta de operaciones con unas cuantas reales y confirmar las tres reglas de la tarea 1.8 anotadas en «Decisiones» (coste con gastos, venta de derechos, opciones).
+- [ ] Probar el alta de operaciones con unas cuantas reales y confirmar las reglas de la tarea 1.8 anotadas en «Decisiones» que siguen sin confirmar (coste con gastos, opciones).
 - [ ] Siete compras importadas tienen en la cabecera un ticker distinto del de sus efectos, por erratas de la hoja (`REE`/`RED`, `HCP`/`PEAK`, `3M`/`MMM`, `AMS`/`PM`). Las posiciones están bien; solo afecta a la columna «Valor» del listado.
 
 ## Decisiones y hallazgos que conviene recordar
@@ -108,7 +108,7 @@ Objetivo: poder dejar de usar la hoja.
   - El cambio es siempre «unidades de la moneda por euro». Importe y retenciones van en la moneda de la operación y los gastos en la de la cuenta. Una cuenta en divisa solo admite operaciones en su moneda.
   - Los **gastos de una compra forman parte del coste** del lote (y además restan del resultado del año), como en la hoja.
   - Si se teclea el total abonado o cargado en la cuenta, los gastos son la diferencia: es la forma de cuadrar céntimos con el broker.
-  - La **venta de derechos rebaja el coste reducido** en su importe bruto, como dicen la especificación y el diseño. La hoja dejó de hacerlo en 2016, así que es un cambio respecto a los últimos años.
+  - La **venta de derechos rebaja el coste reducido** en su importe bruto solo si no lleva retención. Con retención se considera un dividendo y no rebaja coste (decisión del propietario).
   - Las **opciones** anotan la prima como compra (negativa si se cobra) y solo los gastos van al resultado, igual que las dos que hay en la hoja.
   - En un cambio de divisa se teclea lo que sale y lo que entra de verdad en cada cuenta; los gastos, en euros, son informativos y ya van incluidos en esos importes.
   - Las operaciones **importadas** conservan sus efectos al editarlas (solo cambian fecha, descripción y notas) salvo que se marque «recalcular». Las nuevas guardan los campos tecleados en `operation.input_json` y siempre se regeneran.
@@ -122,3 +122,4 @@ Objetivo: poder dejar de usar la hoja.
 |---|---|
 | 2026-11-15 | Análisis de la hoja, especificación 1.0 y diseño. Tareas 1.1 a 1.7: motor, importador, listado, inicio de sesión, copia manual y primer despliegue. Datos históricos cargados en producción. |
 | 2026-11-16 | Tarea 1.8: generación de efectos por tipo de operación, escritura con auditoría, formularios de alta y edición, borrado, orden dentro del día y validaciones. Migración de esquema 2 (`input_json`). |
+| 2026-11-16 | Regla de la venta de derechos: solo rebaja el coste reducido si no lleva retención. |

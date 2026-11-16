@@ -9,9 +9,8 @@ Dificultad orientativa de cada tarea, para elegir modelo: 🟢 mecánica y acota
 ## Estado actual
 
 - **En producción**: <https://invest.jdmuriel.com>, con inicio de sesión de Google y los datos históricos cargados (3 carteras, 2.918 operaciones).
-- **Funciona**: listado de movimientos con acumulados y métricas anuales; alta, edición, duplicado y borrado de operaciones; API para asistentes; descarga y restauración de la base de datos.
-- **En la rama, pendiente de visto bueno para fusionar**: cartera fija en la barra superior, mantenimiento de cuentas y valores, exportación de validación con el formato de `Log`, conciliación de saldos y mejoras del listado (acumulados fijos, vista de móvil). Incluye las migraciones de esquema 4 y 5.
-- **No existe todavía**: alta rápida por lotes, objetivos anuales, precios, cuadro de cartera, copias automáticas externas.
+- **Funciona**: listado de movimientos con acumulados y métricas anuales, con vista de móvil; alta, edición, duplicado y borrado de operaciones; cartera fija en la barra superior; mantenimiento de cuentas y valores; conciliación de saldos; exportación de validación con el formato de `Log`; API para asistentes; descarga y restauración de la base de datos.
+- **No existe todavía**: objetivos anuales, precios, cuadro de cartera, copias automáticas externas.
 - La hoja de cálculo sigue siendo la fuente de verdad hasta completar la fase 1 y validar un mes en paralelo.
 
 ## Cómo retomar el trabajo en una sesión nueva
@@ -43,7 +42,6 @@ Objetivo: poder dejar de usar la solapa `Log`.
   - [x] Validaciones: no vender más de lo que hay (bloquea), aviso de saldo negativo (pide confirmación).
   - [x] Duplicar un movimiento desde su fila del listado (⧉), con la fecha de hoy: las acciones se ponen al día y el importe y las retenciones se recalculan con la misma proporción.
   - [x] Tipo de cambio tecleable al revés (euros por unidad de la moneda); se guarda siempre «moneda por euro» y el navegador recuerda la preferencia.
-- [ ] **1.9 Alta rápida por lotes** (RF-06): fijar cuenta y tipo e introducir varias líneas seguidas, en cualquier orden de fecha. 🟡
 - [x] **1.10 Mantenimiento de cuentas y valores**: alta y edición desde Ajustes (`/ajustes/cuentas`, `/ajustes/valores`; lógica en `src/lib/server/masters.ts`), con auditoría. Las cuentas cerradas y los valores inactivos dejan de ofrecerse al dar de alta movimientos. 🟢
 - [ ] **1.11 Copia externa automática a Google Cloud Storage** (diseño §8.2). 🟡
   - [ ] *Propietario*: crear el *bucket* y una cuenta de servicio con permiso solo sobre él; guardar su clave como secreto.
@@ -93,6 +91,12 @@ Objetivo: poder dejar de usar la hoja.
 - [ ] **4.4 Evolución de la inversión** (RF-39). 🟢
 - [ ] **4.5 Crecimiento de dividendos**: orgánico frente a compras (RF-40). 🟡
 - [ ] **4.6 Importación de extractos CSV** de Degiro e Interactive Brokers (RF-09). 🔴
+
+## Aplazado
+
+Tareas que el propietario ha decidido dejar para mucho más adelante; no se abordan sin que lo pida.
+
+- [ ] **1.9 Alta rápida por lotes** (RF-06): fijar cuenta y tipo e introducir varias líneas seguidas, en cualquier orden de fecha. La entrada en cualquier orden ya funciona; falta solo la pantalla de alta rápida. 🟡
 
 ## Pendiente del propietario
 
@@ -149,3 +153,4 @@ Objetivo: poder dejar de usar la hoja.
 | 2026-11-16 | La cartera queda fija: se elige en la barra superior y se recuerda entre visitas; desaparece el selector de cada pantalla. |
 | 2026-11-16 | Formato de importes: separador de miles siempre (salvo en campos de entrada) y sin mezclar código y símbolo de moneda: código en las pantallas de entrada, símbolo en los listados. Norma añadida a `CLAUDE.md`. |
 | 2026-11-16 | Tres totales numéricos de `Control cartera` se habían importado como valores: el importador ya solo acepta textos con forma de ticker y la migración 5 los borra. |
+| 2026-11-16 | Fusionado en `main` lo pendiente de la rama. La tarea 1.9 (alta rápida por lotes) queda aplazada por decisión del propietario. |

@@ -7,7 +7,7 @@
 
 	// Al cambiar de cartera se sigue en la misma pantalla, salvo en la ficha de una operación, que es de la cartera anterior.
 	const target = $derived(/^\/movimientos\/\d+/.test(page.url.pathname) ? '/movimientos' : page.url.pathname);
-	const kept = $derived(['periodo', 'fecha'].filter((key) => page.url.searchParams.has(key)).map((key) => [key, page.url.searchParams.get(key)!]));
+	const kept = $derived(['periodo', 'fecha', 'anio'].filter((key) => page.url.searchParams.has(key)).map((key) => [key, page.url.searchParams.get(key)!]));
 </script>
 
 <svelte:head>

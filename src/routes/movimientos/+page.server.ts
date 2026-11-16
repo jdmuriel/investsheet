@@ -1,9 +1,11 @@
 import { redirect } from '@sveltejs/kit';
 import { investedCapital, run } from '#lib/engine/engine.ts';
+import { goalProgress, yearFraction } from '#lib/engine/goals.ts';
 import { isOperationType } from '#lib/engine/operations.ts';
 import { inPeriod, resolvePeriod } from '#lib/period.ts';
 import type { YearMetrics } from '#lib/engine/types.ts';
-import { listAccounts, loadOperations } from '#lib/server/store.ts';
+import { loadGoals } from '#lib/server/goals.ts';
+import { getDb, listAccounts, loadOperations } from '#lib/server/store.ts';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ url, locals }) => {
@@ -84,5 +86,8 @@ export const load: PageServerLoad = ({ url, locals }) => {
 		cash: accounts.filter((a) => !a.closed || (state.cash.get(a.id) ?? 0) !== 0).map((a) => ({ name: a.name, currency: a.currency, amount: state.cash.get(a.id) ?? 0 }))
 	};
 
-	return { portfolioId, accounts: columns, summary, currentYear, years, year: period.year, period: period.key, pastYears, rows, warnings: warnings.length, saved };
+	// Objetivos del año en curso (RF-26), frente a la parte del año ya transcurrida.
+	const goals = { year: currentYear, elapsed: yearFraction(currentYear, today), rows: goalProgress(state.years.get(currentYear), loadGoals(getDb(), portfolioId, currentYear)) };
+
+	return { portfolioId, accounts: columns, summary, goals, currentYear, years, year: period.year, period: period.key, pastYears, rows, warnings: warnings.length, saved };
 };

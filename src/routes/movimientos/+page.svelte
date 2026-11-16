@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { amount, date, eur, num, symbol } from '#lib/format.ts';
+	import { amount, date, eur, num, pct, symbol } from '#lib/format.ts';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -93,7 +93,44 @@
 {/if}
 
 <details class="metrics" bind:open={metricsOpen}>
-	<summary>Métricas anuales</summary>
+	<summary>Métricas anuales y objetivos</summary>
+	{#if data.goals.rows.length}
+		<div class="scroll goals">
+			<table>
+				<thead>
+					<tr>
+						<th>Objetivos de {data.goals.year}</th>
+						<th>Objetivo</th>
+						<th>Conseguido</th>
+						<th>% conseguido</th>
+						<th>Falta</th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each data.goals.rows as g (g.key)}
+						<!-- Va bien si lo conseguido supera la parte del año transcurrida; en los gastos, que son un tope, al revés. -->
+						{@const onTrack = g.achieved == null ? null : g.ceiling ? g.achieved <= data.goals.elapsed : g.achieved >= data.goals.elapsed}
+						<tr>
+							<td>{g.label}{g.ceiling ? ' (tope)' : ''}</td>
+							<td>{eur(g.goal)}</td>
+							<td>{eur(g.actual)}</td>
+							<td class:ok={onTrack === true} class:neg={onTrack === false}>{pct(g.achieved)}</td>
+							<td>{eur(Math.max(0, g.goal - g.actual))}</td>
+						</tr>
+					{/each}
+				</tbody>
+				<tfoot>
+					<tr>
+						<td colspan="3">Año transcurrido · <a href="/ajustes/objetivos?cartera={data.portfolioId}">cambiar objetivos</a></td>
+						<td>{pct(data.goals.elapsed)}</td>
+						<td></td>
+					</tr>
+				</tfoot>
+			</table>
+		</div>
+	{:else}
+		<p class="nogoals">Sin objetivos para {data.goals.year}: <a href="/ajustes/objetivos?cartera={data.portfolioId}">fijarlos</a>.</p>
+	{/if}
 	<div class="scroll">
 		<table>
 			<thead>
@@ -307,6 +344,26 @@
 	.metrics .scroll {
 		max-height: 13rem;
 	}
+	.metrics .goals {
+		max-height: none;
+		margin-bottom: 0.5rem;
+		width: fit-content;
+		max-width: 100%;
+	}
+	.goals th:first-child,
+	.goals td:first-child {
+		text-align: left;
+	}
+	.goals tfoot td,
+	.nogoals {
+		color: var(--muted);
+	}
+	.goals tfoot a {
+		color: inherit;
+	}
+	.nogoals {
+		margin: 0 0 0.5rem;
+	}
 	.scroll {
 		overflow: auto;
 		border: 1px solid var(--line);
@@ -469,6 +526,9 @@
 	}
 	.neg {
 		color: var(--neg);
+	}
+	.ok {
+		color: var(--accent);
 	}
 	tr.current td {
 		font-weight: 600;

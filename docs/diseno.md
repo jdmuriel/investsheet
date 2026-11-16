@@ -162,7 +162,7 @@ La aplicación lee `actual` cuando el último precio guardado tiene más de 60 m
 | `/seleccion` | Listas ordenables, revisión mensual, texto para copiar | RF-31 a RF-36 |
 | `/informes` | Top 50 y su evolución, evolución de la inversión, crecimiento de dividendos | RF-37 a RF-40 |
 | `/conciliacion` | Saldo real de cada cuenta frente al calculado, e historial de conciliaciones | RF-12 |
-| `/ajustes` | Cuentas y valores, objetivos, límites por *tier*, exportación de validación, copias y restauración | RF-47, RF-49 |
+| `/ajustes` | Cuentas y valores, objetivos anuales (`/ajustes/objetivos`), límites por *tier*, exportación de validación, copias y restauración | RF-47, RF-49 |
 
 Un selector de cartera en la cabecera fija a cuál se refiere todo lo demás. La elección se recuerda en una *cookie* de un año. En el móvil, las tablas anchas se reducen a las columnas esenciales con detalle al tocar una fila, y el alta de operaciones es un formulario de una columna.
 

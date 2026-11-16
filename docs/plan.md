@@ -9,8 +9,8 @@ Dificultad orientativa de cada tarea, para elegir modelo: 🟢 mecánica y acota
 ## Estado actual
 
 - **En producción**: <https://invest.jdmuriel.com>, con inicio de sesión de Google y los datos históricos cargados (3 carteras, 2.918 operaciones).
-- **Funciona**: listado de movimientos con acumulados y métricas anuales, con vista de móvil; alta, edición, duplicado y borrado de operaciones; cartera fija en la barra superior; mantenimiento de cuentas y valores; conciliación de saldos; exportación de validación con el formato de `Log`; API para asistentes; descarga y restauración de la base de datos.
-- **No existe todavía**: objetivos anuales, precios, cuadro de cartera, copias automáticas externas.
+- **Funciona**: listado de movimientos con acumulados y métricas anuales, con vista de móvil; alta, edición, duplicado y borrado de operaciones; cartera fija en la barra superior; mantenimiento de cuentas y valores; conciliación de saldos; objetivos anuales; exportación de validación con el formato de `Log`; API para asistentes; descarga y restauración de la base de datos.
+- **No existe todavía**: precios, cuadro de cartera, copias automáticas externas.
 - La hoja de cálculo sigue siendo la fuente de verdad hasta completar la fase 1 y validar un mes en paralelo.
 
 ## Cómo retomar el trabajo en una sesión nueva
@@ -54,7 +54,7 @@ Objetivo: poder dejar de usar la solapa `Log`.
   - [x] Periodos del listado: por defecto «Últimos movimientos» (mes anterior completo y mes en curso); además mes, trimestre y año en curso, años anteriores y todos (`src/lib/period.ts`).
   - [x] Lo más reciente a la vista al abrir.
   - [x] Conciliación (`/conciliacion`): introducir el saldo real del broker y ver la diferencia (RF-12). Queda anotada en la tabla `reconciliation` (migración 4).
-- [ ] **1.14 Objetivos anuales** (RF-26): importar los de la cabecera de `Log`, editarlos y mostrar el % de consecución junto a las métricas. 🟢
+- [x] **1.14 Objetivos anuales** (RF-26): el importador toma los de la cabecera de cada registro; se editan en Ajustes → Objetivos (`/ajustes/objetivos`, lógica en `src/lib/server/goals.ts`) y el listado muestra su consecución junto a las métricas (`src/lib/engine/goals.ts`). 🟢
 - [ ] **1.15 Aplicación instalable**: manifiesto e icono. 🟢
 - [ ] **1.16 Pruebas de extremo a extremo** de los flujos principales con Playwright. 🟡
 - [x] **1.18 API para asistentes** ([documentación](api.md)): consulta de estado y operaciones, y alta, edición y borrado con simulación previa, en `/api/v1` con token (`API_TOKEN`). Lógica en `src/lib/server/api.ts`. 🔴
@@ -105,6 +105,7 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 - [ ] Decidir si las carteras secundarias muestran el «capital invertido» con el resultado de los años cerrados, como la principal, o solo lo aportado.
 - [ ] Medir cuánto tarda el primer arranque tras un rato con la máquina parada.
 - [ ] Probar el alta de operaciones con unas cuantas reales.
+- [ ] Teclear en Ajustes → Objetivos los objetivos del año de cada cartera: en producción no hay ninguno, porque los datos se cargaron antes de que el importador los leyera.
 - [ ] Descargar la exportación de validación adjuntando la hoja y repasar la solapa «Diferencias»: debería mostrar solo las diferencias conocidas (ver más abajo).
 - [ ] Rellenar en Ajustes → Valores el nombre de cada valor y marcar como inactivos los que ya no se siguen; revisar nombre y broker de las cuentas.
 - [ ] Las solapas de las carteras secundarias no tienen movimientos de 2026 y sus cabeceras de años están desfasadas: ponerlas al día antes del periodo en paralelo, si se quieren validar.
@@ -133,6 +134,11 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
   - Con la hoja adjunta, las columnas (cuentas, valores, años de la cabecera) se toman de ella; sin ella se usa la disposición conocida (`MAIN_LOG_TICKERS`).
   - Con la hoja de noviembre de 2026 solo salen las diferencias ya conocidas: las de la lista anterior, la apertura de 2014 (la hoja no la anota como aportación) y el coste de los valores traspasados.
   - El libro se escribe en flujo (`WorkbookWriter`): montarlo entero en memoria necesitaba más de los 512 MB de la máquina; así el pico queda en unos 240 MB.
+- **Objetivos anuales** (1.14):
+  - Métricas con objetivo: las seis de la cabecera de la hoja. Se guardan en `goal` con las claves `capital`, `gross`, `fees`, `grossYield`, `netYield` y `purchases`; una métrica sin fila no tiene objetivo y no se muestra.
+  - El de **gastos es un tope**: va bien mientras lo gastado no supere la parte del año transcurrida; en las demás, al revés.
+  - El año transcurrido se mide por días (la hoja lo hacía por meses completos).
+  - El importador anota los objetivos de la cabecera en el año del último movimiento del libro, no en el que digan los rótulos, que en los registros secundarios están desfasados.
 - **Cartera en uso**: se elige en la barra superior y queda recordada en una *cookie* (`src/hooks.server.ts` la deja en `locals.portfolioId`). Un parámetro `cartera` en la dirección manda sobre ella y pasa a ser la recordada; los formularios lo llevan en su dirección de envío para que una pestaña antigua guarde siempre en la cartera que mostraba. Las cargas que dependen de la cartera leen ese parámetro para repetirse al cambiarla.
 - **API**: escritura directa (decisión del propietario), sin propuestas pendientes de confirmar; la red de seguridad es la simulación (`dryRun`), las validaciones y el registro de auditoría. Solo se entra con su token, nunca con la sesión del navegador.
 - **Fly.io**: región `cdg` (Madrid está retirada). La máquina se para sola sin tráfico.
@@ -154,3 +160,4 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 | 2026-11-16 | Formato de importes: separador de miles siempre (salvo en campos de entrada) y sin mezclar código y símbolo de moneda: código en las pantallas de entrada, símbolo en los listados. Norma añadida a `CLAUDE.md`. |
 | 2026-11-16 | Tres totales numéricos de `Control cartera` se habían importado como valores: el importador ya solo acepta textos con forma de ticker y la migración 5 los borra. |
 | 2026-11-16 | Fusionado en `main` lo pendiente de la rama. La tarea 1.9 (alta rápida por lotes) queda aplazada por decisión del propietario. |
+| 2026-11-16 | Tarea 1.14: objetivos anuales por cartera, con edición en Ajustes, consecución en el listado de movimientos e importación desde la cabecera de la hoja. |

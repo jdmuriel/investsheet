@@ -4,6 +4,7 @@
  * de la hoja. Aquí solo se calculan celdas y diferencias; escribir y leer el libro es cosa del servidor.
  */
 import { investedCapital, run, totalCost, totalReducedCost, totalShares } from './engine.ts';
+import { GOAL_METRICS, type GoalMetric, type Goals } from './goals.ts';
 import { MICRO, type Operation, type YearMetrics } from './types.ts';
 
 export type SheetCell = string | number | Date | null;
@@ -61,14 +62,15 @@ const MAIN = { amountLocal: 12, taxLocal: 13, feesLocal: 14, net: 15, gross: 16,
 const CHILD = { amountLocal: 0, taxLocal: 0, feesLocal: 0, net: 12, gross: 13, tax: 14, fees: 15, capitalIn: 16, capitalOut: 17, purchase: 18, capital: 19, yearResult: 20, cash: 22, metrics: 14 };
 export const fixedColumns = (main: boolean) => (main ? MAIN : CHILD);
 
-const METRICS: { row: number; label: string; value: (y: YearMetrics) => number }[] = [
-	{ row: 2, label: 'Total aumento capital', value: (y) => y.capital },
-	{ row: 3, label: 'Total ingresos', value: (y) => y.gross },
-	{ row: 4, label: 'Total gastos', value: (y) => y.fees },
-	{ row: 5, label: 'Total rendimiento bruto', value: (y) => y.gross - y.fees },
-	{ row: 6, label: 'Total rendimiento neto (sin impuestos)', value: (y) => y.gross - y.tax - y.fees },
-	{ row: 7, label: 'Total compras', value: (y) => y.purchases }
+const SHEET_METRICS: { row: number; key: GoalMetric; label: string }[] = [
+	{ row: 2, key: 'capital', label: 'Total aumento capital' },
+	{ row: 3, key: 'gross', label: 'Total ingresos' },
+	{ row: 4, key: 'fees', label: 'Total gastos' },
+	{ row: 5, key: 'grossYield', label: 'Total rendimiento bruto' },
+	{ row: 6, key: 'netYield', label: 'Total rendimiento neto (sin impuestos)' },
+	{ row: 7, key: 'purchases', label: 'Total compras' }
 ];
+const METRICS = SHEET_METRICS.map((m) => ({ ...m, value: GOAL_METRICS.find((g) => g.key === m.key)!.value as (y: YearMetrics) => number }));
 
 /** Columnas de años de la cabecera cuando no hay hoja de referencia: año en curso, los cinco anteriores y el total. */
 export function defaultYears(main: boolean, currentYear: number, firstYear: number): YearColumn[] {
@@ -389,4 +391,15 @@ export function yearsFromReference(reference: SheetRows, main: boolean): YearCol
 	}
 	const numbers = labels.map((l) => l.label).filter((l): l is number => typeof l === 'number');
 	return labels.map(({ col, label }) => ({ col, label, year: typeof label === 'number' ? label : /curso/i.test(label) && numbers.length ? Math.max(...numbers) + 1 : null }));
+}
+
+/** Objetivos del año en curso que trae la cabecera de la hoja: dos columnas a la izquierda de las métricas, una fila por métrica. */
+export function goalsFromReference(reference: SheetRows, main: boolean): Goals {
+	const col = fixedColumns(main).metrics - 2;
+	const goals: Goals = {};
+	for (const m of SHEET_METRICS) {
+		const v = reference[m.row]?.[col];
+		if (typeof v === 'number' && Number.isFinite(v) && v >= 0) goals[m.key] = Math.round(v * 100);
+	}
+	return goals;
 }

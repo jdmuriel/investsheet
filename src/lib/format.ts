@@ -1,6 +1,7 @@
 // En español los números de cuatro cifras no llevan punto de millar por defecto: aquí se pone siempre.
 const money = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' });
 const number = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 6, useGrouping: 'always' });
+const percent = new Intl.NumberFormat('es-ES', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: 'always' });
 const SYMBOLS: Record<string, string> = { EUR: '€', USD: '$', GBP: '£' };
 
 /** Céntimos a texto con formato español; cadena vacía para cero si `blankZero`. */
@@ -10,6 +11,10 @@ export function eur(cents: number | null | undefined, blankZero = false): string
 }
 export function num(value: number | null | undefined): string {
 	return value == null ? '' : number.format(value);
+}
+/** Fracción a porcentaje con un decimal: 0,4375 → «43,8 %». */
+export function pct(fraction: number | null | undefined): string {
+	return fraction == null ? '' : percent.format(fraction);
 }
 /** AAAA-MM-DD a DD/MM/AAAA. */
 export function date(iso: string): string {

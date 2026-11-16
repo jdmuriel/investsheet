@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildLog, colIndex, colName, defaultBlocks, defaultYears, diffLog, fixedColumns, yearsFromReference, FIRST_ROW, type LogLayout, type LogOperation, type SheetRows } from './log-export.ts';
+import { buildLog, colIndex, colName, defaultBlocks, defaultYears, diffLog, fixedColumns, goalsFromReference, yearsFromReference, FIRST_ROW, type LogLayout, type LogOperation, type SheetRows } from './log-export.ts';
 
 // Todos los datos de estas pruebas son inventados.
 const BANK = 1;
@@ -195,5 +195,19 @@ describe('diferencias con la hoja', () => {
 		sheet[1] = [];
 		['Año en curso', 2025, 2024, 'Desde 2014'].forEach((label, i) => (sheet[1][colIndex('Q') + i] = label));
 		expect(yearsFromReference(sheet, true).map((y) => y.year)).toEqual([2026, 2025, 2024, null]);
+	});
+
+	it('lee los objetivos de la cabecera, dos columnas antes de las métricas, y salta las celdas sin importe', () => {
+		const main: SheetRows = [];
+		[1000, null, 50.5, 'n/d', 480, 0].forEach((v, i) => {
+			main[2 + i] = [];
+			main[2 + i][colIndex('O')] = v;
+		});
+		expect(goalsFromReference(main, true)).toEqual({ capital: 100000, fees: 5050, netYield: 48000, purchases: 0 });
+		const child: SheetRows = [];
+		child[3] = [];
+		child[3][colIndex('L')] = 250;
+		expect(goalsFromReference(child, false)).toEqual({ gross: 25000 });
+		expect(goalsFromReference([], true)).toEqual({});
 	});
 });

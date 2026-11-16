@@ -11,7 +11,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { applyOperation, emptyState, investedCapital, run, totalCost, totalReducedCost, totalShares } from '../src/lib/engine/engine.ts';
 import { MICRO, type Operation, type PositionLeg, type State, type Warning } from '../src/lib/engine/types.ts';
-import { colIndex, type SheetCell, type SheetRows } from '../src/lib/engine/log-export.ts';
+import { colIndex, goalsFromReference, type SheetCell, type SheetRows } from '../src/lib/engine/log-export.ts';
 import { openDatabase } from '../src/lib/server/db.ts';
 import { readSheets } from '../src/lib/server/legacy-sheet.ts';
 
@@ -398,6 +398,11 @@ const insOp = db.prepare(`INSERT INTO operation (id, portfolio_id, date, seq, ty
 const insCash = db.prepare('INSERT INTO cash_leg (operation_id, account_id, amount) VALUES (?,?,?)');
 const insLeg = db.prepare('INSERT INTO position_leg (operation_id, security_id, kind, shares, cost_eur, reduced_cost_eur, proceeds_eur, to_security_id) VALUES (?,?,?,?,?,?,?,?)');
 
+const insGoal = db.prepare('INSERT INTO goal (portfolio_id, year, metric, amount_eur) VALUES (?,?,?,?)');
+// Los objetivos de la cabecera son los vigentes: se anotan en el año del último movimiento del libro,
+// porque los rótulos de años de los registros secundarios pueden estar desfasados.
+const goalYear = Number(portfolios.flatMap((p) => p.drafts.map((d) => d.op.date)).reduce((a, b) => (a > b ? a : b), '').slice(0, 4));
+
 const summaries: string[] = [];
 portfolios.forEach((p, index) => {
 	const portfolioId = Number(insPortfolio.run(p.name, index).lastInsertRowid);
@@ -421,10 +426,14 @@ portfolios.forEach((p, index) => {
 		for (const leg of op.positions) insLeg.run(op.id, leg.securityId, leg.kind, leg.shares, leg.cost, leg.reducedCost, leg.proceeds ?? null, leg.toSecurityId ?? null);
 	}
 
+	const goals = Object.entries(goalsFromReference(sheets.get(p.sheetName)!, p.sheetName === 'Log'));
+	if (goalYear) for (const [metric, amount] of goals) insGoal.run(portfolioId, goalYear, metric, amount);
+
 	// ---- Validación contra la hoja ----
 	say(`## Cartera «${p.name}» (${p.drafts.length} operaciones)`);
 	say();
 	if (unknownAccounts.size) say(`- Cuentas citadas en operaciones que no tienen columna de saldo: ${[...unknownAccounts].join(', ')}`);
+	say(`- Objetivos de ${goalYear} importados: ${goals.length}`);
 	say(`- Fechas fuera de orden: ${outOfOrder.length}`);
 	for (const line of outOfOrder) say(`  - ${line}`);
 

@@ -17,6 +17,11 @@
 </section>
 
 <section>
+	<h2>Objetivos anuales</h2>
+	<p><a href="/ajustes/objetivos">Objetivos</a> de cada cartera por año; su grado de consecución se ve junto a las métricas del listado de movimientos.</p>
+</section>
+
+<section>
 	<h2>Exportación de validación</h2>
 	<p>
 		Libro de cálculo con el registro de cada cartera tal como lo calcula la aplicación, con las mismas columnas que la solapa <code>Log</code> de la hoja, para compararlos lado a lado.

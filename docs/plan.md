@@ -147,3 +147,4 @@ Objetivo: poder dejar de usar la hoja.
 | 2026-11-16 | Periodos en el listado de movimientos, con «últimos movimientos» por defecto. |
 | 2026-11-16 | Tareas 1.10, 1.12 y 1.13: mantenimiento de cuentas y valores, exportación de validación con solapa de diferencias, conciliación de saldos (migración de esquema 4), acumulados fijos, vista de móvil y lo más reciente a la vista. |
 | 2026-11-16 | La cartera queda fija: se elige en la barra superior y se recuerda entre visitas; desaparece el selector de cada pantalla. |
+| 2026-11-16 | Formato de importes: separador de miles siempre (salvo en campos de entrada) y sin mezclar código y símbolo de moneda: código en las pantallas de entrada, símbolo en los listados. Norma añadida a `CLAUDE.md`. |

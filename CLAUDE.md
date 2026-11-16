@@ -33,3 +33,5 @@ Cada cambio en `main` que no sea solo documentación despliega en Fly.io (`.gith
 - SvelteKit 3 y Svelte 5 con *runes*: alias `#lib`, `$app/env`, `Handle` desde `@sveltejs/kit/hooks`. Ante la duda, consultar los tipos en `node_modules/@sveltejs/kit/types`.
 - Las importaciones entre ficheros TypeScript llevan extensión `.ts`, para que los scripts funcionen con Node sin compilar.
 - La lógica de cálculo va en el motor con pruebas; las rutas solo leen, llaman al motor y pintan.
+- **Importes**: al mostrarlos llevan siempre separador de miles («1.234,56», también con cuatro cifras), con las funciones de `src/lib/format.ts`; nunca `toFixed` ni `Intl` por libre. La excepción son los campos de entrada, que van sin separador de miles.
+- **Monedas**: no se mezclan en una misma pantalla el código (`EUR`) y el símbolo (`€`). En las pantallas de entrada de datos (formularios, conciliación, mantenimiento) se usa siempre el código: `EUR`, `USD`, `GBP`. En los listados, al mostrar importes, el símbolo (`amount()` y `symbol()` de `format.ts`). En caso de duda, el código.

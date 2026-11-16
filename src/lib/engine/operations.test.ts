@@ -358,7 +358,7 @@ describe('validación del cambio', () => {
 		const before = base();
 		const big = ledger(built('COMPRA', { securityId: ACME, quantity: sh(100), price: 30, date: '2025-05-01' }));
 		const after = [...before, ...big];
-		expect(checkChange(before, after, names).warnings).toEqual(['La cuenta BANCO queda en negativo (-1280.00) el 01/05/2025.']);
+		expect(checkChange(before, after, names).warnings).toEqual(['La cuenta BANCO queda en negativo (-1.280,00) el 01/05/2025.']);
 		const income = ledger(built('INTERESES', { amount: 100, date: '2025-06-01' }));
 		expect(checkChange(after, [...after, ...income], names).warnings).toEqual([]);
 		// Borrar la aportación deja en negativo operaciones que ya existían.

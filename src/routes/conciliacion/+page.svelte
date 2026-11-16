@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { parseDecimal } from '#lib/engine/form.ts';
-	import { date, eur } from '#lib/format.ts';
+	import { date, eur, typed } from '#lib/format.ts';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
@@ -58,7 +58,7 @@
 					<tr>
 						<td class="l">{a.name} <span class="muted">({a.currency})</span></td>
 						<td class:neg={a.computed < 0}>{eur(a.computed)}</td>
-						<td><input name="real-{a.id}" bind:value={real[a.id]} inputmode="decimal" size="12" placeholder={eur(a.computed)} aria-label="Saldo real de {a.name}" /></td>
+						<td><input name="real-{a.id}" bind:value={real[a.id]} inputmode="decimal" size="12" placeholder={typed(a.computed)} aria-label="Saldo real de {a.name}" /></td>
 						<td class:neg={diff != null && diff !== 0} class:ok={diff === 0}>{diff == null ? '' : diff === 0 ? '✓ coincide' : `${diff > 0 ? '+' : ''}${eur(diff)}`}</td>
 						<td class="l">
 							{#if a.last}

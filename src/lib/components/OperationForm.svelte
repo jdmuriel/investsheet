@@ -268,7 +268,7 @@
 					Tipo de cambio
 					<span class="fx">
 						<input bind:value={fxText} oninput={fxTyped} inputmode="decimal" autocomplete="off" required aria-label="Tipo de cambio, {fxInverse ? `euros por ${currency}` : `${currency} por euro`}" />
-						<button type="button" onclick={() => setFxInverse(!fxInverse)} title="Teclear el cambio al revés">⇄ {fxInverse ? `€ por ${currency}` : `${currency} por €`}</button>
+						<button type="button" onclick={() => setFxInverse(!fxInverse)} title="Teclear el cambio al revés">⇄ {fxInverse ? `EUR por ${currency}` : `${currency} por EUR`}</button>
 					</span>
 					<input type="hidden" name="fxRate" value={raw.fxRate} />
 					<small>{#if fxInverse}euros por {currency}; se guarda {raw.fxRate || '…'} {currency} por euro{:else}{currency} por euro{/if}</small>
@@ -303,12 +303,12 @@
 							<dd class="after" class:neg={(balances[leg.accountId] ?? 0) + leg.amount < 0}>saldo {eur((balances[leg.accountId] ?? 0) + leg.amount)}</dd>
 						</div>
 					{/each}
-					{#if op.grossEur}<div><dt>Bruto</dt><dd>{eur(op.grossEur)} €</dd></div>{/if}
-					{#if op.taxEur}<div><dt>Retenciones</dt><dd>{eur(op.taxEur)} €</dd></div>{/if}
-					{#if op.feesEur}<div><dt>Gastos</dt><dd>{eur(op.feesEur)} €</dd></div>{/if}
-					{#if op.purchaseEur}<div><dt>{op.purchaseEur > 0 ? 'Compra' : 'Venta'}</dt><dd>{eur(Math.abs(op.purchaseEur))} €</dd></div>{/if}
-					{#if op.capitalInEur || op.capitalOutEur}<div><dt>Capital</dt><dd>{eur(op.capitalInEur - op.capitalOutEur)} €</dd></div>{/if}
-					{#if op.grossEur || op.taxEur || op.feesEur}<div><dt>Resultado</dt><dd class:neg={op.grossEur - op.taxEur - op.feesEur < 0}>{eur(op.grossEur - op.taxEur - op.feesEur)} €</dd></div>{/if}
+					{#if op.grossEur}<div><dt>Bruto</dt><dd>{eur(op.grossEur)} EUR</dd></div>{/if}
+					{#if op.taxEur}<div><dt>Retenciones</dt><dd>{eur(op.taxEur)} EUR</dd></div>{/if}
+					{#if op.feesEur}<div><dt>Gastos</dt><dd>{eur(op.feesEur)} EUR</dd></div>{/if}
+					{#if op.purchaseEur}<div><dt>{op.purchaseEur > 0 ? 'Compra' : 'Venta'}</dt><dd>{eur(Math.abs(op.purchaseEur))} EUR</dd></div>{/if}
+					{#if op.capitalInEur || op.capitalOutEur}<div><dt>Capital</dt><dd>{eur(op.capitalInEur - op.capitalOutEur)} EUR</dd></div>{/if}
+					{#if op.grossEur || op.taxEur || op.feesEur}<div><dt>Resultado</dt><dd class:neg={op.grossEur - op.taxEur - op.feesEur < 0}>{eur(op.grossEur - op.taxEur - op.feesEur)} EUR</dd></div>{/if}
 					{#each op.positions as leg, i (i)}
 						{@const s = securities.find((x) => x.id === leg.securityId)}
 						<div>
@@ -316,7 +316,7 @@
 							<dd>
 								{#if leg.kind === 'sell'}−{num(leg.shares / MICRO)} acciones{:else if leg.kind === 'convert'}pasa al valor nuevo{:else}
 									{#if leg.shares}{leg.shares > 0 ? '+' : ''}{num(leg.shares / MICRO)} acciones{/if}
-									{#if leg.cost}coste {leg.cost > 0 ? '+' : ''}{eur(leg.cost)} €{:else if leg.reducedCost}coste reducido {eur(leg.reducedCost)} €{/if}
+									{#if leg.cost}coste {leg.cost > 0 ? '+' : ''}{eur(leg.cost)} EUR{:else if leg.reducedCost}coste reducido {eur(leg.reducedCost)} EUR{/if}
 								{/if}
 							</dd>
 						</div>

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { date, eur, num } from '#lib/format.ts';
+	import { amount, date, eur, num, symbol } from '#lib/format.ts';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -73,7 +73,7 @@
 
 <dl class="summary mobile">
 	{#each data.summary.cash as c (c.name)}
-		<div><dt>{c.name}</dt><dd class:neg={c.amount < 0}>{eur(c.amount)} {c.currency}</dd></div>
+		<div><dt>{c.name}</dt><dd class:neg={c.amount < 0}>{amount(c.amount, c.currency)}</dd></div>
 	{/each}
 	<div><dt>Capital invertido</dt><dd>{eur(data.summary.invested)} €</dd></div>
 	<div><dt>Ganancias {data.currentYear}</dt><dd class:neg={data.summary.yearResult < 0}>{eur(data.summary.yearResult)} €</dd></div>
@@ -83,7 +83,7 @@
 	<p class="saved">
 		Guardado: {data.saved.description}.
 		{#each data.saved.balances as b (b.name)}
-			Saldo de {b.name} tras la operación: <strong class:neg={b.amount < 0}>{eur(b.amount)} {b.currency}</strong>.
+			Saldo de {b.name} tras la operación: <strong class:neg={b.amount < 0}>{amount(b.amount, b.currency)}</strong>.
 		{/each}
 	</p>
 {/if}
@@ -149,7 +149,7 @@
 				<th class="acc first" style="--acc-i: 0">Capital invertido</th>
 				<th class="acc" style="--acc-i: 1">Ganancias año</th>
 				{#each data.accounts as a, i (a.id)}
-					<th class="acc" style="--acc-i: {i + 2}">{a.name} ({a.currency})</th>
+					<th class="acc" style="--acc-i: {i + 2}">{a.name} ({symbol(a.currency)})</th>
 				{/each}
 			</tr>
 		</thead>
@@ -165,7 +165,7 @@
 					<td class="l">{r.ticker ?? ''}</td>
 					<td>{num(r.quantity)}</td>
 					<td>{num(r.price)}</td>
-					<td class="l">{r.currency ?? ''}</td>
+					<td class="l">{symbol(r.currency)}</td>
 					<td>{num(r.fxRate)}</td>
 					<td class="l">{r.account ?? ''}</td>
 					<td>{eur(r.grossEur, true)}</td>
@@ -198,7 +198,7 @@
 					</span>
 					<span class="amounts">
 						{#each r.moves as m (m.account)}
-							<span class:neg={m.amount < 0}>{signed(m.amount)} {m.currency}</span>
+							<span class:neg={m.amount < 0}>{signed(m.amount)} {symbol(m.currency)}</span>
 							<small>saldo {eur(m.balance)}</small>
 						{:else}
 							<small>sin efectivo</small>
@@ -207,7 +207,7 @@
 				</summary>
 				<dl>
 					{#if r.quantity != null}<div><dt>Cantidad</dt><dd>{num(r.quantity)}</dd></div>{/if}
-					{#if r.price != null}<div><dt>Precio</dt><dd>{num(r.price)} {r.currency ?? ''}</dd></div>{/if}
+					{#if r.price != null}<div><dt>Precio</dt><dd>{num(r.price)} {symbol(r.currency)}</dd></div>{/if}
 					{#if r.fxRate != null && r.fxRate !== 1}<div><dt>Cambio</dt><dd>{num(r.fxRate)}</dd></div>{/if}
 					{#if r.grossEur}<div><dt>Bruto</dt><dd>{eur(r.grossEur)} €</dd></div>{/if}
 					{#if r.taxEur}<div><dt>Impuestos</dt><dd>{eur(r.taxEur)} €</dd></div>{/if}
@@ -218,7 +218,7 @@
 					<div><dt>Capital invertido</dt><dd>{eur(r.invested)} €</dd></div>
 					<div><dt>Ganancias del año</dt><dd class:neg={r.yearResult < 0}>{eur(r.yearResult)} €</dd></div>
 					{#each data.accounts as a, i (a.id)}
-						<div><dt>{a.name}</dt><dd class:neg={r.cash[i] < 0}>{eur(r.cash[i])} {a.currency}</dd></div>
+						<div><dt>{a.name}</dt><dd class:neg={r.cash[i] < 0}>{amount(r.cash[i], a.currency)}</dd></div>
 					{/each}
 				</dl>
 				<p class="links">

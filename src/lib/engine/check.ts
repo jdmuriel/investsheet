@@ -1,4 +1,5 @@
 /** Validación de un cambio en el registro: se recalcula todo con y sin él y se comparan los resultados. */
+import { eur } from '../format.ts';
 import { run, totalShares } from './engine.ts';
 import type { Cents, Micro, Operation } from './types.ts';
 
@@ -53,7 +54,7 @@ export function checkChange(before: Operation[], after: Operation[], accountName
 		const isNew = a.ids.has(opId) ? !a.negatives.has(key) : n.own;
 		if (!isNew || warned.has(n.accountId)) continue;
 		warned.add(n.accountId);
-		warnings.push(`La cuenta ${accountNames.get(n.accountId) ?? n.accountId} queda en negativo (${(n.amount / 100).toFixed(2)}) el ${esDate(n.date)}.`);
+		warnings.push(`La cuenta ${accountNames.get(n.accountId) ?? n.accountId} queda en negativo (${eur(n.amount)}) el ${esDate(n.date)}.`);
 	}
 	return { errors, warnings };
 }

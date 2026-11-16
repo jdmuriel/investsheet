@@ -1,6 +1,7 @@
 import { error, redirect } from '@sveltejs/kit';
 import { investedCapital, run } from '#lib/engine/engine.ts';
 import { isOperationType } from '#lib/engine/operations.ts';
+import { inPeriod, resolvePeriod } from '#lib/period.ts';
 import type { YearMetrics } from '#lib/engine/types.ts';
 import { listAccounts, listPortfolios, loadOperations } from '#lib/server/store.ts';
 import type { PageServerLoad } from './$types';
@@ -14,7 +15,7 @@ export const load: PageServerLoad = ({ url }) => {
 	const accounts = listAccounts(portfolioId);
 	const operations = loadOperations(portfolioId);
 
-	// Los acumulados se calculan siempre sobre todas las operaciones; el filtro de año solo recorta lo que se muestra.
+	// Los acumulados se calculan siempre sobre todas las operaciones; el periodo solo recorta lo que se muestra.
 	const balances = new Map<number, { cash: number[]; invested: number; capital: number; yearResult: number }>();
 	const { state, warnings } = run(operations, {
 		onRow: (op, s) =>
@@ -27,16 +28,21 @@ export const load: PageServerLoad = ({ url }) => {
 	});
 
 	const years = [...state.years.values()].sort((a, b) => b.year - a.year) as YearMetrics[];
-	const param = url.searchParams.get('anio');
-	const year = param === 'todos' ? null : Number(param) || years[0]?.year || null;
+	const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Madrid' }).format(new Date());
 
 	// Operación recién guardada: se resalta y se muestra el saldo en que deja sus cuentas (RF-05).
 	const savedOp = operations.find((op) => op.id === Number(url.searchParams.get('op')));
 	const savedBalances = savedOp && balances.get(savedOp.id);
 	const saved = savedOp && savedBalances ? { id: savedOp.id, description: savedOp.description, balances: accounts.map((a, i) => ({ name: a.name, currency: a.currency, amount: savedBalances.cash[i], touched: savedOp.cash.some((c) => c.accountId === a.id) })).filter((b) => b.touched) } : null;
 
+	// Sin periodo pedido se muestran los últimos movimientos; tras guardar, el periodo que contenga la operación.
+	let period = resolvePeriod(url.searchParams.get('periodo'), today);
+	if (savedOp && !url.searchParams.has('periodo') && !inPeriod(savedOp.date, period)) period = resolvePeriod(savedOp.date.slice(0, 4), today);
+	const currentYear = Number(today.slice(0, 4));
+	const pastYears = years.map((y) => y.year).filter((y) => y !== currentYear);
+
 	const rows = operations
-		.filter((op) => year == null || op.date.startsWith(String(year)))
+		.filter((op) => inPeriod(op.date, period))
 		.map((op) => ({
 			id: op.id,
 			canCopy: isOperationType(op.type),
@@ -58,5 +64,5 @@ export const load: PageServerLoad = ({ url }) => {
 			...balances.get(op.id)!
 		}));
 
-	return { portfolios, portfolioId, accounts, years, year, rows, warnings: warnings.length, saved };
+	return { portfolios, portfolioId, accounts, years, year: period.year, period: period.key, pastYears, rows, warnings: warnings.length, saved };
 };

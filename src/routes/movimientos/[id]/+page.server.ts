@@ -24,7 +24,8 @@ export const load: PageServerLoad = ({ params }) => {
 	};
 };
 
-const back = (portfolioId: number, date: string, id?: number) => `/movimientos?cartera=${portfolioId}&anio=${date.slice(0, 4)}${id ? `&op=${id}` : ''}`;
+/** Vuelta al listado: resaltando la operación o, si se ha borrado, en el año en que estaba. */
+const back = (portfolioId: number, date: string, id?: number) => `/movimientos?cartera=${portfolioId}${id ? `&op=${id}` : `&periodo=${date.slice(0, 4)}`}`;
 
 export const actions: Actions = {
 	guardar: async ({ request, params }) => {

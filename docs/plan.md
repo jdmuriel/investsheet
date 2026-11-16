@@ -10,7 +10,7 @@ Dificultad orientativa de cada tarea, para elegir modelo: 🟢 mecánica y acota
 
 - **En producción**: <https://invest.jdmuriel.com>, con inicio de sesión de Google y los datos históricos cargados (3 carteras, 2.918 operaciones).
 - **Funciona**: listado de movimientos con acumulados y métricas anuales; alta, edición y borrado de operaciones; descarga y restauración de la base de datos.
-- **En la rama, pendiente de visto bueno para fusionar**: duplicar movimientos y tipo de cambio inverso.
+- **En la rama, pendiente de visto bueno para fusionar**: duplicar movimientos, tipo de cambio inverso y periodos del listado.
 - **No existe todavía**: alta rápida por lotes, mantenimiento de cuentas y valores, precios, cuadro de cartera, copias automáticas externas.
 - La hoja de cálculo sigue siendo la fuente de verdad hasta completar la fase 1 y validar un mes en paralelo.
 
@@ -53,6 +53,7 @@ Objetivo: poder dejar de usar la solapa `Log`.
 - [ ] **1.13 Mejoras del listado.** 🟢
   - [ ] Columnas de acumulados siempre visibles (fijas a la derecha o reordenadas).
   - [ ] Vista reducida en móvil.
+  - [x] Periodos del listado: por defecto «Últimos movimientos» (mes anterior completo y mes en curso); además mes, trimestre y año en curso, años anteriores y todos (`src/lib/period.ts`).
   - [ ] Lo más reciente a la vista al abrir.
   - [ ] Conciliación: introducir el saldo real del broker y ver la diferencia (RF-12).
 - [ ] **1.14 Objetivos anuales** (RF-26): importar los de la cabecera de `Log`, editarlos y mostrar el % de consecución junto a las métricas. 🟢
@@ -133,3 +134,4 @@ Objetivo: poder dejar de usar la hoja.
 | 2026-11-16 | Opciones: la prima pasa a ser renta del año; tipos genéricos de venta y compra de opción; migración de esquema 3. Confirmada la regla de gastos de compra dentro del coste. |
 | 2026-11-16 | Devolución de prima sin retención. Tarea 1.18: API JSON con token para consultar y anotar operaciones desde un asistente. |
 | 2026-11-16 | Duplicar movimientos desde el listado y tipo de cambio inverso en el formulario. |
+| 2026-11-16 | Periodos en el listado de movimientos, con «últimos movimientos» por defecto. |

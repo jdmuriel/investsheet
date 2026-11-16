@@ -33,12 +33,15 @@
 		</select>
 	</label>
 	<label>
-		Año
-		<select name="anio" onchange={(e) => e.currentTarget.form?.requestSubmit()}>
-			{#each data.years as y (y.year)}
-				<option value={y.year} selected={y.year === data.year}>{y.year}</option>
+		Periodo
+		<select name="periodo" onchange={(e) => e.currentTarget.form?.requestSubmit()}>
+			{#each [['ultimos', 'Últimos movimientos'], ['mes', 'Mes en curso'], ['trimestre', 'Trimestre en curso'], ['actual', 'Año en curso']] as [key, label] (key)}
+				<option value={key} selected={key === data.period}>{label}</option>
 			{/each}
-			<option value="todos" selected={data.year == null}>Todos</option>
+			{#each data.pastYears as y (y)}
+				<option value={y} selected={String(y) === data.period}>{y}</option>
+			{/each}
+			<option value="todos" selected={data.period === 'todos'}>Todos</option>
 		</select>
 	</label>
 	<label>

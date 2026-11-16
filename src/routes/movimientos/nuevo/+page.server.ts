@@ -40,6 +40,6 @@ export const actions: Actions = {
 		const result = saveOperation(getDb(), portfolioId, null, raw, raw.confirm === '1');
 		if (!result.ok) return fail(400, { errors: result.errors, warnings: result.warnings, raw });
 		if (raw.next === 'otra') redirect(303, `/movimientos/nuevo?${new URLSearchParams({ cartera: String(portfolioId), tipo: raw.type ?? '', cuenta: raw.account ?? '', fecha: raw.date ?? '', guardado: String(result.id) })}`);
-		redirect(303, `/movimientos?cartera=${portfolioId}&anio=${(raw.date ?? '').slice(0, 4)}&op=${result.id}`);
+		redirect(303, `/movimientos?cartera=${portfolioId}&op=${result.id}`);
 	}
 };

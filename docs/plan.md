@@ -120,10 +120,10 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 - [ ] Repasar el cuadro de cartera contra `Control cartera`. Diferencias esperadas: el coste (FIFO y valores traspasados), el «capital aportado» (la hoja no cuenta la apertura de 2014) y los dividendos cobrados históricos (la hoja los copia a mano).
 - [x] La compra del 9 de octubre de 2026 anotada con ticker `AMS` no entra en ninguna columna de la hoja: decidir a qué valor corresponde y corregirla en la aplicación (y en la hoja). Es Amadeus y ya tiene columna.
 - [ ] Descargar la exportación de validación adjuntando la hoja y repasar la solapa «Diferencias»: debería mostrar solo las diferencias conocidas (ver más abajo).
-- [ ] Revisar nombre y broker de las cuentas. (Nombres de los valores e inactivos: hechos.)
+- [x] Revisar nombre y broker de las cuentas. (Nombres de los valores e inactivos: hechos.)
 - [x] ~~Poner al día las solapas de las carteras secundarias.~~ **Decidido**: las secundarias se llevan ya solo en la aplicación; el periodo en paralelo se valida solo contra `Log`.
 - [ ] Añadir `BMY` y `GOOGL` a la hoja de precios (H15).
-- [ ] Corregir en la hoja la fecha de las dos filas de marzo de 2021 (H2) y la celda del ticker de las filas de la incidencia H13 ([incidencias-migracion.md](incidencias-migracion.md)); en la aplicación las corrige la sesión por la API.
+- [x] Corregir en la hoja la fecha de las dos filas de marzo de 2021 (H2) y la celda del ticker de las filas de la incidencia H13 ([incidencias-migracion.md](incidencias-migracion.md)); en la aplicación las corrige la sesión por la API.
 
 ## Decisiones y hallazgos que conviene recordar
 
@@ -193,6 +193,7 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 | 2026-11-19 | Corrección de valores: una operación importada puede cambiar de valor sin recalcularse (formulario y API, con `keepEffects`); borrado de valores sin usos (Ajustes y API) y `PATCH /api/v1/valores/{ticker}`. Decididos el capital de las secundarias (como la principal) y que las secundarias ya no se validan contra la hoja. |
 | 2026-11-19 | Desplegado lo anterior (lanzado a mano: los *push* desde la sesión no disparan la acción). En producción, por la API: corregido el valor de 41 operaciones de H13, borrados 7 valores erróneos, puestos los nombres de los valores y marcados como inactivos los que ya no se siguen (todos los sin posición salvo `GIS`). |
 | 2026-11-19 | Corrección de monedas mal anotadas en operaciones importadas (`keepEffects` con `currency`) y en cambios de dividendo (`/api/v1/cambios-dividendo`); retenciones en el `PATCH` de valores. Desplegado y aplicado: 7 dividendos (H14), 3 cambios de dividendo (H11), dos fechas de marzo de 2021 pasadas a mayo (H2) y ficha de `BMY` y `GOOGL` (H15). Estado de la migración resumido al principio de `incidencias-migracion.md`. |
+| 2026-11-19 | El propietario ha corregido en la hoja las filas de H2 y H13 y ha puesto nombre a las cuentas. Siguiente sesión: comparar el cuadro de cartera con `Control cartera` valor a valor (P6, P7) con una hoja puesta al día. |
 
 ## Ideas para más adelante
 

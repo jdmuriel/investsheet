@@ -25,8 +25,8 @@
 		{ key: 'yieldGross', label: 'RPD', title: 'Dividendo bruto sobre el valor de mercado', value: (r) => r.yieldGross, text: (r) => pct(r.yieldGross) },
 		{ key: 'yieldNet', label: 'RPD neta', title: 'Dividendo neto sobre el valor de mercado', value: (r) => r.yieldNet, text: (r) => pct(r.yieldNet) },
 		{ key: 'dividendWeight', label: 'Peso div.', title: 'Parte del dividendo bruto previsto de la cartera', value: (r) => r.dividendWeight, text: (r) => pct(r.dividendWeight) },
-		{ key: 'received', label: 'Cobrado', title: 'Dividendos brutos cobrados desde siempre', value: (r) => r.received, text: (r) => eur(r.received, true) },
-		{ key: 'recovered', label: '% recup.', title: 'Dividendos cobrados sobre el coste', value: (r) => r.recovered, text: (r) => (r.received ? pct(r.recovered) : '') },
+		{ key: 'received', label: 'Cobrado', title: 'Dividendos, devoluciones de prima y ventas de derechos cobrados desde siempre, brutos', value: (r) => r.received, text: (r) => eur(r.received, true) },
+		{ key: 'recovered', label: '% recup.', title: 'Lo cobrado sobre el coste', value: (r) => r.recovered, text: (r) => (r.received ? pct(r.recovered) : '') },
 		{ key: 'sinceLastBuy', label: 'Por reinvertir', title: 'Cobrado desde la última compra, en los valores que se reinvierten', value: (r) => (r.reinvest ? r.sinceLastBuy : null), text: (r) => (r.reinvest ? eur(r.sinceLastBuy, true) : 'no') }
 	];
 

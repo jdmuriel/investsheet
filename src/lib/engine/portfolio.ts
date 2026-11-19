@@ -71,7 +71,7 @@ export interface HoldingRow extends SecurityInfo {
 	yieldNet: number | null;
 	/** Peso sobre el dividendo bruto previsto de la cartera. */
 	dividendWeight: number | null;
-	/** Dividendos brutos cobrados desde siempre, y qué parte del coste suponen. */
+	/** Cobrado desde siempre, bruto: dividendos, devoluciones de prima y ventas de derechos; y qué parte del coste supone. */
 	received: Cents;
 	recovered: number | null;
 	/** Cobrado desde la última compra: lo pendiente de reinvertir en el valor, si se reinvierte. */
@@ -167,8 +167,8 @@ export function portfolioView(inputs: PortfolioInputs): PortfolioView {
 			yieldGross: ratio(dividendGross, value),
 			yieldNet: ratio(dividendNet, value),
 			dividendWeight: null,
-			received: position?.dividendsGross ?? 0,
-			recovered: ratio(position?.dividendsGross ?? 0, cost),
+			received: (position?.dividendsGross ?? 0) + (position?.returnsGross ?? 0),
+			recovered: ratio((position?.dividendsGross ?? 0) + (position?.returnsGross ?? 0), cost),
 			sinceLastBuy: position?.dividendsSinceLastBuy ?? 0,
 			monthly
 		});

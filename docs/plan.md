@@ -200,6 +200,7 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 | 2026-11-19 | El propietario ha corregido en la hoja las filas de H2 y H13 y ha puesto nombre a las cuentas. Siguiente sesión: comparar el cuadro de cartera con `Control cartera` valor a valor (P6, P7) con una hoja puesta al día. |
 | 2026-11-19 | Tarea 3.2: selección mensual en `/seleccion` con importación de la solapa `Selección` y su histórico; zona (España, EE. UU., resto del mundo), *tier*, precio objetivo y dividendo estimado en la ficha del valor; orden por defecto de los valores de cada cartera según `Control cartera`. Migración 8. Marcados los pasos del propietario de 1.18, 2.2 y 2.3. |
 | 2026-11-19 | Comparado el cuadro de cartera con `Control cartera` de la hoja del día (P6): acciones y dividendo previsto coinciden; capital aportado, coste y cobrado difieren por causas conocidas (C5, C6, C9, C10). Pendiente decidir qué cuenta como cobrado (P10). |
+| 2026-11-19 | «Cobrado» y «% recuperado» del cuadro suman también devoluciones de prima y ventas de derechos (decisión P10); el motor los lleva aparte (`returnsGross`), sin tocar «Por reinvertir». |
 
 ## Ideas para más adelante
 

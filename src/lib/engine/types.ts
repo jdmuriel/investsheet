@@ -64,6 +64,8 @@ export interface Lot {
 export interface Position {
 	lots: Lot[];
 	dividendsGross: Cents;
+	/** Devoluciones de prima y ventas de derechos cobradas, brutas. */
+	returnsGross: Cents;
 	dividendsSinceLastBuy: Cents;
 	realizedGain: Cents;
 }

@@ -2,6 +2,8 @@ import type { Cents, Lot, Micro, Operation, Position, PositionLeg, State, Warnin
 
 /** Tipos de operación cuyo bruto cuenta como dividendo cobrado del valor. */
 export const DIVIDEND_TYPES = new Set(['DIVIDENDOS']);
+/** Otros cobros que devuelven dinero del valor y cuentan como «cobrado» en el cuadro (como en la hoja): devoluciones de prima y ventas de derechos. */
+export const RETURN_TYPES = new Set(['DEVOLUCIONPRIMA', 'VENTADERECHOS', 'VENTADERECHOSCONRETENCION']);
 
 export function emptyState(): State {
 	return { cash: new Map(), capital: 0, closedYearsResult: 0, yearResult: 0, year: null, positions: new Map(), years: new Map() };
@@ -29,7 +31,7 @@ export function totalReducedCost(p: Position | undefined): Cents {
 function position(state: State, securityId: number): Position {
 	let p = state.positions.get(securityId);
 	if (!p) {
-		p = { lots: [], dividendsGross: 0, dividendsSinceLastBuy: 0, realizedGain: 0 };
+		p = { lots: [], dividendsGross: 0, returnsGross: 0, dividendsSinceLastBuy: 0, realizedGain: 0 };
 		state.positions.set(securityId, p);
 	}
 	return p;
@@ -163,6 +165,7 @@ export function applyOperation(state: State, op: Operation, warnings: Warning[] 
 		pos.dividendsGross += op.grossEur;
 		pos.dividendsSinceLastBuy += op.grossEur;
 	}
+	if (op.securityId != null && RETURN_TYPES.has(op.type)) position(state, op.securityId).returnsGross += op.grossEur;
 }
 
 export interface RunResult {

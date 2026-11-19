@@ -185,4 +185,16 @@ describe('lotes y FIFO', () => {
 		expect(pos.dividendsGross).toBe(800);
 		expect(pos.dividendsSinceLastBuy).toBe(500);
 	});
+
+	it('aparta lo cobrado por devoluciones de prima y ventas de derechos', () => {
+		const ops = [
+			op('2019-01-01', 'COMPRA', { positions: [buy(10, 10000)] }),
+			op('2019-06-01', 'DIVIDENDOS', { securityId: ACME, grossEur: 300 }),
+			op('2019-07-01', 'DEVOLUCIONPRIMA', { securityId: ACME, grossEur: 200 }),
+			op('2019-08-01', 'VENTADERECHOS', { securityId: ACME, grossEur: 50 }),
+			op('2019-09-01', 'VENTADERECHOSCONRETENCION', { securityId: ACME, grossEur: 40 })
+		];
+		const pos = run(ops).state.positions.get(ACME)!;
+		expect(pos).toMatchObject({ dividendsGross: 300, returnsGross: 290, dividendsSinceLastBuy: 300 });
+	});
 });

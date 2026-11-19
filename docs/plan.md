@@ -13,7 +13,7 @@ Dificultad orientativa de cada tarea, para elegir modelo: 🟢 mecánica y acota
 - **Funciona (fase 2)**: cuadro de cartera en la portada, calendario y cambios de dividendo, precios (hoja publicada o a mano), tipos de cambio del BCE e importación de los datos de la hoja que no son operaciones.
 - **Fase 2 en producción, en revisión**: el propietario ya ha importado la hoja desde Ajustes y ha creado la hoja de precios; falta comprobar la descarga del BCE y repasar el cuadro de cartera contra la hoja.
 - **No existe todavía**: copias automáticas externas (1.11), aplicación instalable (1.15), pruebas de extremo a extremo (1.16), servidor MCP (1.19), exportación de validación de `Control cartera` (2.7), valores en estudio, selección e informes.
-- **Siguiente paso propuesto**: revisar con el propietario el cuadro de cartera ya con sus datos y resolver las incidencias pendientes ([P1 a P7](incidencias-migracion.md#5-pendiente-de-decidir-o-de-hacer)); después, la 2.7 y la copia externa (1.11), que es lo que más riesgo quita antes del periodo en paralelo.
+- **Siguiente paso propuesto**: con una copia de la hoja puesta al día, comparar el cuadro de cartera con `Control cartera` valor a valor y resolver lo que quede de las [incidencias](incidencias-migracion.md#5-pendiente-de-decidir-o-de-hacer) (P6, P7, P9); después, la 2.7 y la copia externa (1.11), que es lo que más riesgo quita antes del periodo en paralelo.
 - La hoja de cálculo sigue siendo la fuente de verdad hasta completar la fase 1 y validar un mes en paralelo.
 
 ## Cómo retomar el trabajo en una sesión nueva

@@ -8,6 +8,7 @@ import { investedCapital, run, totalCost, totalReducedCost, totalShares } from '
 import type { RawInput } from '../engine/form.ts';
 import { OPERATION_TYPES, type BuiltOperation } from '../engine/operations.ts';
 import { MICRO } from '../engine/types.ts';
+import { listChanges, updateChangeCurrency } from './dividends.ts';
 import { deleteSecurity, listSecurityRecords, saveSecurity, securityFields } from './masters.ts';
 import { deleteOperation, getOperation, saveOperation, type SubmitResult } from './operations.ts';
 import { listAccounts, listSecurities, loadOperations, type Account, type OperationRow } from './store.ts';
@@ -45,7 +46,9 @@ export function apiIndex(db: DatabaseSync): ApiResponse {
 		endpoints: {
 			'GET /api/v1': 'Esta guía.',
 			'GET /api/v1/valores': 'Valores conocidos, con moneda, retenciones y si están activos.',
-			'PATCH /api/v1/valores/{ticker}': 'Cambia solo los datos enviados de un valor: name, priceTicker, country, currency, sector, supersector, zone, tier, active, reinvest.',
+			'PATCH /api/v1/valores/{ticker}': 'Cambia solo los datos enviados de un valor: name, priceTicker, country, currency, sector, supersector, zone, tier, active, reinvest, whtSourcePct y whtDestPct (en porcentaje, 15 = 15 %).',
+			'GET /api/v1/cambios-dividendo?valor=': 'Cambios de dividendo anotados (dividendo anual anterior y nuevo, moneda y cambio).',
+			'PATCH /api/v1/cambios-dividendo/{id}': 'Corrige la moneda («currency») y, si se quiere, el cambio («fxRate») de un cambio de dividendo; sin fxRate se toma el del día.',
 			'DELETE /api/v1/valores/{ticker}?confirm=1': 'Borra un valor que no usa ninguna operación (un ticker mal tecleado). Uno con historia se marca inactivo.',
 			'GET /api/v1/carteras/{cartera}/estado?fecha=AAAA-MM-DD': 'Saldos, capital, resultado del año, posiciones y métricas anuales a una fecha (por defecto, hoy).',
 			'GET /api/v1/carteras/{cartera}/operaciones?desde=&hasta=&tipo=&valor=&cuenta=&texto=&limite=': 'Operaciones que cumplen los filtros; las más recientes si hay más que el límite (50 por defecto).',
@@ -64,7 +67,7 @@ export function apiIndex(db: DatabaseSync): ApiResponse {
 			'Si falta «amount» se calcula como quantity × price. Si se da «cashTotal» (lo abonado o cargado en la cuenta), los gastos son la diferencia.',
 			'"dryRun": true valida y devuelve el resultado sin guardar nada: úsalo para enseñar la operación antes de anotarla.',
 			'Un 409 trae avisos (por ejemplo, saldo negativo): se repite con "confirm": true si procede. Un 422 trae errores que hay que corregir.',
-			'Las operaciones importadas de la hoja antigua («imported») solo admiten cambiar fecha, descripción, notas y el valor («security») al que se atribuyen, con "keepEffects": true. Si mueven acciones, el valor debe ser el de esas acciones.'
+			'Las operaciones importadas de la hoja antigua («imported») solo admiten cambiar fecha, descripción, notas, el valor («security») al que se atribuyen y la etiqueta de su moneda («currency»), con "keepEffects": true. Si mueven acciones, el valor debe ser el de esas acciones.'
 		],
 		types: Object.fromEntries(Object.entries(OPERATION_TYPES).map(([code, d]) => [code, { label: d.label, fields: d.fields }]))
 	});
@@ -78,6 +81,7 @@ export function apiSecurities(db: DatabaseSync): ApiResponse {
 
 const SECURITY_TEXT = ['name', 'priceTicker', 'country', 'currency', 'sector', 'supersector', 'zone', 'tier'];
 const SECURITY_FLAGS = ['active', 'reinvest'];
+const SECURITY_PERCENTS = ['whtSourcePct', 'whtDestPct'];
 
 const findSecurity = (db: DatabaseSync, ticker: string) => listSecurityRecords(db).find((s) => s.ticker === ticker.toUpperCase()) ?? null;
 
@@ -91,6 +95,8 @@ export function apiPatchSecurity(db: DatabaseSync, ticker: string, body: unknown
 	for (const [key, value] of Object.entries(body)) {
 		if (SECURITY_TEXT.includes(key) && (value === null || typeof value === 'string')) fields[key] = value ?? '';
 		else if (SECURITY_FLAGS.includes(key) && typeof value === 'boolean') fields[key] = value ? '1' : '0';
+		else if (SECURITY_PERCENTS.includes(key) && (value === null || typeof value === 'number')) fields[key] = value == null ? '' : String(value);
+		else if (SECURITY_PERCENTS.includes(key)) errors.push(`El campo «${key}» debe ser un número (porcentaje) o null.`);
 		else if (SECURITY_TEXT.includes(key) || SECURITY_FLAGS.includes(key)) errors.push(`El campo «${key}» debe ser ${SECURITY_FLAGS.includes(key) ? 'true o false' : 'texto o null'}.`);
 		else errors.push(`Campo desconocido: «${key}».`);
 	}
@@ -286,4 +292,22 @@ export function apiDelete(db: DatabaseSync, id: number, confirmed: boolean): Api
 	return result.errors.length
 		? problem(422, 'No se puede borrar la operación.', { errors: result.errors, warnings: result.warnings })
 		: problem(409, 'El borrado necesita confirmación: repítelo con ?confirm=1 si los avisos son aceptables.', { errors: [], warnings: result.warnings });
+}
+
+export function apiDividendChanges(db: DatabaseSync, ticker: string | null): ApiResponse {
+	const wanted = ticker?.toUpperCase();
+	return ok(listChanges(db).filter((c) => !wanted || c.ticker === wanted).map(({ securityId: _, ...c }) => c));
+}
+
+export function apiPatchDividendChange(db: DatabaseSync, id: number, body: unknown): ApiResponse {
+	if (body == null || typeof body !== 'object' || Array.isArray(body)) return problem(422, 'El cuerpo debe ser un objeto JSON.', { errors: [] });
+	const { currency, fxRate, ...rest } = body as Record<string, unknown>;
+	const errors = Object.keys(rest).map((k) => `Campo desconocido: «${k}». Solo se corrigen «currency» y «fxRate».`);
+	if (typeof currency !== 'string') errors.push('Falta «currency».');
+	if (fxRate != null && typeof fxRate !== 'number') errors.push('«fxRate» debe ser un número.');
+	if (errors.length) return problem(422, 'El cambio de dividendo no es válido.', { errors });
+	const result = updateChangeCurrency(db, id, currency as string, fxRate as number | undefined);
+	if (!result.ok) return problem(result.errors[0].includes('no existe') ? 404 : 422, 'El cambio de dividendo no es válido.', { errors: result.errors });
+	const { securityId: _, ...change } = result.change;
+	return ok({ saved: true, ...change });
 }

@@ -21,7 +21,9 @@ fly secrets set API_TOKEN="$(openssl rand -hex 32)" --app investsheet
 |---|---|
 | `GET /api/v1` | Guía: carteras con sus cuentas, tipos de operación con sus campos y normas de escritura. **Un asistente debe empezar por aquí.** |
 | `GET /api/v1/valores` | Valores conocidos, con moneda, porcentajes de retención, ticker de precios, si están activos y cuántas operaciones y efectos los usan (`uses`). |
-| `PATCH /api/v1/valores/{ticker}` | Cambia solo los datos enviados: `name`, `priceTicker`, `country`, `currency`, `sector`, `supersector`, `zone`, `tier` (texto o `null`), `active` y `reinvest` (`true` o `false`). |
+| `PATCH /api/v1/valores/{ticker}` | Cambia solo los datos enviados: `name`, `priceTicker`, `country`, `currency`, `sector`, `supersector`, `zone`, `tier` (texto o `null`), `active` y `reinvest` (`true` o `false`), `whtSourcePct` y `whtDestPct` (porcentaje como número, 15 = 15 %, o `null`). |
+| `GET /api/v1/cambios-dividendo?valor=` | Cambios de dividendo anotados: dividendo anual anterior y nuevo, moneda, cambio, enlace y nota. |
+| `PATCH /api/v1/cambios-dividendo/{id}` | Corrige la moneda (`currency`) de un cambio de dividendo y, si se quiere, su cambio (`fxRate`); sin `fxRate` se toma el del BCE en la fecha del cambio, y en euros es 1. |
 | `DELETE /api/v1/valores/{ticker}?confirm=1` | Borra un valor que no usa ninguna operación, con sus precios y dividendos previstos. Un valor con historia no se borra: se marca inactivo. |
 | `GET /api/v1/carteras/{cartera}/estado?fecha=AAAA-MM-DD` | Saldos por cuenta, capital, resultado del año, posiciones (acciones, coste, coste reducido, precio medio) y métricas anuales, a una fecha o al final del registro. |
 | `GET /api/v1/carteras/{cartera}/operaciones` | Operaciones filtradas por `desde`, `hasta`, `tipo`, `valor`, `cuenta` y `texto`; `limite` (50 por defecto, 500 como máximo) devuelve las más recientes. |
@@ -45,7 +47,7 @@ Además de los campos admite:
 - `"dryRun": true` — valida y devuelve descripción, movimientos de efectivo, saldo resultante e importes en euros **sin guardar nada**. Sirve para enseñar la operación antes de anotarla.
 - `"confirm": true` — acepta los avisos (por ejemplo, una cuenta que queda en negativo).
 - `"createSecurity": true` — da de alta el ticker si no existe.
-- `"keepEffects": true` — en operaciones importadas de la hoja antigua, cambia solo fecha, descripción, notas y el valor (`security`) al que se atribuye la operación, sin recalcular importes. Sirve para corregir un ticker mal anotado. Si la operación mueve acciones, el valor debe ser el de esas acciones.
+- `"keepEffects": true` — en operaciones importadas de la hoja antigua, cambia solo fecha, descripción, notas, el valor (`security`) al que se atribuye la operación y la etiqueta de su moneda (`currency`), sin recalcular importes. Sirve para corregir un ticker o una moneda mal anotados. Si la operación mueve acciones, el valor debe ser el de esas acciones.
 
 Respuestas: `201` o `200` con `saved`, `id`, descripción y saldos resultantes; `422` con `errors` si la operación no es válida (no se guarda nada); `409` con `warnings` si necesita `confirm`; `401` sin token válido; `404` si no existe.
 

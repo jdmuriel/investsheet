@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
-import { apiDelete, apiDeleteSecurity, apiIndex, apiPatchSecurity, apiOperation, apiOperations, apiSave, apiSecurities, apiState, findPortfolio } from './api.ts';
+import { apiDelete, apiDeleteSecurity, apiDividendChanges, apiIndex, apiPatchDividendChange, apiPatchSecurity, apiOperation, apiOperations, apiSave, apiSecurities, apiState, findPortfolio } from './api.ts';
 import { apiTokenValid } from './auth.ts';
 import { openDatabase } from './db.ts';
 
@@ -155,5 +155,37 @@ describe('valores', () => {
 		expect((apiOperation(db, 70).body as Body).security).toBe('ERRATA');
 		expect(post({ type: read.type, date: read.date, description: read.description, security: 'ACME', keepEffects: true }, 70)).toMatchObject({ status: 200, body: { saved: true } });
 		expect(apiOperation(db, 70).body).toMatchObject({ security: 'ACME', grossEur: 5, imported: true });
+	});
+});
+
+describe('monedas mal anotadas', () => {
+	it('una operación importada corrige la etiqueta de su moneda sin tocar los importes', () => {
+		db.exec(`
+			INSERT INTO operation (id, portfolio_id, date, seq, type, account_id, security_id, currency, fx_rate, amount_local, gross_eur, description, source) VALUES (80, 1, '2024-06-01', 1, 'DIVIDENDOS', 1, 1, 'USD', 0.85, 1000, 1176, 'Dividendos ACME', 'legacy');
+			INSERT INTO cash_leg (operation_id, account_id, amount) VALUES (80, 1, 1176);
+		`);
+		const keep = (currency: string) => post({ type: 'DIVIDENDOS', date: '2024-06-01', description: 'Dividendos ACME', currency, keepEffects: true }, 80);
+		expect(keep('gbp')).toMatchObject({ status: 200 });
+		expect(apiOperation(db, 80).body).toMatchObject({ currency: 'GBP', fxRate: 0.85, grossEur: 11.76, security: 'ACME' });
+		expect(keep('LIBRAS').status).toBe(422);
+	});
+
+	it('corrige la moneda de un cambio de dividendo con el cambio del día o el indicado', () => {
+		db.exec(`
+			INSERT INTO fx_rate (currency, date, rate) VALUES ('USD', '2025-06-09', 1.14);
+			INSERT INTO dividend_change (id, security_id, date, old_annual, new_annual, currency, fx_rate) VALUES (5, 1, '2025-06-10', 3, 3.2, 'EUR', 1);
+		`);
+		expect(apiPatchDividendChange(db, 5, { currency: 'usd' })).toMatchObject({ status: 200, body: { saved: true, ticker: 'ACME', currency: 'USD', fxRate: 1.14 } });
+		expect(apiPatchDividendChange(db, 5, { currency: 'EUR', fxRate: 3 })).toMatchObject({ status: 200, body: { currency: 'EUR', fxRate: 1 } });
+		expect(apiPatchDividendChange(db, 5, { currency: 'GBP' }).status).toBe(422); // sin cambio de la libra en esa fecha
+		expect(apiPatchDividendChange(db, 5, { currency: 'USD', oldAnnual: 1 }).status).toBe(422);
+		expect(apiPatchDividendChange(db, 9, { currency: 'USD' }).status).toBe(404);
+		expect(apiDividendChanges(db, 'acme').body).toMatchObject([{ id: 5, currency: 'EUR' }]);
+		expect(db.prepare("SELECT count(*) AS n FROM audit_log WHERE entity = 'dividend_change'").get()).toMatchObject({ n: 2 });
+	});
+
+	it('las retenciones de un valor se cambian en porcentaje', () => {
+		expect(apiPatchSecurity(db, 'ACME', { whtSourcePct: 15, whtDestPct: null })).toMatchObject({ status: 200, body: { whtSourcePct: 0.15, whtDestPct: null } });
+		expect(apiPatchSecurity(db, 'ACME', { whtSourcePct: '15' }).status).toBe(422);
 	});
 });

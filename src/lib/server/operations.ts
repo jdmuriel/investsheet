@@ -140,6 +140,17 @@ function keptSecurity(db: DatabaseSync, id: number, wanted: string | undefined, 
 	return security.id;
 }
 
+/**
+ * Moneda de una operación que conserva sus efectos: la que tiene, o la pedida en `wanted`. Solo cambia la etiqueta
+ * de los importes en moneda local (una moneda mal anotada en la hoja); los importes en euros y el cambio no se tocan.
+ */
+function keptCurrency(db: DatabaseSync, id: number, wanted: string | undefined, fail: (errors: string[]) => never): string | null {
+	const current = (db.prepare('SELECT currency FROM operation WHERE id = ?').get(id) as { currency: string | null }).currency;
+	const code = (wanted ?? '').toUpperCase();
+	if (!code || code === current) return current;
+	return /^[A-Z]{3}$/.test(code) ? code : fail(['La moneda debe ser un código de tres letras, como USD.']);
+}
+
 function checkAgainstLedger(db: DatabaseSync, portfolioId: number, before: Operation[], after: Operation[], confirmed: boolean): { errors: string[]; warnings: string[] } | null {
 	const names = new Map(listAccounts(portfolioId, db).map((a) => [a.id, a.name]));
 	const { errors, warnings } = checkChange(before, after, names);
@@ -149,7 +160,7 @@ function checkAgainstLedger(db: DatabaseSync, portfolioId: number, before: Opera
 /**
  * Lógica de `saveOperation`. Guarda una operación nueva (`id` nulo) o los cambios de una existente a partir de los campos
  * del formulario. Si `raw.keepEffects` es «1» (operaciones importadas) solo cambian fecha,
- * descripción, notas y el valor al que se atribuye; si no, los efectos se generan de nuevo. Los avisos (saldo negativo)
+ * descripción, notas, el valor al que se atribuye y la etiqueta de su moneda; si no, los efectos se generan de nuevo. Los avisos (saldo negativo)
  * necesitan `confirmed`.
  */
 function submit(db: DatabaseSync, portfolioId: number, id: number | null, form: RawInput, { confirmed = false, dryRun = false, source = 'manual' }: SaveOptions): SubmitResult {
@@ -173,11 +184,12 @@ function submit(db: DatabaseSync, portfolioId: number, id: number | null, form: 
 			if (!existing) return fail(['No se puede dar de alta una operación sin efectos.']);
 			const current = before.find((o) => o.id === id)!;
 			const securityId = keptSecurity(db, id!, raw.security, fail);
+			const currency = keptCurrency(db, id!, raw.currency, fail);
 			const problem = checkAgainstLedger(db, portfolioId, before, before.map((o) => (o.id === id ? { ...current, date, seq, securityId } : o)), confirmed);
 			if (problem) fail(problem.errors, problem.warnings);
 			if (dryRun) throw new Rejected({ ok: true, id: id!, description: raw.description || existing.description });
 			const old = snapshot(db, id!);
-			db.prepare("UPDATE operation SET date = ?, seq = ?, description = ?, notes = ?, security_id = ?, updated_at = datetime('now') WHERE id = ?").run(date, seq, raw.description || existing.description, notes || null, securityId, id);
+			db.prepare("UPDATE operation SET date = ?, seq = ?, description = ?, notes = ?, security_id = ?, currency = ?, updated_at = datetime('now') WHERE id = ?").run(date, seq, raw.description || existing.description, notes || null, securityId, currency, id);
 			audit(db, id!, 'update', old, snapshot(db, id!));
 			return { ok: true, id: id! };
 		}

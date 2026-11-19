@@ -114,3 +114,22 @@ export function deleteChange(db: DatabaseSync, id: number): boolean {
 	audit(db, 'dividend_change', id, 'delete', before, null);
 	return true;
 }
+
+/**
+ * Corrige la moneda y el cambio de un cambio de dividendo ya anotado (por ejemplo, uno importado de la hoja con la
+ * moneda equivocada). Sin `fxRate` se toma el cambio de la moneda en la fecha del cambio; en euros es siempre 1.
+ */
+export function updateChangeCurrency(db: DatabaseSync, id: number, currency: string, fxRate?: number): { ok: true; change: DividendChange } | { ok: false; errors: string[] } {
+	const before = listChanges(db).find((c) => c.id === id);
+	if (!before) return { ok: false, errors: ['Ese cambio de dividendo no existe.'] };
+	const code = currency.trim().toUpperCase();
+	if (!/^[A-Z]{3}$/.test(code)) return { ok: false, errors: ['La moneda debe ser un código de tres letras, como USD.'] };
+	let rate = code === 'EUR' ? 1 : fxRate;
+	if (rate == null) rate = fxOn(db, code, before.date)?.rate;
+	if (rate == null) return { ok: false, errors: [`No hay tipo de cambio de ${code} en ${before.date}: indícalo.`] };
+	if (!Number.isFinite(rate) || rate <= 0) return { ok: false, errors: ['El cambio debe ser un número positivo.'] };
+	db.prepare('UPDATE dividend_change SET currency = ?, fx_rate = ? WHERE id = ?').run(code, rate, id);
+	const after = listChanges(db).find((c) => c.id === id)!;
+	audit(db, 'dividend_change', id, 'update', before, after);
+	return { ok: true, change: after };
+}

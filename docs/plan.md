@@ -111,7 +111,7 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 ## Pendiente del propietario
 
 - [ ] Sustituir el secreto `FLY_API_TOKEN` por un token de despliegue limitado a la aplicación `investsheet` y revocar el de organización.
-- [ ] Revisar en el informe de importación las filas con fechas fuera de orden (31 en la cartera principal, 16 y 2 en las otras).
+- [x] Revisar en el informe de importación las filas con fechas fuera de orden (31 en la cartera principal, 16 y 2 en las otras). Solo dos eran erratas (H2).
 - [x] Decidir si las carteras secundarias muestran el «capital invertido» con el resultado de los años cerrados, como la principal, o solo lo aportado. **Decidido: como la principal** (véase Decisiones).
 - [ ] Medir cuánto tarda el primer arranque tras un rato con la máquina parada.
 - [ ] Probar el alta de operaciones con unas cuantas reales.
@@ -122,7 +122,8 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 - [ ] Descargar la exportación de validación adjuntando la hoja y repasar la solapa «Diferencias»: debería mostrar solo las diferencias conocidas (ver más abajo).
 - [ ] Revisar nombre y broker de las cuentas. (Nombres de los valores e inactivos: hechos.)
 - [x] ~~Poner al día las solapas de las carteras secundarias.~~ **Decidido**: las secundarias se llevan ya solo en la aplicación; el periodo en paralelo se valida solo contra `Log`.
-- [ ] Corregir en la hoja la celda del ticker de las filas de la incidencia H13 ([incidencias-migracion.md](incidencias-migracion.md)); en la aplicación las corrige la sesión por la API.
+- [ ] Añadir `BMY` y `GOOGL` a la hoja de precios (H15).
+- [ ] Corregir en la hoja la fecha de las dos filas de marzo de 2021 (H2) y la celda del ticker de las filas de la incidencia H13 ([incidencias-migracion.md](incidencias-migracion.md)); en la aplicación las corrige la sesión por la API.
 
 ## Decisiones y hallazgos que conviene recordar
 
@@ -191,6 +192,7 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 | 2026-11-19 | Creada la hoja de precios en Drive y configurado `PRICES_CSV_URL`; activada la API con `API_TOKEN` en Fly y el mismo token como secreto de red del entorno de Claude Code, comprobado con `GET /api/v1`. |
 | 2026-11-19 | Corrección de valores: una operación importada puede cambiar de valor sin recalcularse (formulario y API, con `keepEffects`); borrado de valores sin usos (Ajustes y API) y `PATCH /api/v1/valores/{ticker}`. Decididos el capital de las secundarias (como la principal) y que las secundarias ya no se validan contra la hoja. |
 | 2026-11-19 | Desplegado lo anterior (lanzado a mano: los *push* desde la sesión no disparan la acción). En producción, por la API: corregido el valor de 41 operaciones de H13, borrados 7 valores erróneos, puestos los nombres de los valores y marcados como inactivos los que ya no se siguen (todos los sin posición salvo `GIS`). |
+| 2026-11-19 | Corrección de monedas mal anotadas en operaciones importadas (`keepEffects` con `currency`) y en cambios de dividendo (`/api/v1/cambios-dividendo`); retenciones en el `PATCH` de valores. Desplegado y aplicado: 7 dividendos (H14), 3 cambios de dividendo (H11), dos fechas de marzo de 2021 pasadas a mayo (H2) y ficha de `BMY` y `GOOGL` (H15). Estado de la migración resumido al principio de `incidencias-migracion.md`. |
 
 ## Ideas para más adelante
 

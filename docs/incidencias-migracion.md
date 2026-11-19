@@ -39,7 +39,7 @@ La aplicación las ha absorbido o las señala; algunas conviene corregirlas tamb
 | H10 | Las solapas de las carteras secundarias no tienen movimientos de 2026 y los rótulos de años de su cabecera están desfasados. | Los objetivos de la cabecera se anotan en el año del último movimiento del libro, no en el del rótulo. | pendiente (P5) |
 | H11 | Algún cambio de dividendo de `Variación divs` tiene la moneda mal puesta (visto en `SAN`, anotado en dólares). | Se importa tal cual; solo afecta al símbolo y al cambio aplicado a ese cambio. | pendiente: revisar la lista de cambios |
 | H12 | Tres totales numéricos de la fila de tickers de `Control cartera` se tomaron por valores. | El importador solo acepta textos con forma de ticker; la migración 5 los borró. | corregida |
-| H13 | Unas 40 filas de `Log`, casi todas dividendos, con el ticker de otro valor o mal tecleado (`REE`, `HCP`, `3M`, `GOOG`, `GBP`, `BME;ELE`, `LON.AV`, o el ticker de la fila de al lado). En los dividendos la hoja no usa esa celda; la aplicación sí, para atribuir el dividendo a un valor. También dos compras (`JNJ` por `BATS`, `AMS` por `PM`) cuyas acciones sí entraron en la columna buena. | Atribuye mal los dividendos cobrados por valor (parte de C6) y deja valores fantasma en el mantenimiento. Al editar una de esas compras, el formulario regeneraría la posición en el valor equivocado. Se corrigen en la aplicación cambiando el valor de cada operación, y en la hoja la celda del ticker. | pendiente (P8) |
+| H13 | Unas 40 filas de `Log`, casi todas dividendos, con el ticker de otro valor o mal tecleado (`REE`, `HCP`, `3M`, `GOOG`, `GBP`, `BME;ELE`, `LON.AV`, o el ticker de la fila de al lado). En los dividendos la hoja no usa esa celda; la aplicación sí, para atribuir el dividendo a un valor. También dos compras (`JNJ` por `BATS`, `AMS` por `PM`) cuyas acciones sí entraron en la columna buena. | Atribuye mal los dividendos cobrados por valor (parte de C6) y deja valores fantasma en el mantenimiento. Al editar una de esas compras, el formulario regeneraría la posición en el valor equivocado. Corregidas en la aplicación el 2026-11-19 (41 operaciones, por la API con `keepEffects`, sin tocar importes) y borrados los valores `3M`, `BME;ELE`, `GBP`, `GOOG`, `LON.AV`, `REE` y `HCP`. Falta corregir la celda del ticker en la hoja, y decidir seis dividendos entre clases hermanas (`BEP`/`BEPC`, `BIP`/`BIPC`, `RDSA`/`RDSB`) cuyo ticker no coincide con la descripción. | corregida en la aplicación; falta la hoja (P8) |
 
 ## 3. Fallos de importación encontrados
 
@@ -63,12 +63,12 @@ La aplicación las ha absorbido o las señala; algunas conviene corregirlas tamb
 |---|---|---|
 | P1 | Revisar las filas con fecha fuera de orden (H2) en el informe de importación. | Propietario |
 | P2 | Decidir a qué valor corresponde la compra anotada como `AMS` (H7) y corregirla en la aplicación y en la hoja. | Propietario |
-| P3 | ~~Marcar como inactivos `REE`, `HCP` y `3M`.~~ Se borran tras corregir H13 (P8). | Sesión de trabajo |
+| P3 | ~~Marcar como inactivos `REE`, `HCP` y `3M`.~~ Borrados tras corregir H13. | Hecho |
 | P4 | ~~Capital invertido de las secundarias (C4).~~ Decidido: como la principal. | — |
 | P5 | ~~Poner al día las solapas de las secundarias (H10).~~ Decidido: se llevan solo en la aplicación y no se validan. | — |
 | P6 | Comprobar si la apertura de 2014 explica toda la diferencia de capital aportado (C5), y revisar valor a valor los dividendos cobrados históricos (C6). | Sesión de trabajo, con los datos reales |
 | P7 | Exportación de validación con el formato de `Control cartera` (tarea 2.7): hoy el cuadro solo se ha comparado en sus totales. | Sesión de trabajo |
-| P8 | Corregir el valor de las operaciones de H13 en la aplicación y en la hoja; después, borrar o desactivar los valores que queden sin movimientos. | Propietario, con ayuda de la API |
+| P8 | Corregir en la hoja la celda del ticker de las filas de H13 (en la aplicación ya está) y decidir los seis dividendos entre clases hermanas. | Propietario |
 
 ## Lo que sí coincide
 

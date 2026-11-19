@@ -21,7 +21,7 @@ fly secrets set API_TOKEN="$(openssl rand -hex 32)" --app investsheet
 |---|---|
 | `GET /api/v1` | Guía: carteras con sus cuentas, tipos de operación con sus campos y normas de escritura. **Un asistente debe empezar por aquí.** |
 | `GET /api/v1/valores` | Valores conocidos, con moneda, porcentajes de retención, ticker de precios, si están activos y cuántas operaciones y efectos los usan (`uses`). |
-| `PATCH /api/v1/valores/{ticker}` | Cambia solo los datos enviados: `name`, `priceTicker`, `country`, `currency`, `sector`, `supersector`, `zone`, `tier` (texto o `null`), `active` y `reinvest` (`true` o `false`), `whtSourcePct` y `whtDestPct` (porcentaje como número, 15 = 15 %, o `null`). |
+| `PATCH /api/v1/valores/{ticker}` | Cambia solo los datos enviados: `name`, `priceTicker`, `country`, `currency`, `sector`, `supersector`, `zone`, `tier` (texto o `null`), `active` y `reinvest` (`true` o `false`), `whtSourcePct` y `whtDestPct` (porcentaje como número, 15 = 15 %, o `null`), `targetPrice` y `dividendEstimate` (número en la moneda del valor, o `null`). `zone` es «España», «EE. UU.» o «Resto del mundo»; `tier`, «T1», «T2», «T3» o `null`. |
 | `GET /api/v1/cambios-dividendo?valor=` | Cambios de dividendo anotados: dividendo anual anterior y nuevo, moneda, cambio, enlace y nota. |
 | `PATCH /api/v1/cambios-dividendo/{id}` | Corrige la moneda (`currency`) de un cambio de dividendo y, si se quiere, su cambio (`fxRate`); sin `fxRate` se toma el del BCE en la fecha del cambio, y en euros es 1. |
 | `DELETE /api/v1/valores/{ticker}?confirm=1` | Borra un valor que no usa ninguna operación, con sus precios y dividendos previstos. Un valor con historia no se borra: se marca inactivo. |

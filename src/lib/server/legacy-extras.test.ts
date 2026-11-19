@@ -64,7 +64,7 @@ describe('datos de la hoja antigua', () => {
 		const extras = extrasFromSheets(new Map([['Log', log], ['LogOtra', other], ['Control cartera', controlCartera()], ['Variación divs', changes]]));
 
 		const summary = applyExtras(db, extras, '2030-06-01');
-		expect(summary).toEqual({ prices: 2, fxRates: 2, schedules: 3, changes: 1, goals: 1, unknown: ['DUAL', 'NADA'] });
+		expect(summary).toEqual({ prices: 2, fxRates: 2, schedules: 3, changes: 1, goals: 1, orders: 2, selection: 0, created: [], reviews: 0, unknown: ['DUAL', 'NADA'] });
 		expect(latestQuotes(db).get(1)).toMatchObject({ price: 12, source: 'legacy', date: '2030-06-01' });
 		expect(latestQuotes(db).get(2)).toMatchObject({ price: 340, source: 'sheet' });
 		expect(latestFx(db).get('GBP')).toEqual({ rate: 0.85, date: '2030-06-01' });

@@ -46,7 +46,7 @@ export function apiIndex(db: DatabaseSync): ApiResponse {
 		endpoints: {
 			'GET /api/v1': 'Esta guía.',
 			'GET /api/v1/valores': 'Valores conocidos, con moneda, retenciones y si están activos.',
-			'PATCH /api/v1/valores/{ticker}': 'Cambia solo los datos enviados de un valor: name, priceTicker, country, currency, sector, supersector, zone, tier, active, reinvest, whtSourcePct y whtDestPct (en porcentaje, 15 = 15 %).',
+			'PATCH /api/v1/valores/{ticker}': 'Cambia solo los datos enviados de un valor: name, priceTicker, country, currency, sector, supersector, zone, tier, active, reinvest, whtSourcePct y whtDestPct (en porcentaje, 15 = 15 %), targetPrice y dividendEstimate (en la moneda del valor). zone es una de España, EE. UU., Resto del mundo; tier, T1, T2, T3 o null.',
 			'GET /api/v1/cambios-dividendo?valor=': 'Cambios de dividendo anotados (dividendo anual anterior y nuevo, moneda y cambio).',
 			'PATCH /api/v1/cambios-dividendo/{id}': 'Corrige la moneda («currency») y, si se quiere, el cambio («fxRate») de un cambio de dividendo; sin fxRate se toma el del día.',
 			'DELETE /api/v1/valores/{ticker}?confirm=1': 'Borra un valor que no usa ninguna operación (un ticker mal tecleado). Uno con historia se marca inactivo.',
@@ -75,13 +75,13 @@ export function apiIndex(db: DatabaseSync): ApiResponse {
 
 export function apiSecurities(db: DatabaseSync): ApiResponse {
 	return ok(
-		listSecurityRecords(db).map((s) => ({ ticker: s.ticker, name: s.name, priceTicker: s.priceTicker, currency: s.currency, whtSourcePct: s.whtSourcePct, whtDestPct: s.whtDestPct, active: s.active === 1, uses: s.uses }))
+		listSecurityRecords(db).map((s) => ({ ticker: s.ticker, name: s.name, priceTicker: s.priceTicker, currency: s.currency, zone: s.zone, tier: s.tier, targetPrice: s.targetPrice, whtSourcePct: s.whtSourcePct, whtDestPct: s.whtDestPct, active: s.active === 1, uses: s.uses }))
 	);
 }
 
 const SECURITY_TEXT = ['name', 'priceTicker', 'country', 'currency', 'sector', 'supersector', 'zone', 'tier'];
 const SECURITY_FLAGS = ['active', 'reinvest'];
-const SECURITY_PERCENTS = ['whtSourcePct', 'whtDestPct'];
+const SECURITY_PERCENTS = ['whtSourcePct', 'whtDestPct', 'targetPrice', 'dividendEstimate'];
 
 const findSecurity = (db: DatabaseSync, ticker: string) => listSecurityRecords(db).find((s) => s.ticker === ticker.toUpperCase()) ?? null;
 
@@ -96,7 +96,7 @@ export function apiPatchSecurity(db: DatabaseSync, ticker: string, body: unknown
 		if (SECURITY_TEXT.includes(key) && (value === null || typeof value === 'string')) fields[key] = value ?? '';
 		else if (SECURITY_FLAGS.includes(key) && typeof value === 'boolean') fields[key] = value ? '1' : '0';
 		else if (SECURITY_PERCENTS.includes(key) && (value === null || typeof value === 'number')) fields[key] = value == null ? '' : String(value);
-		else if (SECURITY_PERCENTS.includes(key)) errors.push(`El campo «${key}» debe ser un número (porcentaje) o null.`);
+		else if (SECURITY_PERCENTS.includes(key)) errors.push(`El campo «${key}» debe ser un número o null.`);
 		else if (SECURITY_TEXT.includes(key) || SECURITY_FLAGS.includes(key)) errors.push(`El campo «${key}» debe ser ${SECURITY_FLAGS.includes(key) ? 'true o false' : 'texto o null'}.`);
 		else errors.push(`Campo desconocido: «${key}».`);
 	}

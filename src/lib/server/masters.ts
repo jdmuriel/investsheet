@@ -2,6 +2,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { run } from '../engine/engine.ts';
 import { parseDecimal } from '../engine/form.ts';
+import { TIERS, ZONES } from '../engine/selection.ts';
 import { loadOperations } from './store.ts';
 
 export const CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF', 'CAD', 'DKK', 'SEK', 'NOK'];
@@ -40,6 +41,9 @@ export interface SecurityRecord {
 	whtDestPct: number | null;
 	reinvest: number;
 	active: number;
+	/** Precio objetivo y dividendo anual estimado (para candidatos sin calendario), en la moneda del valor. */
+	targetPrice: number | null;
+	dividendEstimate: number | null;
 	/** Nº de operaciones y de efectos en posiciones que citan el valor. */
 	uses: number;
 }
@@ -116,7 +120,7 @@ export function saveAccount(db: DatabaseSync, portfolioId: number, id: number | 
 // ---------- Valores ----------
 
 const SECURITY_COLUMNS = `id, ticker, price_ticker AS priceTicker, name, country, currency, sector, supersector, zone, tier,
-	wht_source_pct AS whtSourcePct, wht_dest_pct AS whtDestPct, reinvest, active`;
+	wht_source_pct AS whtSourcePct, wht_dest_pct AS whtDestPct, reinvest, active, target_price AS targetPrice, dividend_estimate AS dividendEstimate`;
 
 export function listSecurityRecords(db: DatabaseSync): SecurityRecord[] {
 	return db
@@ -139,6 +143,13 @@ function percent(text: string): number | null | undefined {
 	return n == null || !Number.isFinite(n) || n < 0 || n > 100 ? undefined : Math.round(n * 1e4) / 1e6;
 }
 
+/** Número positivo tecleado («12,5»); `null` si está vacío y `undefined` si no es válido. */
+function positive(text: string): number | null | undefined {
+	if (text === '') return null;
+	const n = parseDecimal(text);
+	return n == null || !Number.isFinite(n) || n <= 0 ? undefined : n;
+}
+
 /** Alta (`id` nulo) o edición de un valor. Las retenciones se teclean en porcentaje. */
 export function saveSecurity(db: DatabaseSync, id: number | null, fields: Fields): MasterResult {
 	return transaction(db, (): MasterResult => {
@@ -150,11 +161,19 @@ export function saveSecurity(db: DatabaseSync, id: number | null, fields: Fields
 		const currency = clean(fields, 'currency').toUpperCase() || null;
 		const whtSource = percent(clean(fields, 'whtSourcePct'));
 		const whtDest = percent(clean(fields, 'whtDestPct'));
+		const target = positive(clean(fields, 'targetPrice'));
+		const estimate = positive(clean(fields, 'dividendEstimate'));
+		const zone = optional(fields, 'zone');
+		const tier = optional(fields, 'tier')?.toUpperCase() ?? null;
 		if (!/^[A-Z0-9.]{1,12}$/.test(ticker)) errors.push('El ticker debe tener entre 1 y 12 letras, cifras o puntos.');
 		else if (((db.prepare('SELECT id FROM security WHERE ticker = ?').get(ticker) as { id: number } | undefined)?.id ?? id) !== id) errors.push(`Ya existe el valor «${ticker}».`);
 		if (currency && !CURRENCIES.includes(currency)) errors.push(`La moneda debe ser una de: ${CURRENCIES.join(', ')}.`);
 		if (whtSource === undefined) errors.push('La retención en origen debe ser un porcentaje entre 0 y 100.');
 		if (whtDest === undefined) errors.push('La retención en destino debe ser un porcentaje entre 0 y 100.');
+		if (target === undefined) errors.push('El precio objetivo debe ser un número positivo.');
+		if (estimate === undefined) errors.push('El dividendo estimado debe ser un número positivo.');
+		if (zone && !(ZONES as readonly string[]).includes(zone)) errors.push(`La zona debe ser una de: ${ZONES.join(', ')}.`);
+		if (tier && !(TIERS as readonly string[]).includes(tier)) errors.push(`El tier debe ser uno de: ${TIERS.join(', ')}, o ninguno.`);
 		if (errors.length) return { ok: false, errors };
 
 		const after = {
@@ -165,19 +184,21 @@ export function saveSecurity(db: DatabaseSync, id: number | null, fields: Fields
 			currency,
 			sector: optional(fields, 'sector'),
 			supersector: optional(fields, 'supersector'),
-			zone: optional(fields, 'zone'),
-			tier: optional(fields, 'tier'),
+			zone,
+			tier,
 			whtSourcePct: whtSource as number | null,
 			whtDestPct: whtDest as number | null,
 			reinvest: flag(fields, 'reinvest'),
-			active: flag(fields, 'active')
+			active: flag(fields, 'active'),
+			targetPrice: target as number | null,
+			dividendEstimate: estimate as number | null
 		};
 		const values = Object.values(after);
 		const savedId = existing
-			? (db.prepare('UPDATE security SET ticker = ?, price_ticker = ?, name = ?, country = ?, currency = ?, sector = ?, supersector = ?, zone = ?, tier = ?, wht_source_pct = ?, wht_dest_pct = ?, reinvest = ?, active = ? WHERE id = ?').run(...values, existing.id),
+			? (db.prepare('UPDATE security SET ticker = ?, price_ticker = ?, name = ?, country = ?, currency = ?, sector = ?, supersector = ?, zone = ?, tier = ?, wht_source_pct = ?, wht_dest_pct = ?, reinvest = ?, active = ?, target_price = ?, dividend_estimate = ? WHERE id = ?').run(...values, existing.id),
 				existing.id)
 			: Number(
-					db.prepare('INSERT INTO security (ticker, price_ticker, name, country, currency, sector, supersector, zone, tier, wht_source_pct, wht_dest_pct, reinvest, active) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)').run(...values).lastInsertRowid
+					db.prepare('INSERT INTO security (ticker, price_ticker, name, country, currency, sector, supersector, zone, tier, wht_source_pct, wht_dest_pct, reinvest, active, target_price, dividend_estimate) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(...values).lastInsertRowid
 				);
 		const before = existing && Object.fromEntries(Object.keys(after).map((key) => [key, existing[key as keyof SecurityRecord]]));
 		audit(db, 'security', savedId, before, after);
@@ -194,7 +215,7 @@ export function deleteSecurity(db: DatabaseSync, id: number): MasterResult {
 		const existing = getSecurityRecord(db, id);
 		if (!existing) return { ok: false, errors: ['El valor ya no existe.'] };
 		if (existing.uses > 0) return { ok: false, errors: [`No se puede borrar «${existing.ticker}»: lo usan ${existing.uses} operaciones y efectos. Márcalo como inactivo.`] };
-		for (const table of ['price', 'dividend_schedule', 'dividend_change']) db.prepare(`DELETE FROM ${table} WHERE security_id = ?`).run(id);
+		for (const table of ['price', 'dividend_schedule', 'dividend_change', 'portfolio_security', 'selection_entry', 'selection_review_item']) db.prepare(`DELETE FROM ${table} WHERE security_id = ?`).run(id);
 		db.prepare('DELETE FROM security WHERE id = ?').run(id);
 		const { uses: _, ...before } = existing;
 		db.prepare('INSERT INTO audit_log (entity, entity_id, action, before_json, after_json) VALUES (?,?,?,?,?)').run('security', id, 'delete', JSON.stringify(before), null);
@@ -219,6 +240,8 @@ export function securityFields(record: SecurityRecord): Record<string, string> {
 		whtSourcePct: pct(record.whtSourcePct),
 		whtDestPct: pct(record.whtDestPct),
 		reinvest: String(record.reinvest),
-		active: String(record.active)
+		active: String(record.active),
+		targetPrice: record.targetPrice == null ? '' : String(record.targetPrice),
+		dividendEstimate: record.dividendEstimate == null ? '' : String(record.dividendEstimate)
 	};
 }

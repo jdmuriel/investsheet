@@ -23,6 +23,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		portfolioId,
 		today,
 		rows: portfolio.rows,
+		order: portfolio.order,
 		totals: portfolio.totals,
 		forecast: portfolio.forecast,
 		oldestQuote: portfolio.oldestQuote,

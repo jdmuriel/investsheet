@@ -75,7 +75,7 @@ dividend_change(id, security_id, date, old_annual, new_annual, currency, fx_rate
 
 Los precios y dividendos de valores que cotizan en peniques se guardan en libras. Las acciones y el efecto en euros de un cambio de dividendo no se guardan: se calculan por cartera con las acciones que había en la fecha.
 
-Las tablas de fases posteriores (ficha de estudio, selección y fotos) se añaden con su propia migración cuando se implementen.
+Las tablas de fases posteriores se añaden con su propia migración cuando se implementan. La 8 añade el orden por defecto de los valores de cada cartera (`portfolio_security`), el precio objetivo y el dividendo estimado del valor, y la selección mensual: `selection_entry` (valores de la selección de cada cartera y su posición; la lista sale de zona y *tier*), `selection_review` (revisión cerrada: fecha, propuestas y elección) y `selection_review_item` (lista, posición y precio de cada valor ese día). Los parámetros (máximos por *tier* y umbrales) van en `setting`.
 
 Puntos de diseño:
 

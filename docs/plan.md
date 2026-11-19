@@ -11,7 +11,8 @@ Dificultad orientativa de cada tarea, para elegir modelo: 🟢 mecánica y acota
 - **En producción**: <https://invest.jdmuriel.com>, con inicio de sesión de Google y los datos históricos cargados (3 carteras, 2.918 operaciones). Todo lo hecho está fusionado en `main`; el esquema va por la migración 7.
 - **Funciona (fase 1)**: listado de movimientos con acumulados, métricas anuales y objetivos, con vista de móvil; alta, edición, duplicado y borrado de operaciones; cartera fija en la barra superior; mantenimiento de cuentas y valores; conciliación de saldos; exportación de validación con el formato de `Log`; API para asistentes; descarga y restauración de la base de datos.
 - **Funciona (fase 2)**: cuadro de cartera en la portada, calendario y cambios de dividendo, precios (hoja publicada o a mano), tipos de cambio del BCE e importación de los datos de la hoja que no son operaciones.
-- **Fase 2 en producción, en revisión**: el propietario ya ha importado la hoja desde Ajustes y ha creado la hoja de precios; falta comprobar la descarga del BCE y repasar el cuadro de cartera contra la hoja.
+- **Fase 2 en producción, en revisión**: hoja importada, hoja de precios y BCE funcionando; falta repasar el cuadro de cartera contra la hoja.
+- **Fase 3**: la selección mensual (3.2) está hecha; falta que el propietario importe la hoja otra vez desde Ajustes para cargar la solapa `Selección` y el orden de los valores.
 - **No existe todavía**: copias automáticas externas (1.11), aplicación instalable (1.15), pruebas de extremo a extremo (1.16), servidor MCP (1.19), exportación de validación de `Control cartera` (2.7), valores en estudio, selección e informes.
 - **Siguiente paso propuesto**: con una copia de la hoja puesta al día, comparar el cuadro de cartera con `Control cartera` valor a valor y resolver lo que quede de las [incidencias](incidencias-migracion.md#5-pendiente-de-decidir-o-de-hacer) (P6, P7, P9); después, la 2.7 y la copia externa (1.11), que es lo que más riesgo quita antes del periodo en paralelo.
 - La hoja de cálculo sigue siendo la fuente de verdad hasta completar la fase 1 y validar un mes en paralelo.
@@ -63,7 +64,7 @@ Objetivo: poder dejar de usar la solapa `Log`.
 - [ ] **1.15 Aplicación instalable**: manifiesto e icono. 🟢
 - [ ] **1.16 Pruebas de extremo a extremo** de los flujos principales con Playwright. 🟡
 - [x] **1.18 API para asistentes** ([documentación](api.md)): consulta de estado y operaciones, y alta, edición y borrado con simulación previa, en `/api/v1` con token (`API_TOKEN`). Lógica en `src/lib/server/api.ts`. 🔴
-  - [ ] *Propietario*: crear el secreto `API_TOKEN` en Fly y guardarlo como secreto de red del entorno de Claude Code.
+  - [x] *Propietario*: crear el secreto `API_TOKEN` en Fly y guardarlo como secreto de red del entorno de Claude Code. Comprobado el 2026-11-19.
 - [ ] **1.19 Servidor MCP con OAuth** sobre la lógica de la API, para usarlo como conector desde la aplicación de Claude (también en el móvil). Antes de empezar, consultar la documentación vigente de conectores personalizados. 🔴
 - [ ] **1.17 Periodo en paralelo**: un mes registrando en la hoja y en la aplicación, comparando con la exportación de validación.
 
@@ -75,13 +76,14 @@ Objetivo: poder dejar de usar `Control cartera` y `Variación divs`.
 - [x] **2.2 Hoja de precios.** 🟡
   - [x] Formato e instrucciones para crearla y publicarla como CSV: [hoja-precios.md](hoja-precios.md).
   - [x] Lectura con caché de 60 minutos, último precio conocido si falla y corrección manual en `/precios` (RF-43, RF-46). `src/lib/server/market.ts`.
-  - [ ] *Propietario*: crear la hoja, publicarla y guardar su dirección como secreto `PRICES_CSV_URL` en Fly. Hasta entonces el cuadro usa los precios importados de la hoja antigua o tecleados a mano.
+  - [x] *Propietario*: crear la hoja, publicarla y guardar su dirección como secreto `PRICES_CSV_URL` en Fly. Hecho el 2026-11-19 (la hoja «investsheet — precios» de su Drive).
   - [ ] Pestaña `cierre` (precio de cierre de fin de trimestre): se hará con las fotos de cartera (4.1).
 - [x] **2.3 Tipos de cambio del BCE** con histórico (se descargan solos; el histórico completo la primera vez), y sugerencia del cambio al registrar una operación (RF-03, RF-45). 🟡
-  - [ ] Comprobar en producción que la descarga del BCE funciona: desde el entorno de desarrollo no hay acceso a ese servidor y solo está probada con ficheros de ejemplo.
+  - [x] Comprobar en producción que la descarga del BCE funciona. Comprobado por el propietario el 2026-11-19.
 - [x] **2.4 Importar el calendario de dividendos** desde `Control cartera`, junto con el último precio y cambio de cada valor (`src/lib/server/legacy-extras.ts`). Lo hace el importador y, sobre una base ya en uso, Ajustes → «Importar datos de la hoja». 🟡
 - [x] **2.5 Cuadro de cartera** en `/` (RF-19 a RF-24): totales, tabla por valor ordenable y filtrable, previsión de 12 meses y distribución por valor, sector, supersector y país; vista de móvil. Cálculo en `src/lib/engine/portfolio.ts`. 🔴
-  - [ ] Zona y *tier* de cada valor: los campos existen pero están vacíos (la hoja los lleva en `Selección`); se rellenarán al importar esa solapa (3.2) o a mano en Ajustes → Valores. Los filtros aparecen solos cuando haya datos.
+  - [x] Zona y *tier* de cada valor: se importan de `Selección` (3.2) y se editan en Ajustes → Valores. La zona es España, EE. UU. o resto del mundo: decide la lista de la selección y su inversión máxima, y filtra el cuadro.
+  - [x] Orden por defecto de los valores de cada cartera: el de las columnas de `Control cartera` (tabla `portfolio_security`, migración 8), importado con los demás datos de la hoja. Al ordenar por una columna, un botón vuelve a él. Aún no se edita desde la aplicación.
   - [ ] RF-22 completo: hoy se muestra lo cobrado desde la última compra en los valores que se reinvierten; falta definir con el propietario qué es «mantener el equilibrio».
 - [x] **2.6 Cambios de dividendo** (RF-16 a RF-18) en `/dividendos`: una sola acción versiona el calendario y deja constancia; efecto anual por cartera y total por año; histórico de `Variación divs` importado. 🟡
 - [ ] **2.7 Exportación de validación con el formato de `Control cartera`.** 🟡
@@ -91,7 +93,9 @@ Objetivo: poder dejar de usar `Control cartera` y `Variación divs`.
 Objetivo: poder dejar de usar la hoja.
 
 - [ ] **3.1 Valores en estudio** (RF-27 a RF-30): migración de esquema, importación de la solapa, lista y ficha editable, aviso de objetivo sin revisar. 🟡
-- [ ] **3.2 Selección mensual** (RF-31 a RF-36): listas ordenables, cierre de revisión con precios del día, importación del histórico mensual, límites por *tier* y zona, texto resumen copiable, registro de propuestas y elección. 🟡
+- [x] **3.2 Selección mensual** (RF-31 a RF-36) en `/seleccion`: cuatro listas (España, resto del mundo, EE. UU. y sin *tier*) ordenables arrastrando o con flechas; invertido, máximo por *tier* y zona con aviso, RPD, precio, objetivo, distancia y variación desde la última revisión; línea resumen con el formato de la hoja, copiable por valor, por lista o entera; cierre de revisión con el precio del día, propuestas y elección; parámetros editables. Importa de `Selección` las listas, *tiers*, objetivos, parámetros y las 34 revisiones, y da de alta los candidatos que no estaban. Cálculo en `src/lib/engine/selection.ts`, datos en `src/lib/server/selection.ts`, migración 8. 🟡
+  - [ ] Dibujar la evolución mensual de precios de cada valor (los datos ya están en las revisiones).
+  - [ ] *Propietario*: tras desplegar, Ajustes → «Importar datos de la hoja» con una copia actual de la hoja (carga `Selección` y el orden de `Control cartera`), y añadir a la hoja de precios los candidatos nuevos.
 
 ## Fase 4 — Informes e importación de extractos
 
@@ -194,6 +198,7 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 | 2026-11-19 | Desplegado lo anterior (lanzado a mano: los *push* desde la sesión no disparan la acción). En producción, por la API: corregido el valor de 41 operaciones de H13, borrados 7 valores erróneos, puestos los nombres de los valores y marcados como inactivos los que ya no se siguen (todos los sin posición salvo `GIS`). |
 | 2026-11-19 | Corrección de monedas mal anotadas en operaciones importadas (`keepEffects` con `currency`) y en cambios de dividendo (`/api/v1/cambios-dividendo`); retenciones en el `PATCH` de valores. Desplegado y aplicado: 7 dividendos (H14), 3 cambios de dividendo (H11), dos fechas de marzo de 2021 pasadas a mayo (H2) y ficha de `BMY` y `GOOGL` (H15). Estado de la migración resumido al principio de `incidencias-migracion.md`. |
 | 2026-11-19 | El propietario ha corregido en la hoja las filas de H2 y H13 y ha puesto nombre a las cuentas. Siguiente sesión: comparar el cuadro de cartera con `Control cartera` valor a valor (P6, P7) con una hoja puesta al día. |
+| 2026-11-19 | Tarea 3.2: selección mensual en `/seleccion` con importación de la solapa `Selección` y su histórico; zona (España, EE. UU., resto del mundo), *tier*, precio objetivo y dividendo estimado en la ficha del valor; orden por defecto de los valores de cada cartera según `Control cartera`. Migración 8. Marcados los pasos del propietario de 1.18, 2.2 y 2.3. |
 
 ## Ideas para más adelante
 

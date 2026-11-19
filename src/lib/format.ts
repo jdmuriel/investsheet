@@ -38,3 +38,13 @@ export function amount(cents: number | null | undefined, currency: string | null
 export function typed(cents: number): string {
 	return (cents / 100).toFixed(2).replace('.', ',');
 }
+/**
+ * Número con punto decimal y sin separador de miles, para textos que se copian a otra herramienta
+ * con el formato de la hoja antigua (la línea resumen de la selección): 11.7 → «11.70».
+ */
+const plainFormats = new Map<number, Intl.NumberFormat>();
+export function plain(value: number, decimals = 2): string {
+	let f = plainFormats.get(decimals);
+	if (!f) plainFormats.set(decimals, (f = new Intl.NumberFormat('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals, useGrouping: false })));
+	return f.format(value);
+}

@@ -232,5 +232,51 @@ WHERE id IN (SELECT operation_id FROM phantom_leg);
 DELETE FROM position_leg WHERE id IN (SELECT leg_id FROM phantom_leg);
 DROP TABLE phantom_leg;
 `
+		},
+	{
+		version: 8,
+		sql: `
+-- Orden por defecto de los valores de cada cartera en el cuadro (el de las columnas de \`Control cartera\`).
+CREATE TABLE portfolio_security (
+	portfolio_id INTEGER NOT NULL REFERENCES portfolio(id),
+	security_id INTEGER NOT NULL REFERENCES security(id),
+	sort_order INTEGER NOT NULL,
+	PRIMARY KEY (portfolio_id, security_id)
+);
+
+-- Selección mensual (RF-31 a RF-36). Precio objetivo en la moneda del valor y, para los candidatos sin
+-- calendario de dividendos, dividendo anual por acción estimado (también en su moneda).
+ALTER TABLE security ADD COLUMN target_price REAL;
+ALTER TABLE security ADD COLUMN dividend_estimate REAL;
+
+-- Valores que entran en la selección de cada cartera y su posición dentro de su lista (la lista sale de zona y tier).
+CREATE TABLE selection_entry (
+	portfolio_id INTEGER NOT NULL REFERENCES portfolio(id),
+	security_id INTEGER NOT NULL REFERENCES security(id),
+	position INTEGER NOT NULL,
+	PRIMARY KEY (portfolio_id, security_id)
+);
+
+-- Revisión cerrada: fecha, propuestas y elección del mes, y de cada valor su lista, posición y precio ese día.
+CREATE TABLE selection_review (
+	id INTEGER PRIMARY KEY,
+	portfolio_id INTEGER NOT NULL REFERENCES portfolio(id),
+	date TEXT NOT NULL,
+	proposals TEXT,
+	choice TEXT,
+	source TEXT NOT NULL DEFAULT 'app',
+	created_at TEXT NOT NULL DEFAULT (datetime('now')),
+	UNIQUE (portfolio_id, date)
+);
+CREATE TABLE selection_review_item (
+	review_id INTEGER NOT NULL REFERENCES selection_review(id) ON DELETE CASCADE,
+	security_id INTEGER NOT NULL REFERENCES security(id),
+	list TEXT,
+	position INTEGER,
+	price REAL NOT NULL,
+	currency TEXT NOT NULL,
+	PRIMARY KEY (review_id, security_id)
+);
+`
 	}
 ];

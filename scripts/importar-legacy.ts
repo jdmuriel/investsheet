@@ -316,7 +316,7 @@ if (!xlsxPath) {
 	process.exit(1);
 }
 
-const sheets = await readSheets(xlsxPath, (n) => n.startsWith('Log') || n === 'Control cartera' || n === 'Variación divs');
+const sheets = await readSheets(xlsxPath, (n) => n.startsWith('Log') || n === 'Control cartera' || n === 'Variación divs' || n === 'Selección');
 let idCounter = 0;
 const nextId = () => ++idCounter;
 

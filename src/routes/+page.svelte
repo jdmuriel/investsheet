@@ -30,8 +30,11 @@
 		{ key: 'sinceLastBuy', label: 'Por reinvertir', title: 'Cobrado desde la última compra, en los valores que se reinvierten', value: (r) => (r.reinvest ? r.sinceLastBuy : null), text: (r) => (r.reinvest ? eur(r.sinceLastBuy, true) : 'no') }
 	];
 
-	let sortKey = $state('value');
-	let descending = $state(true);
+	// Por defecto, el orden de la cartera (el de las columnas de `Control cartera`); los valores sin él, al final por ticker.
+	const DEFAULT = 'order';
+	let sortKey = $state(DEFAULT);
+	let descending = $state(false);
+	const position = (r: Row) => data.order[r.id] ?? null;
 	let search = $state('');
 	let zone = $state('');
 	let sector = $state('');
@@ -49,13 +52,13 @@
 	const tiers = $derived(options((r) => r.tier));
 	const visible = $derived.by(() => {
 		const q = search.trim().toLowerCase();
-		const column = columns.find((c) => c.key === sortKey)!;
+		const column = columns.find((c) => c.key === sortKey) ?? { value: position };
 		const rows = data.rows.filter((r) => (!zone || r.zone === zone) && (!sector || r.sector === sector) && (!tier || r.tier === tier) && (!q || r.ticker.toLowerCase().includes(q) || (r.name ?? '').toLowerCase().includes(q)));
 		// Los valores sin dato van siempre al final, se ordene como se ordene.
 		return rows.sort((a, b) => {
 			const x = column.value(a);
 			const y = column.value(b);
-			if (x == null || y == null) return x == null ? (y == null ? 0 : 1) : -1;
+			if (x == null || y == null) return x == null ? (y == null ? a.ticker.localeCompare(b.ticker) : 1) : -1;
 			const order = typeof x === 'string' ? x.localeCompare(String(y)) : x - Number(y);
 			return descending ? -order : order;
 		});
@@ -127,8 +130,9 @@
 		{/if}
 		<label class="mobile">
 			Ordenar por
-			<select bind:value={sortKey}>{#each columns as c (c.key)}<option value={c.key}>{c.label}</option>{/each}</select>
+			<select bind:value={sortKey}><option value={DEFAULT}>Orden de la cartera</option>{#each columns as c (c.key)}<option value={c.key}>{c.label}</option>{/each}</select>
 		</label>
+		{#if sortKey !== DEFAULT}<button type="button" class="link desktop" onclick={() => ((sortKey = DEFAULT), (descending = false))}>Orden de la cartera</button>{/if}
 		{#if filtered}<span class="muted">{visible.length} de {data.rows.length} valores</span>{/if}
 		{#if t.equalWeight}<span class="muted">Peso equiponderado: {pct(t.equalWeight)}</span>{/if}
 	</form>
@@ -226,6 +230,15 @@
 {/if}
 
 <style>
+	.link {
+		background: none;
+		border: none;
+		padding: 0;
+		color: var(--accent);
+		text-decoration: underline;
+		cursor: pointer;
+		font: inherit;
+	}
 	.page {
 		display: flex;
 		gap: 0.3rem 1rem;

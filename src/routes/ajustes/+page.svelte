@@ -38,7 +38,7 @@
 <section>
 	<h2>Importar datos de la hoja</h2>
 	<p>
-		Completa la aplicación con lo que la hoja tiene además de las operaciones: objetivos del año, último precio y tipo de cambio, calendario de dividendos previstos e histórico de cambios de dividendo. <strong>No pisa
+		Completa la aplicación con lo que la hoja tiene además de las operaciones: objetivos del año, último precio y tipo de cambio, calendario de dividendos previstos, orden de los valores, histórico de cambios de dividendo y la selección mensual con sus revisiones. <strong>No pisa
 		nada</strong>: solo rellena lo que falta, así que se puede repetir. Las operaciones no se tocan.
 	</p>
 	<form method="POST" action="?/hoja" enctype="multipart/form-data">
@@ -51,7 +51,9 @@
 	{/if}
 	{#if form?.sheet}
 		<p class="ok">
-			Importado: {form.sheet.prices} precios, {form.sheet.fxRates} tipos de cambio, {form.sheet.schedules} calendarios de dividendos, {form.sheet.changes} cambios de dividendo y {form.sheet.goals} objetivos.
+			Importado: {form.sheet.prices} precios, {form.sheet.fxRates} tipos de cambio, {form.sheet.schedules} calendarios de dividendos, {form.sheet.changes} cambios de dividendo, {form.sheet.goals} objetivos,
+			el orden de {form.sheet.orders} carteras, {form.sheet.selection} valores en la selección y {form.sheet.reviews} revisiones mensuales.
+			{#if form.sheet.created.length}Valores nuevos dados de alta desde la selección: {form.sheet.created.join(', ')}.{/if}
 			{#if form.sheet.unknown.length}Tickers de la hoja sin valor en la aplicación: {form.sheet.unknown.join(', ')}.{/if}
 		</p>
 	{/if}

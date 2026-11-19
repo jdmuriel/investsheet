@@ -1,9 +1,12 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
+	const back = $derived(page.url.searchParams.get('volver'));
 
 	const s = $derived(data.security);
+	const num4 = (n: number | null | undefined) => (n == null ? '' : String(Math.round(n * 1e4) / 1e4).replace('.', ','));
 	const pct = (fraction: number | null | undefined) => (fraction == null ? '' : String(Math.round(fraction * 1e4) / 100).replace('.', ','));
 	/** Lo tecleado si el envío se rechazó, o lo guardado. */
 	const value = (key: string, saved: string | number | null | undefined) => String(form?.raw ? (form.raw[key] ?? '') : (saved ?? ''));
@@ -12,7 +15,7 @@
 
 <header class="page">
 	<h1>{s ? s.ticker : 'Nuevo valor'}</h1>
-	<a href="/ajustes/valores">Volver a Valores</a>
+	<a href={back ?? '/ajustes/valores'}>{back === '/seleccion' ? 'Volver a Selección' : 'Volver a Valores'}</a>
 </header>
 
 {#if form?.errors}
@@ -21,7 +24,7 @@
 	</ul>
 {/if}
 
-<form method="POST" action="?/guardar">
+<form method="POST" action="?/guardar{back ? `&volver=${encodeURIComponent(back)}` : ''}">
 	<div class="grid">
 		<label>
 			Ticker
@@ -58,11 +61,28 @@
 		</label>
 		<label>
 			Zona
-			<input name="zone" value={value('zone', s?.zone)} />
+			<select name="zone" value={value('zone', s?.zone)}>
+				<option value="">—</option>
+				{#each data.zones as z (z)}<option>{z}</option>{/each}
+			</select>
+			<small>España, EE. UU. o resto del mundo: decide la lista de la selección y su inversión máxima.</small>
 		</label>
 		<label>
 			<i>Tier</i>
-			<input name="tier" value={value('tier', s?.tier)} />
+			<select name="tier" value={value('tier', s?.tier)}>
+				<option value="">Sin tier</option>
+				{#each data.tiers as t (t)}<option>{t}</option>{/each}
+			</select>
+		</label>
+		<label>
+			Precio objetivo
+			<input name="targetPrice" value={value('targetPrice', num4(s?.targetPrice))} inputmode="decimal" />
+			<small>En la moneda del valor.</small>
+		</label>
+		<label>
+			Dividendo anual estimado
+			<input name="dividendEstimate" value={value('dividendEstimate', num4(s?.dividendEstimate))} inputmode="decimal" />
+			<small>Por acción y en su moneda. Solo se usa para la RPD si el valor no tiene calendario de dividendos.</small>
 		</label>
 		<label>
 			Retención en origen (%)

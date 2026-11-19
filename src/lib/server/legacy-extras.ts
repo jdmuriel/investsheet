@@ -1,11 +1,13 @@
 /**
  * Datos de la hoja antigua que no son operaciones: objetivos del año (cabecera de cada registro),
- * precios, tipos de cambio y calendario de dividendos (`Control cartera`) y cambios de dividendo (`Variación divs`).
+ * precios, tipos de cambio, calendario de dividendos y orden de los valores (`Control cartera`), cambios de dividendo
+ * (`Variación divs`) y la selección mensual con su histórico de revisiones (`Selección`).
  * Los usa el importador y, para completar una base de datos ya en uso, Ajustes → «Importar datos de la hoja».
  */
 import type { DatabaseSync } from 'node:sqlite';
 import config from '../../../scripts/legacy-config.json' with { type: 'json' };
 import type { Goals } from '../engine/goals.ts';
+import { DEFAULT_PARAMS, type SelectionParams } from '../engine/selection.ts';
 import { goalsFromReference, type SheetCell, type SheetRows } from '../engine/log-export.ts';
 import { readSheets } from './legacy-sheet.ts';
 
@@ -39,9 +41,32 @@ export interface SheetChange {
 	note: string | null;
 }
 
+/** Un valor de `Selección`, en el orden de la hoja. Precios en la moneda del valor (los de Londres, ya en libras). */
+export interface SheetSelectionEntry {
+	ticker: string;
+	priceTicker: string;
+	/** Columna «País» de la hoja (ES, US, UK, AMS…). */
+	country: string;
+	zone: string;
+	tier: string | null;
+	currency: string | null;
+	price: number | null;
+	target: number | null;
+	/** Dividendo anual por acción, de la RPD y el precio de la hoja. */
+	dividendEstimate: number | null;
+}
+
+export interface SheetSelection {
+	params: SelectionParams;
+	entries: SheetSelectionEntry[];
+	/** Revisiones mensuales: fecha y precio de cada valor ese día. */
+	reviews: { date: string; prices: Map<string, number> }[];
+}
+
 export interface SheetExtras {
 	securities: SheetSecurity[];
 	changes: SheetChange[];
+	selection: SheetSelection | null;
 	/** Objetivos de la cabecera de cada registro, por nombre de solapa. */
 	goals: { sheet: string; goals: Goals }[];
 }
@@ -92,19 +117,85 @@ export function parseDividendChanges(sheet: SheetRows): SheetChange[] {
 	return out;
 }
 
+const MARKET_CURRENCY: Record<string, string> = { BME: 'EUR', AMS: 'EUR', EPA: 'EUR', ETR: 'EUR', BIT: 'EUR', EBR: 'EUR', ELI: 'EUR', LON: 'GBP', CPH: 'DKK', STO: 'SEK', OSL: 'NOK', SWX: 'CHF', TSE: 'CAD' };
+const zoneOf = (country: string) => (country === 'ES' ? 'España' : country === 'US' ? 'EE. UU.' : 'Resto del mundo');
+
+/**
+ * Solapa `Selección`: parámetros (fila 3), una fila por valor desde la 5 agrupadas en listas, y a la derecha
+ * una columna por revisión mensual con su fecha en la cabecera (fila 4) y el precio de cada valor ese día.
+ */
+export function parseSeleccion(sheet: SheetRows): SheetSelection {
+	const p = sheet[3] ?? [];
+	const n = (c: number) => number(p[c]);
+	const params: SelectionParams = {
+		limits: {
+			T1: { other: n(3) ?? DEFAULT_PARAMS.limits.T1.other, spain: n(4) ?? DEFAULT_PARAMS.limits.T1.spain },
+			T2: { other: n(5) ?? DEFAULT_PARAMS.limits.T2.other, spain: n(6) ?? DEFAULT_PARAMS.limits.T2.spain },
+			T3: { other: n(7) ?? DEFAULT_PARAMS.limits.T3.other, spain: n(8) ?? DEFAULT_PARAMS.limits.T3.spain }
+		},
+		significant: n(10) ?? DEFAULT_PARAMS.significant,
+		high: n(11) ?? DEFAULT_PARAMS.high
+	};
+	const header = sheet[4] ?? [];
+	const reviewColumns: { col: number; date: string }[] = [];
+	for (let c = 13; c < header.length; c++) {
+		const m = /(\d{4}-\d{2}-\d{2})/.exec(text(header[c]));
+		if (m) reviewColumns.push({ col: c, date: m[1] });
+	}
+	const entries: SheetSelectionEntry[] = [];
+	const reviews = reviewColumns.map((r) => ({ date: r.date, prices: new Map<string, number>() }));
+	const seen = new Set<string>();
+	for (let r = 5; r < sheet.length; r++) {
+		const row = sheet[r];
+		const priceTicker = text(row?.[2]).toUpperCase();
+		if (!row || !/^[A-Z0-9.-]+(:[A-Z0-9.-]+)?$/.test(priceTicker)) continue;
+		const ticker = baseTicker(priceTicker);
+		if (seen.has(ticker)) continue;
+		seen.add(ticker);
+		const market = priceTicker.includes(':') ? priceTicker.split(':')[0] : '';
+		const unit = market === 'LON' ? 100 : 1;
+		const value = (c: number) => {
+			const v = number(row[c]);
+			return v == null || v <= 0 ? null : Math.round((v / unit) * 1e6) / 1e6;
+		};
+		const price = value(6);
+		const rpd = number(row[5]);
+		const tier = /^T[123]$/.test(text(row[3]).toUpperCase()) ? text(row[3]).toUpperCase() : null;
+		const country = text(row[1]).toUpperCase();
+		entries.push({
+			ticker,
+			priceTicker,
+			country,
+			zone: zoneOf(country),
+			tier,
+			currency: market ? (MARKET_CURRENCY[market] ?? null) : 'USD',
+			price,
+			target: value(7),
+			dividendEstimate: price != null && rpd != null && rpd > 0 ? Math.round(price * rpd * 1e6) / 1e6 : null
+		});
+		reviewColumns.forEach((rc, i) => {
+			const v = value(rc.col);
+			if (v != null) reviews[i].prices.set(ticker, v);
+		});
+	}
+	return { params, entries, reviews: reviews.filter((r) => r.prices.size > 0) };
+}
+
 export function extrasFromSheets(sheets: Map<string, SheetRows>): SheetExtras {
 	const cc = sheets.get('Control cartera');
 	const vd = sheets.get('Variación divs');
+	const sel = sheets.get('Selección');
 	return {
 		securities: cc ? parseControlCartera(cc) : [],
 		changes: vd ? parseDividendChanges(vd) : [],
+		selection: sel ? parseSeleccion(sel) : null,
 		goals: [...sheets].filter(([name]) => name.startsWith('Log')).map(([name, sheet]) => ({ sheet: name, goals: goalsFromReference(sheet, name === 'Log') }))
 	};
 }
 
 /** Lee del libro solo lo necesario: de los registros, la cabecera. */
 export async function readExtras(path: string): Promise<SheetExtras> {
-	const sheets = await readSheets(path, (n) => n.startsWith('Log') || n === 'Control cartera' || n === 'Variación divs', (n) => (n.startsWith('Log') ? 9 : n === 'Control cartera' ? 62 : Infinity));
+	const sheets = await readSheets(path, (n) => n.startsWith('Log') || n === 'Control cartera' || n === 'Variación divs' || n === 'Selección', (n) => (n.startsWith('Log') ? 9 : n === 'Control cartera' ? 62 : Infinity));
 	return extrasFromSheets(sheets);
 }
 
@@ -114,6 +205,12 @@ export interface ExtrasSummary {
 	schedules: number;
 	changes: number;
 	goals: number;
+	/** Carteras a las que se ha puesto el orden de `Control cartera`. */
+	orders: number;
+	/** Valores puestos en la selección, valores nuevos dados de alta desde ella y revisiones importadas. */
+	selection: number;
+	created: string[];
+	reviews: number;
 	/** Tickers de la hoja sin valor en la aplicación. */
 	unknown: string[];
 }
@@ -125,7 +222,7 @@ export interface ExtrasSummary {
  * `date` es la fecha a la que corresponden los precios de la hoja.
  */
 export function applyExtras(db: DatabaseSync, extras: SheetExtras, date: string): ExtrasSummary {
-	const summary: ExtrasSummary = { prices: 0, fxRates: 0, schedules: 0, changes: 0, goals: 0, unknown: [] };
+	const summary: ExtrasSummary = { prices: 0, fxRates: 0, schedules: 0, changes: 0, goals: 0, orders: 0, selection: 0, created: [], reviews: 0, unknown: [] };
 	const ids = new Map((db.prepare('SELECT id, ticker FROM security').all() as { id: number; ticker: string }[]).map((s) => [s.ticker, s.id]));
 	const unknown = new Set<string>();
 	db.exec('BEGIN IMMEDIATE');
@@ -183,6 +280,18 @@ export function applyExtras(db: DatabaseSync, extras: SheetExtras, date: string)
 				summary.goals++;
 			}
 		}
+		// Orden por defecto del cuadro: el de las columnas de `Control cartera`, en las carteras que aún no tienen ninguno.
+		const order = extras.securities.map((s) => ids.get(s.ticker)).filter((id): id is number => id != null);
+		const hasOrder = db.prepare('SELECT 1 FROM portfolio_security WHERE portfolio_id = ?');
+		const insOrder = db.prepare('INSERT INTO portfolio_security (portfolio_id, security_id, sort_order) VALUES (?,?,?)');
+		if (order.length)
+			for (const p of portfolios) {
+				if (hasOrder.get(p.id)) continue;
+				order.forEach((id, i) => insOrder.run(p.id, id, i + 1));
+				summary.orders++;
+			}
+
+		if (extras.selection && portfolios.length) applySelection(db, extras.selection, portfolios[0].id, date, ids, summary);
 		db.exec('COMMIT');
 	} catch (e) {
 		db.exec('ROLLBACK');
@@ -190,4 +299,55 @@ export function applyExtras(db: DatabaseSync, extras: SheetExtras, date: string)
 	}
 	summary.unknown = [...unknown].sort();
 	return summary;
+}
+
+/**
+ * Selección de la cartera principal: zona, tier, objetivo y dividendo estimado de cada valor (solo donde faltan),
+ * alta de los candidatos que la aplicación no conoce, listas en el orden de la hoja (si la cartera aún no tiene
+ * selección), parámetros (si no están guardados) y revisiones de fechas que aún no existen.
+ */
+function applySelection(db: DatabaseSync, sel: SheetSelection, portfolioId: number, date: string, ids: Map<string, number>, summary: ExtrasSummary): void {
+	const insSecurity = db.prepare('INSERT INTO security (ticker, price_ticker, country, currency) VALUES (?,?,?,?)');
+	const fill = db.prepare(
+		'UPDATE security SET zone = coalesce(zone, ?), tier = coalesce(tier, ?), target_price = coalesce(target_price, ?), dividend_estimate = coalesce(dividend_estimate, ?), price_ticker = coalesce(price_ticker, ?), currency = coalesce(currency, ?) WHERE id = ?'
+	);
+	const hasPrice = db.prepare('SELECT 1 FROM price WHERE security_id = ?');
+	const insPrice = db.prepare(`INSERT INTO price (security_id, date, price, currency, source) VALUES (?,?,?,?,'legacy')`);
+	const currencyOf = db.prepare('SELECT currency FROM security WHERE id = ?');
+	for (const e of sel.entries) {
+		let id = ids.get(e.ticker);
+		if (id == null) {
+			id = Number(insSecurity.run(e.ticker, e.priceTicker, e.country || null, e.currency).lastInsertRowid);
+			ids.set(e.ticker, id);
+			summary.created.push(e.ticker);
+		}
+		fill.run(e.zone, e.tier, e.target, e.dividendEstimate, e.priceTicker, e.currency, id);
+		const currency = (currencyOf.get(id) as { currency: string | null }).currency;
+		if (e.price != null && currency && !hasPrice.get(id)) {
+			insPrice.run(id, date, e.price, currency);
+			summary.prices++;
+		}
+	}
+
+	if (!(db.prepare('SELECT 1 FROM selection_entry WHERE portfolio_id = ?').get(portfolioId))) {
+		const ins = db.prepare('INSERT INTO selection_entry (portfolio_id, security_id, position) VALUES (?,?,?)');
+		sel.entries.forEach((e, i) => ins.run(portfolioId, ids.get(e.ticker)!, i + 1));
+		summary.selection = sel.entries.length;
+	}
+	if (!(db.prepare("SELECT 1 FROM setting WHERE key = 'selection_params'").get())) db.prepare("INSERT INTO setting (key, value) VALUES ('selection_params', ?)").run(JSON.stringify(sel.params));
+
+	const hasReview = db.prepare('SELECT 1 FROM selection_review WHERE portfolio_id = ? AND date = ?');
+	const insReview = db.prepare("INSERT INTO selection_review (portfolio_id, date, source) VALUES (?, ?, 'legacy')");
+	const insItem = db.prepare('INSERT INTO selection_review_item (review_id, security_id, position, price, currency) VALUES (?,?,?,?,?)');
+	const position = new Map(sel.entries.map((e, i) => [e.ticker, i + 1]));
+	for (const r of sel.reviews) {
+		if (hasReview.get(portfolioId, r.date)) continue;
+		const reviewId = Number(insReview.run(portfolioId, r.date).lastInsertRowid);
+		for (const [ticker, price] of r.prices) {
+			const id = ids.get(ticker)!;
+			const currency = (currencyOf.get(id) as { currency: string | null }).currency;
+			if (currency) insItem.run(reviewId, id, position.get(ticker) ?? null, price, currency);
+		}
+		summary.reviews++;
+	}
 }

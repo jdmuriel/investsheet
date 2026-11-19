@@ -12,6 +12,8 @@ export function listSecurityInfo(db: DatabaseSync): SecurityInfo[] {
 }
 
 export interface PortfolioData extends PortfolioView {
+	/** Posición por defecto de cada valor en la cartera (el orden de \`Control cartera\`), por identificador. */
+	order: Record<number, number>;
 	/** Fechas del precio más antiguo y más reciente entre los valores con posición, y cambios usados. */
 	oldestQuote: string | null;
 	newestQuote: string | null;
@@ -32,5 +34,6 @@ export function loadPortfolio(db: DatabaseSync, portfolioId: number, today: stri
 		month: Number(today.slice(5, 7))
 	});
 	const dates = view.rows.flatMap((r) => (r.quote ? [r.quote.date] : [])).sort();
-	return { ...view, oldestQuote: dates[0] ?? null, newestQuote: dates.at(-1) ?? null, fx: [...fx].map(([currency, r]) => ({ currency, ...r })).sort((a, b) => a.currency.localeCompare(b.currency)) };
+	const order = db.prepare('SELECT security_id AS id, sort_order AS n FROM portfolio_security WHERE portfolio_id = ?').all(portfolioId) as { id: number; n: number }[];
+	return { ...view, order: Object.fromEntries(order.map((o) => [o.id, o.n])), oldestQuote: dates[0] ?? null, newestQuote: dates.at(-1) ?? null, fx: [...fx].map(([currency, r]) => ({ currency, ...r })).sort((a, b) => a.currency.localeCompare(b.currency)) };
 }

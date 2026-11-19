@@ -25,7 +25,7 @@ Dificultad orientativa de cada tarea, para elegir modelo: 🟢 mecánica y acota
 3. Los datos reales **no están en el repositorio**. Para trabajar con ellos hay que pedir al propietario una copia descargada desde Ajustes → «Descargar una copia» y dejarla en `data/invest.db`, y una copia de la hoja en `legacy/Inversión.xlsx` (las dos carpetas están en `.gitignore`; un contenedor nuevo empieza sin ellas).
 4. Sin datos reales se puede desarrollar igual: las pruebas usan datos inventados.
 5. Antes de dar por nueva una diferencia con la hoja, mirar [incidencias-migracion.md](incidencias-migracion.md); si lo es, anotarla allí.
-6. Desde el entorno de desarrollo en la nube no hay acceso al servidor del BCE; la hoja de precios publicada sí se puede leer.
+6. Desde el entorno de desarrollo en la nube no se ha comprobado el acceso al servidor del BCE ni a la hoja de precios publicada: sus lecturas se prueban con ficheros de ejemplo.
 7. **API de producción desde la sesión**: el token está guardado como secreto de red del entorno de Claude Code para `invest.jdmuriel.com`; basta con `curl https://invest.jdmuriel.com/api/v1/...` sin cabecera de autorización (la pone el proxy). Uso en [api.md](api.md). Así se han hecho las correcciones de datos en producción (`keepEffects`, `PATCH` de valores y de cambios de dividendo).
 8. **Desplegar**: con el visto bueno del propietario, fusionar en `main`, lanzar a mano la acción `desplegar.yml` (`workflow_dispatch`: un *push* desde la sesión no la lanza) y comprobar que responde la versión nueva.
 9. **Google**: el conector de Drive puede buscar, crear y descargar ficheros del propietario, pero el de Google Sheets da «Permission denied» con sus hojas: no se pueden editar desde la sesión.

@@ -11,7 +11,7 @@ Dificultad orientativa de cada tarea, para elegir modelo: 🟢 mecánica y acota
 - **En producción**: <https://invest.jdmuriel.com>, con inicio de sesión de Google y los datos históricos cargados (3 carteras, 2.918 operaciones). Todo lo hecho está fusionado en `main`; el esquema va por la migración 7.
 - **Funciona (fase 1)**: listado de movimientos con acumulados, métricas anuales y objetivos, con vista de móvil; alta, edición, duplicado y borrado de operaciones; cartera fija en la barra superior; mantenimiento de cuentas y valores; conciliación de saldos; exportación de validación con el formato de `Log`; API para asistentes; descarga y restauración de la base de datos.
 - **Funciona (fase 2)**: cuadro de cartera en la portada, calendario y cambios de dividendo, precios (hoja publicada o a mano), tipos de cambio del BCE e importación de los datos de la hoja que no son operaciones.
-- **Recién desplegado y sin probar en producción**: la fase 2 entera. Falta que el propietario importe la hoja desde Ajustes (hasta entonces el cuadro sale sin precios ni dividendos), cree la hoja de precios y compruebe que la descarga del BCE funciona.
+- **Fase 2 en producción, en revisión**: el propietario ya ha importado la hoja desde Ajustes y ha creado la hoja de precios; falta comprobar la descarga del BCE y repasar el cuadro de cartera contra la hoja.
 - **No existe todavía**: copias automáticas externas (1.11), aplicación instalable (1.15), pruebas de extremo a extremo (1.16), servidor MCP (1.19), exportación de validación de `Control cartera` (2.7), valores en estudio, selección e informes.
 - **Siguiente paso propuesto**: revisar con el propietario el cuadro de cartera ya con sus datos y resolver las incidencias pendientes ([P1 a P7](incidencias-migracion.md#5-pendiente-de-decidir-o-de-hacer)); después, la 2.7 y la copia externa (1.11), que es lo que más riesgo quita antes del periodo en paralelo.
 - La hoja de cálculo sigue siendo la fuente de verdad hasta completar la fase 1 y validar un mes en paralelo.
@@ -115,8 +115,8 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 - [ ] Decidir si las carteras secundarias muestran el «capital invertido» con el resultado de los años cerrados, como la principal, o solo lo aportado.
 - [ ] Medir cuánto tarda el primer arranque tras un rato con la máquina parada.
 - [ ] Probar el alta de operaciones con unas cuantas reales.
-- [ ] Tras desplegar la fase 2: en Ajustes → «Importar datos de la hoja», subir una copia de la hoja indicando la fecha de sus precios. Carga objetivos, precios, cambios, calendario de dividendos e histórico de cambios de dividendo sin tocar las operaciones.
-- [ ] Crear la hoja de precios según [hoja-precios.md](hoja-precios.md) y guardar su dirección en el secreto `PRICES_CSV_URL`.
+- [x] Tras desplegar la fase 2: en Ajustes → «Importar datos de la hoja», subir una copia de la hoja indicando la fecha de sus precios. Carga objetivos, precios, cambios, calendario de dividendos e histórico de cambios de dividendo sin tocar las operaciones.
+- [x] Crear la hoja de precios según [hoja-precios.md](hoja-precios.md) y guardar su dirección en el secreto `PRICES_CSV_URL`.
 - [ ] Repasar el cuadro de cartera contra `Control cartera`. Diferencias esperadas: el coste (FIFO y valores traspasados), el «capital aportado» (la hoja no cuenta la apertura de 2014) y los dividendos cobrados históricos (la hoja los copia a mano).
 - [ ] La compra del 9 de octubre de 2026 anotada con ticker `AMS` no entra en ninguna columna de la hoja: decidir a qué valor corresponde y corregirla en la aplicación (y en la hoja).
 - [ ] Descargar la exportación de validación adjuntando la hoja y repasar la solapa «Diferencias»: debería mostrar solo las diferencias conocidas (ver más abajo).
@@ -185,3 +185,4 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 | 2026-11-16 | Tarea 1.14: objetivos anuales por cartera, con edición en Ajustes, consecución en el listado de movimientos e importación desde la cabecera de la hoja. |
 | 2026-11-16 | Fase 2, tareas 2.1 a 2.6: precios (hoja publicada y a mano), tipos de cambio del BCE con sugerencia en el formulario, calendario y cambios de dividendo, cuadro de cartera e importación de los datos de `Control cartera` y `Variación divs`. Corregida la duplicación de cinco compras importadas (migración 7). |
 | 2026-11-16 | Fusionadas en `main` la tarea 1.14 y la fase 2. Nuevo fichero de incidencias de la migración y grado de avance por requisito en la especificación. |
+| 2026-11-19 | El propietario ha importado en producción los datos de la hoja (Ajustes → «Importar datos de la hoja») y ha creado la hoja de precios. En curso: comprobaciones en producción, revisión de datos maestros y cambio del token de despliegue. |

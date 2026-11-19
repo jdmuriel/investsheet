@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
-import { apiDelete, apiIndex, apiOperation, apiOperations, apiSave, apiSecurities, apiState, findPortfolio } from './api.ts';
+import { apiDelete, apiDeleteSecurity, apiIndex, apiPatchSecurity, apiOperation, apiOperations, apiSave, apiSecurities, apiState, findPortfolio } from './api.ts';
 import { apiTokenValid } from './auth.ts';
 import { openDatabase } from './db.ts';
 
@@ -47,7 +47,7 @@ describe('consultas', () => {
 		expect(findPortfolio(db, 'prueba')?.id).toBe(1);
 		expect(findPortfolio(db, '2')?.name).toBe('Otra');
 		expect(findPortfolio(db, 'nada')).toBeNull();
-		expect(apiSecurities(db).body).toEqual([{ ticker: 'ACME', name: null, currency: 'EUR', whtSourcePct: null, whtDestPct: 0.19 }]);
+		expect(apiSecurities(db).body).toMatchObject([{ ticker: 'ACME', name: null, currency: 'EUR', whtSourcePct: null, whtDestPct: 0.19 }]);
 	});
 
 	it('estado a una fecha, en unidades y no en céntimos', () => {
@@ -127,5 +127,33 @@ describe('escritura', () => {
 		expect(apiDelete(db, deposit, false).status).toBe(409);
 		expect(apiDelete(db, deposit, true)).toMatchObject({ status: 200, body: { deleted: true } });
 		expect(count()).toBe(1);
+	});
+});
+
+describe('valores', () => {
+	it('cambia solo lo enviado y borra los que no tienen usos', () => {
+		expect(apiPatchSecurity(db, 'acme', { name: 'Acme, S. A.', active: false })).toMatchObject({ status: 200, body: { saved: true, ticker: 'ACME', name: 'Acme, S. A.', active: false, currency: 'EUR', whtDestPct: 0.19 } });
+		expect(apiPatchSecurity(db, 'acme', { active: 'no' }).status).toBe(422);
+		expect(apiPatchSecurity(db, 'acme', { ticker: 'OTRO' }).status).toBe(422);
+		expect(apiPatchSecurity(db, 'nada', { name: 'x' }).status).toBe(404);
+		db.exec("INSERT INTO security (id, ticker) VALUES (2, 'BME;X')");
+		expect(apiDeleteSecurity(db, 'BME;X', false).status).toBe(409);
+		expect(apiDeleteSecurity(db, 'bme;x', true)).toMatchObject({ status: 200, body: { deleted: true, ticker: 'BME;X' } });
+		seed();
+		expect(apiDeleteSecurity(db, 'ACME', true).status).toBe(422);
+		expect((apiSecurities(db).body as Body[]).map((s) => [s.ticker, s.uses])).toEqual([['ACME', 2]]);
+	});
+
+	it('una operación importada cambia de valor con keepEffects', () => {
+		db.exec(`
+			INSERT INTO security (id, ticker, currency) VALUES (2, 'ERRATA', 'EUR');
+			INSERT INTO operation (id, portfolio_id, date, seq, type, account_id, security_id, gross_eur, description, source) VALUES (70, 1, '2024-06-01', 1, 'DIVIDENDOS', 1, 2, 500, 'Dividendos ACME', 'legacy');
+			INSERT INTO cash_leg (operation_id, account_id, amount) VALUES (70, 1, 500);
+		`);
+		const read = apiOperation(db, 70).body as Body;
+		expect(post({ type: read.type, date: read.date, description: read.description, security: 'ACME', keepEffects: true, dryRun: true }, 70).status).toBe(200);
+		expect((apiOperation(db, 70).body as Body).security).toBe('ERRATA');
+		expect(post({ type: read.type, date: read.date, description: read.description, security: 'ACME', keepEffects: true }, 70)).toMatchObject({ status: 200, body: { saved: true } });
+		expect(apiOperation(db, 70).body).toMatchObject({ security: 'ACME', grossEur: 5, imported: true });
 	});
 });

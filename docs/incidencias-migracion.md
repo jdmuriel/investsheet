@@ -15,7 +15,7 @@ Son consecuencia de decisiones tomadas con el propietario. No hay que corregirla
 | C1 | Coste de los valores con ventas parciales | Coste por valor y coste total del cuadro de cartera; columnas de coste de `Log` | La aplicación da de baja los lotes más antiguos a su coste original (FIFO). La hoja restaba del coste el importe de la venta. |
 | C2 | Coste de los valores traspasados entre brokers | Lo mismo que C1 | Una venta y una recompra el mismo día se importan como traspaso: los lotes conservan fecha y coste. La hoja sumaba al coste la diferencia de precio entre la venta y la recompra. |
 | C3 | Resultado de 2025 y, desde enero de 2026, capital invertido de la cartera principal | `Log`: ganancias del año y capital invertido; métricas de 2025 | Las primas de las dos opciones de 2025 son renta del año (negativa si se pagó). La hoja las anotaba como compra. Migración 3. |
-| C4 | Capital invertido de las carteras secundarias | `Log` de las carteras secundarias | La hoja principal suma al capital invertido el resultado de cada año cerrado y las secundarias no. La aplicación calcula las dos magnitudes. Pendiente decidir cuál se muestra en las secundarias (P4). |
+| C4 | Capital invertido de las carteras secundarias | `Log` de las carteras secundarias | La hoja principal suma al capital invertido el resultado de cada año cerrado y las secundarias no. La aplicación calcula las dos magnitudes. **Decidido**: todas muestran el capital con el resultado de los años cerrados; la exportación de validación de las secundarias sigue imitando a la hoja, pero ya no se validan. |
 | C5 | Capital aportado del cuadro de cartera, y con él el resultado total | Cuadro de cartera frente a «Capital aportado» de `Control cartera` | La aplicación cuenta como aportación la apertura de 2014; la hoja no la anota como tal. **No está comprobado que explique toda la diferencia** (P6). |
 | C6 | Dividendos cobrados históricos por valor, y el «% recuperado» | Cuadro de cartera frente a `Control cartera` | La hoja los copia a mano desde `Log`, mes a mes; la aplicación los suma del registro. No se ha revisado valor a valor de dónde sale cada diferencia. |
 | C7 | Fracción de año transcurrida de los objetivos | Listado de movimientos frente a la cabecera de `Log` | La aplicación la mide por días; la hoja, por meses completos. |
@@ -63,9 +63,9 @@ La aplicación las ha absorbido o las señala; algunas conviene corregirlas tamb
 |---|---|---|
 | P1 | Revisar las filas con fecha fuera de orden (H2) en el informe de importación. | Propietario |
 | P2 | Decidir a qué valor corresponde la compra anotada como `AMS` (H7) y corregirla en la aplicación y en la hoja. | Propietario |
-| P3 | Marcar como inactivos `REE`, `HCP` y `3M` en Ajustes → Valores. | Propietario |
-| P4 | Decidir si las carteras secundarias muestran el capital invertido con el resultado de los años cerrados (C4). | Propietario |
-| P5 | Poner al día las solapas de las carteras secundarias antes del periodo en paralelo, si se quieren validar (H10). | Propietario |
+| P3 | ~~Marcar como inactivos `REE`, `HCP` y `3M`.~~ Se borran tras corregir H13 (P8). | Sesión de trabajo |
+| P4 | ~~Capital invertido de las secundarias (C4).~~ Decidido: como la principal. | — |
+| P5 | ~~Poner al día las solapas de las secundarias (H10).~~ Decidido: se llevan solo en la aplicación y no se validan. | — |
 | P6 | Comprobar si la apertura de 2014 explica toda la diferencia de capital aportado (C5), y revisar valor a valor los dividendos cobrados históricos (C6). | Sesión de trabajo, con los datos reales |
 | P7 | Exportación de validación con el formato de `Control cartera` (tarea 2.7): hoy el cuadro solo se ha comparado en sus totales. | Sesión de trabajo |
 | P8 | Corregir el valor de las operaciones de H13 en la aplicación y en la hoja; después, borrar o desactivar los valores que queden sin movimientos. | Propietario, con ayuda de la API |

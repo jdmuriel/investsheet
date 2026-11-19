@@ -125,6 +125,21 @@ function resolveSecurity(db: DatabaseSync, raw: RawInput, field: 'security' | 't
 	delete raw[tickerField];
 }
 
+/**
+ * Valor de una operación que conserva sus efectos: el que tiene, o el pedido en `wanted` (identificador).
+ * Sirve para corregir el ticker mal anotado de un dividendo importado. Si la operación mueve acciones,
+ * el valor debe ser uno de los que mueve: así la cabecera no contradice a sus efectos.
+ */
+function keptSecurity(db: DatabaseSync, id: number, wanted: string | undefined, fail: (errors: string[]) => never): number | null {
+	const current = (db.prepare('SELECT security_id AS securityId FROM operation WHERE id = ?').get(id) as { securityId: number | null }).securityId;
+	if (!wanted || wanted === String(current)) return current;
+	const security = /^\d+$/.test(wanted) ? (db.prepare('SELECT id FROM security WHERE id = ?').get(Number(wanted)) as { id: number } | undefined) : undefined;
+	if (!security) return fail(['El valor no existe.']);
+	const legs = db.prepare('SELECT DISTINCT s.id, s.ticker FROM position_leg l JOIN security s ON s.id = l.security_id WHERE l.operation_id = ?').all(id) as { id: number; ticker: string }[];
+	if (legs.length && !legs.some((l) => l.id === security.id)) return fail([`Las acciones de esta operación son de ${legs.map((l) => l.ticker).join(', ')}: el valor tiene que ser uno de ellos.`]);
+	return security.id;
+}
+
 function checkAgainstLedger(db: DatabaseSync, portfolioId: number, before: Operation[], after: Operation[], confirmed: boolean): { errors: string[]; warnings: string[] } | null {
 	const names = new Map(listAccounts(portfolioId, db).map((a) => [a.id, a.name]));
 	const { errors, warnings } = checkChange(before, after, names);
@@ -134,7 +149,7 @@ function checkAgainstLedger(db: DatabaseSync, portfolioId: number, before: Opera
 /**
  * Lógica de `saveOperation`. Guarda una operación nueva (`id` nulo) o los cambios de una existente a partir de los campos
  * del formulario. Si `raw.keepEffects` es «1» (operaciones importadas) solo cambian fecha,
- * descripción y notas; si no, los efectos se generan de nuevo. Los avisos (saldo negativo)
+ * descripción, notas y el valor al que se atribuye; si no, los efectos se generan de nuevo. Los avisos (saldo negativo)
  * necesitan `confirmed`.
  */
 function submit(db: DatabaseSync, portfolioId: number, id: number | null, form: RawInput, { confirmed = false, dryRun = false, source = 'manual' }: SaveOptions): SubmitResult {
@@ -157,11 +172,12 @@ function submit(db: DatabaseSync, portfolioId: number, id: number | null, form: 
 		if (keepEffects) {
 			if (!existing) return fail(['No se puede dar de alta una operación sin efectos.']);
 			const current = before.find((o) => o.id === id)!;
-			const problem = checkAgainstLedger(db, portfolioId, before, before.map((o) => (o.id === id ? { ...current, date, seq } : o)), confirmed);
+			const securityId = keptSecurity(db, id!, raw.security, fail);
+			const problem = checkAgainstLedger(db, portfolioId, before, before.map((o) => (o.id === id ? { ...current, date, seq, securityId } : o)), confirmed);
 			if (problem) fail(problem.errors, problem.warnings);
 			if (dryRun) throw new Rejected({ ok: true, id: id!, description: raw.description || existing.description });
 			const old = snapshot(db, id!);
-			db.prepare("UPDATE operation SET date = ?, seq = ?, description = ?, notes = ?, updated_at = datetime('now') WHERE id = ?").run(date, seq, raw.description || existing.description, notes || null, id);
+			db.prepare("UPDATE operation SET date = ?, seq = ?, description = ?, notes = ?, security_id = ?, updated_at = datetime('now') WHERE id = ?").run(date, seq, raw.description || existing.description, notes || null, securityId, id);
 			audit(db, id!, 'update', old, snapshot(db, id!));
 			return { ok: true, id: id! };
 		}

@@ -184,3 +184,41 @@ export function saveSecurity(db: DatabaseSync, id: number | null, fields: Fields
 		return { ok: true, id: savedId };
 	});
 }
+
+/**
+ * Borra un valor que no cita ninguna operación ni efecto (un ticker mal tecleado, por ejemplo), con sus precios,
+ * calendario y cambios de dividendo. Un valor con historia no se borra: se marca como inactivo.
+ */
+export function deleteSecurity(db: DatabaseSync, id: number): MasterResult {
+	return transaction(db, (): MasterResult => {
+		const existing = getSecurityRecord(db, id);
+		if (!existing) return { ok: false, errors: ['El valor ya no existe.'] };
+		if (existing.uses > 0) return { ok: false, errors: [`No se puede borrar «${existing.ticker}»: lo usan ${existing.uses} operaciones y efectos. Márcalo como inactivo.`] };
+		for (const table of ['price', 'dividend_schedule', 'dividend_change']) db.prepare(`DELETE FROM ${table} WHERE security_id = ?`).run(id);
+		db.prepare('DELETE FROM security WHERE id = ?').run(id);
+		const { uses: _, ...before } = existing;
+		db.prepare('INSERT INTO audit_log (entity, entity_id, action, before_json, after_json) VALUES (?,?,?,?,?)').run('security', id, 'delete', JSON.stringify(before), null);
+		return { ok: true, id };
+	});
+}
+
+/** Campos del formulario de un valor con lo que tiene guardado, para editar solo una parte. */
+export function securityFields(record: SecurityRecord): Record<string, string> {
+	const pct = (fraction: number | null) => (fraction == null ? '' : String(Math.round(fraction * 1e6) / 1e4));
+	const text = (value: string | null) => value ?? '';
+	return {
+		ticker: record.ticker,
+		priceTicker: text(record.priceTicker),
+		name: text(record.name),
+		country: text(record.country),
+		currency: text(record.currency),
+		sector: text(record.sector),
+		supersector: text(record.supersector),
+		zone: text(record.zone),
+		tier: text(record.tier),
+		whtSourcePct: pct(record.whtSourcePct),
+		whtDestPct: pct(record.whtDestPct),
+		reinvest: String(record.reinvest),
+		active: String(record.active)
+	};
+}

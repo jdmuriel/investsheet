@@ -112,19 +112,21 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 
 - [ ] Sustituir el secreto `FLY_API_TOKEN` por un token de despliegue limitado a la aplicación `investsheet` y revocar el de organización.
 - [ ] Revisar en el informe de importación las filas con fechas fuera de orden (31 en la cartera principal, 16 y 2 en las otras).
-- [ ] Decidir si las carteras secundarias muestran el «capital invertido» con el resultado de los años cerrados, como la principal, o solo lo aportado.
+- [x] Decidir si las carteras secundarias muestran el «capital invertido» con el resultado de los años cerrados, como la principal, o solo lo aportado. **Decidido: como la principal** (véase Decisiones).
 - [ ] Medir cuánto tarda el primer arranque tras un rato con la máquina parada.
 - [ ] Probar el alta de operaciones con unas cuantas reales.
 - [x] Tras desplegar la fase 2: en Ajustes → «Importar datos de la hoja», subir una copia de la hoja indicando la fecha de sus precios. Carga objetivos, precios, cambios, calendario de dividendos e histórico de cambios de dividendo sin tocar las operaciones.
 - [x] Crear la hoja de precios según [hoja-precios.md](hoja-precios.md) y guardar su dirección en el secreto `PRICES_CSV_URL`.
 - [ ] Repasar el cuadro de cartera contra `Control cartera`. Diferencias esperadas: el coste (FIFO y valores traspasados), el «capital aportado» (la hoja no cuenta la apertura de 2014) y los dividendos cobrados históricos (la hoja los copia a mano).
-- [ ] La compra del 9 de octubre de 2026 anotada con ticker `AMS` no entra en ninguna columna de la hoja: decidir a qué valor corresponde y corregirla en la aplicación (y en la hoja).
+- [x] La compra del 9 de octubre de 2026 anotada con ticker `AMS` no entra en ninguna columna de la hoja: decidir a qué valor corresponde y corregirla en la aplicación (y en la hoja). Es Amadeus y ya tiene columna.
 - [ ] Descargar la exportación de validación adjuntando la hoja y repasar la solapa «Diferencias»: debería mostrar solo las diferencias conocidas (ver más abajo).
-- [ ] Rellenar en Ajustes → Valores el nombre de cada valor y marcar como inactivos los que ya no se siguen; revisar nombre y broker de las cuentas.
-- [ ] Las solapas de las carteras secundarias no tienen movimientos de 2026 y sus cabeceras de años están desfasadas: ponerlas al día antes del periodo en paralelo, si se quieren validar.
-- [ ] Los valores `REE`, `HCP` y `3M` eran erratas de la hoja (por `RED`, `PEAK` y `MMM`) y ya no tienen movimientos: marcarlos como inactivos en Ajustes → Valores.
+- [ ] Revisar nombre y broker de las cuentas. (Los nombres de los valores y los inactivos los rellena la sesión por la API.)
+- [x] ~~Poner al día las solapas de las carteras secundarias.~~ **Decidido**: las secundarias se llevan ya solo en la aplicación; el periodo en paralelo se valida solo contra `Log`.
+- [ ] Corregir en la hoja la celda del ticker de las filas de la incidencia H13 ([incidencias-migracion.md](incidencias-migracion.md)); en la aplicación las corrige la sesión por la API.
 
 ## Decisiones y hallazgos que conviene recordar
+
+- **Capital invertido = aportaciones + resultado de los años cerrados, en todas las carteras**: a final de año se considera que las ganancias se reinvierten en la cartera. En el listado de movimientos se muestra en una sola columna. Las carteras secundarias se llevan solo en la aplicación y no se validan contra la hoja.
 
 - **Coste por lotes FIFO** en todo el histórico; la plusvalía realizada se muestra aparte y no entra en las «ganancias del año».
 - **Venta y recompra el mismo día = traspaso de valores**: los lotes conservan fecha y coste.
@@ -187,3 +189,8 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 | 2026-11-16 | Fusionadas en `main` la tarea 1.14 y la fase 2. Nuevo fichero de incidencias de la migración y grado de avance por requisito en la especificación. |
 | 2026-11-19 | El propietario ha importado en producción los datos de la hoja (Ajustes → «Importar datos de la hoja») y ha creado la hoja de precios. En curso: comprobaciones en producción, revisión de datos maestros y cambio del token de despliegue. |
 | 2026-11-19 | Creada la hoja de precios en Drive y configurado `PRICES_CSV_URL`; activada la API con `API_TOKEN` en Fly y el mismo token como secreto de red del entorno de Claude Code, comprobado con `GET /api/v1`. |
+| 2026-11-19 | Corrección de valores: una operación importada puede cambiar de valor sin recalcularse (formulario y API, con `keepEffects`); borrado de valores sin usos (Ajustes y API) y `PATCH /api/v1/valores/{ticker}`. Decididos el capital de las secundarias (como la principal) y que las secundarias ya no se validan contra la hoja. |
+
+## Ideas para más adelante
+
+- [ ] **Separar el capital invertido en aportaciones y capital reinvertido** (resultado de los años cerrados), para consultarlo aparte. En el listado de movimientos sigue siendo una sola columna. 🟢

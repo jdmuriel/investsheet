@@ -127,6 +127,26 @@ describe('edición y borrado', () => {
 		expect(save({ type: 'CIERREANUAL', date: '2024-05-02' }, 50).ok).toBe(false);
 	});
 
+	it('una operación importada puede cambiar de valor sin recalcularse, pero no contra sus acciones', () => {
+		db.exec(`
+			INSERT INTO security (id, ticker, currency) VALUES (2, 'ERRATA', 'EUR'), (3, 'OTRA', 'EUR');
+			INSERT INTO operation (id, portfolio_id, date, seq, type, account_id, security_id, gross_eur, description, source) VALUES (60, 1, '2024-06-01', 1, 'DIVIDENDOS', 1, 2, 500, 'Dividendos ACME', 'legacy');
+			INSERT INTO cash_leg (operation_id, account_id, amount) VALUES (60, 1, 500);
+			INSERT INTO operation (id, portfolio_id, date, seq, type, account_id, security_id, purchase_eur, description, source) VALUES (61, 1, '2024-06-02', 1, 'COMPRA', 1, 2, 400, 'Compra ACME', 'legacy');
+			INSERT INTO cash_leg (operation_id, account_id, amount) VALUES (61, 1, -400);
+			INSERT INTO position_leg (operation_id, security_id, kind, shares, cost_eur, reduced_cost_eur) VALUES (61, 1, 'buy', 10000000, 400, 400);
+		`);
+		const keep = (id: number, security: string, date: string) => save({ type: 'DIVIDENDOS', date, description: 'x', keepEffects: '1', security }, id);
+		expect(keep(60, '1', '2024-06-01')).toMatchObject({ ok: true });
+		expect(db.prepare('SELECT security_id AS s, gross_eur AS g FROM operation WHERE id = 60').get()).toMatchObject({ s: 1, g: 500 });
+		expect(state().cash.get(BANK)).toBe(100);
+		// Con acciones, solo el valor de esas acciones.
+		expect(keep(61, '3', '2024-06-02')).toMatchObject({ ok: false });
+		expect(keep(61, '1', '2024-06-02')).toMatchObject({ ok: true });
+		expect(keep(60, '99', '2024-06-01')).toMatchObject({ ok: false });
+		expect(db.prepare("SELECT count(*) AS n FROM audit_log WHERE entity_id IN (60, 61) AND action = 'update'").get()).toMatchObject({ n: 2 });
+	});
+
 	it('borrar deja rastro y respeta las validaciones', () => {
 		const money = deposit();
 		const purchase = buy('2025-01-02', '10');

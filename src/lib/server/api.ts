@@ -8,6 +8,7 @@ import { investedCapital, run, totalCost, totalReducedCost, totalShares } from '
 import type { RawInput } from '../engine/form.ts';
 import { OPERATION_TYPES, type BuiltOperation } from '../engine/operations.ts';
 import { MICRO } from '../engine/types.ts';
+import { deleteSecurity, listSecurityRecords, saveSecurity, securityFields } from './masters.ts';
 import { deleteOperation, getOperation, saveOperation, type SubmitResult } from './operations.ts';
 import { listAccounts, listSecurities, loadOperations, type Account, type OperationRow } from './store.ts';
 
@@ -43,7 +44,9 @@ export function apiIndex(db: DatabaseSync): ApiResponse {
 		portfolios: portfolios(db).map((p) => ({ ...p, accounts: listAccounts(p.id, db).map((a) => ({ code: a.code, name: a.name, currency: a.currency })) })),
 		endpoints: {
 			'GET /api/v1': 'Esta guía.',
-			'GET /api/v1/valores': 'Valores conocidos, con moneda y retenciones.',
+			'GET /api/v1/valores': 'Valores conocidos, con moneda, retenciones y si están activos.',
+			'PATCH /api/v1/valores/{ticker}': 'Cambia solo los datos enviados de un valor: name, priceTicker, country, currency, sector, supersector, zone, tier, active, reinvest.',
+			'DELETE /api/v1/valores/{ticker}?confirm=1': 'Borra un valor que no usa ninguna operación (un ticker mal tecleado). Uno con historia se marca inactivo.',
 			'GET /api/v1/carteras/{cartera}/estado?fecha=AAAA-MM-DD': 'Saldos, capital, resultado del año, posiciones y métricas anuales a una fecha (por defecto, hoy).',
 			'GET /api/v1/carteras/{cartera}/operaciones?desde=&hasta=&tipo=&valor=&cuenta=&texto=&limite=': 'Operaciones que cumplen los filtros; las más recientes si hay más que el límite (50 por defecto).',
 			'POST /api/v1/carteras/{cartera}/operaciones': 'Da de alta una operación.',
@@ -61,14 +64,49 @@ export function apiIndex(db: DatabaseSync): ApiResponse {
 			'Si falta «amount» se calcula como quantity × price. Si se da «cashTotal» (lo abonado o cargado en la cuenta), los gastos son la diferencia.',
 			'"dryRun": true valida y devuelve el resultado sin guardar nada: úsalo para enseñar la operación antes de anotarla.',
 			'Un 409 trae avisos (por ejemplo, saldo negativo): se repite con "confirm": true si procede. Un 422 trae errores que hay que corregir.',
-			'Las operaciones importadas de la hoja antigua («imported») solo admiten cambiar fecha, descripción y notas, con "keepEffects": true.'
+			'Las operaciones importadas de la hoja antigua («imported») solo admiten cambiar fecha, descripción, notas y el valor («security») al que se atribuyen, con "keepEffects": true. Si mueven acciones, el valor debe ser el de esas acciones.'
 		],
 		types: Object.fromEntries(Object.entries(OPERATION_TYPES).map(([code, d]) => [code, { label: d.label, fields: d.fields }]))
 	});
 }
 
 export function apiSecurities(db: DatabaseSync): ApiResponse {
-	return ok(listSecurities(db).map((s) => ({ ticker: s.ticker, name: s.name, currency: s.currency, whtSourcePct: s.whtSourcePct, whtDestPct: s.whtDestPct })));
+	return ok(
+		listSecurityRecords(db).map((s) => ({ ticker: s.ticker, name: s.name, priceTicker: s.priceTicker, currency: s.currency, whtSourcePct: s.whtSourcePct, whtDestPct: s.whtDestPct, active: s.active === 1, uses: s.uses }))
+	);
+}
+
+const SECURITY_TEXT = ['name', 'priceTicker', 'country', 'currency', 'sector', 'supersector', 'zone', 'tier'];
+const SECURITY_FLAGS = ['active', 'reinvest'];
+
+const findSecurity = (db: DatabaseSync, ticker: string) => listSecurityRecords(db).find((s) => s.ticker === ticker.toUpperCase()) ?? null;
+
+/** Cambia solo los datos enviados de un valor; el resto se queda como está. */
+export function apiPatchSecurity(db: DatabaseSync, ticker: string, body: unknown): ApiResponse {
+	const record = findSecurity(db, ticker);
+	if (!record) return problem(404, `No existe el valor «${ticker}».`);
+	if (body == null || typeof body !== 'object' || Array.isArray(body)) return problem(422, 'El cuerpo debe ser un objeto JSON.', { errors: [] });
+	const fields = securityFields(record);
+	const errors: string[] = [];
+	for (const [key, value] of Object.entries(body)) {
+		if (SECURITY_TEXT.includes(key) && (value === null || typeof value === 'string')) fields[key] = value ?? '';
+		else if (SECURITY_FLAGS.includes(key) && typeof value === 'boolean') fields[key] = value ? '1' : '0';
+		else if (SECURITY_TEXT.includes(key) || SECURITY_FLAGS.includes(key)) errors.push(`El campo «${key}» debe ser ${SECURITY_FLAGS.includes(key) ? 'true o false' : 'texto o null'}.`);
+		else errors.push(`Campo desconocido: «${key}».`);
+	}
+	if (errors.length) return problem(422, 'Los datos del valor no son válidos.', { errors });
+	const result = saveSecurity(db, record.id, fields);
+	if (!result.ok) return problem(422, 'Los datos del valor no son válidos.', { errors: result.errors });
+	return ok({ saved: true, ...(apiSecurities(db).body as { ticker: string }[]).find((s) => s.ticker === record.ticker) });
+}
+
+export function apiDeleteSecurity(db: DatabaseSync, ticker: string, confirmed: boolean): ApiResponse {
+	const record = findSecurity(db, ticker);
+	if (!record) return problem(404, `No existe el valor «${ticker}».`);
+	if (record.uses === 0 && !confirmed) return problem(409, 'El borrado no se puede deshacer: repítelo con ?confirm=1.', { errors: [], warnings: [] });
+	const result = deleteSecurity(db, record.id);
+	if (!result.ok) return problem(422, 'No se puede borrar el valor.', { errors: result.errors });
+	return ok({ deleted: true, ticker: record.ticker });
 }
 
 /** Estado de una cartera a una fecha (inclusive). */

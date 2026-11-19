@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 import { openDatabase } from './db.ts';
-import { listAccountRecords, listSecurityRecords, saveAccount, saveSecurity } from './masters.ts';
+import { deleteSecurity, listAccountRecords, listSecurityRecords, saveAccount, saveSecurity, securityFields } from './masters.ts';
 import { saveOperation } from './operations.ts';
 import { accountBalances, deleteReconciliation, listReconciliations, saveReconciliation } from './reconciliation.ts';
 
@@ -86,6 +86,27 @@ describe('valores', () => {
 		expect(saveSecurity(db, null, { ticker: 'BIEN', whtDestPct: 'mucho' })).toMatchObject({ ok: false });
 		expect(saveSecurity(db, 99, { ticker: 'BIEN' })).toMatchObject({ ok: false });
 		expect(listSecurityRecords(db).map((s) => s.ticker)).toEqual(['ACME', 'OTRO']);
+	});
+
+	it('borra solo valores sin usos, con sus precios y dividendos previstos', () => {
+		saveSecurity(db, null, { ticker: 'ERRATA' });
+		const errata = listSecurityRecords(db).find((s) => s.ticker === 'ERRATA')!.id;
+		db.exec(`INSERT INTO price (security_id, date, price, currency, source) VALUES (${errata}, '2025-01-01', 1, 'EUR', 'manual')`);
+		expect(deleteSecurity(db, errata)).toMatchObject({ ok: true });
+		expect(listSecurityRecords(db).map((s) => s.ticker)).toEqual(['ACME']);
+		expect(db.prepare('SELECT count(*) AS n FROM price').get()).toMatchObject({ n: 0 });
+		expect(audits('security').at(-1)).toMatchObject({ action: 'delete', after: null });
+		operation({ type: 'APORTACION', date: '2025-01-01', account: '1', amount: '5000' });
+		operation({ type: 'COMPRA', date: '2025-01-02', account: '1', security: '1', quantity: '10', price: '10' });
+		expect(deleteSecurity(db, 1)).toMatchObject({ ok: false });
+		expect(deleteSecurity(db, 99)).toMatchObject({ ok: false });
+	});
+
+	it('los campos de un valor guardado se pueden volver a guardar sin cambiar nada', () => {
+		saveSecurity(db, 1, { ticker: 'ACME', name: 'Acme', currency: 'EUR', whtSourcePct: '15', whtDestPct: '4,5', reinvest: '1', active: '1' });
+		const before = listSecurityRecords(db)[0];
+		expect(saveSecurity(db, 1, securityFields(before))).toMatchObject({ ok: true });
+		expect(listSecurityRecords(db)[0]).toEqual(before);
 	});
 
 	it('cuenta los usos de un valor', () => {

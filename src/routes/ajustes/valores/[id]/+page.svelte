@@ -21,7 +21,7 @@
 	</ul>
 {/if}
 
-<form method="POST">
+<form method="POST" action="?/guardar">
 	<div class="grid">
 		<label>
 			Ticker
@@ -78,6 +78,15 @@
 	<label class="check"><input type="checkbox" name="active" value="1" checked={checked('active', s?.active)} /> Activo (se ofrece al dar de alta movimientos aunque no haya posición)</label>
 	<p><button>Guardar</button></p>
 </form>
+
+{#if s && s.uses === 0}
+	<form method="POST" action="?/borrar" class="delete">
+		<p>
+			Ningún movimiento usa este valor.
+			<button onclick={(e) => confirm(`¿Borrar ${s.ticker} con sus precios y dividendos previstos? No se puede deshacer.`) || e.preventDefault()}>Borrar el valor</button>
+		</p>
+	</form>
+{/if}
 
 <style>
 	.page {

@@ -14,7 +14,7 @@ Dificultad orientativa de cada tarea, para elegir modelo: 🟢 mecánica y acota
 - **Funciona (fase 3)**: selección mensual en `/seleccion` (3.2), ya cargada con la solapa `Selección` y sus 34 revisiones. El propietario la usará por primera vez en la revisión de este mes.
 - **Migración**: revisadas las erratas de la hoja y corregidas en la aplicación y en la hoja (H2, H11, H13, H14). El resumen está al principio de [incidencias-migracion.md](incidencias-migracion.md).
 - **No existe todavía**: copias automáticas externas (1.11), aplicación instalable (1.15), pruebas de extremo a extremo (1.16), servidor MCP (1.19), exportación de validación de `Control cartera` (2.7), valores en estudio (3.1), evolución de precios de la selección dibujada, edición del orden de la cartera e informes (fase 4).
-- **Pendiente del propietario**: añadir a la hoja de precios `BMY`, `GOOGL` y los 9 candidatos dados de alta desde `Selección` (AD, DGE, ENX, ASML, META, AMZN, BNTX, NOVO-B, LDA); cambiar `FLY_API_TOKEN` por un token limitado a la aplicación; probar el alta de operaciones reales.
+- **Pendiente del propietario**: añadir a la hoja de precios `BMY`, `GOOGL` y los 9 candidatos dados de alta desde `Selección` (AD, DGE, ENX, ASML, META, AMZN, BNTX, NOVO-B, LDA); probar el alta de operaciones reales.
 - **Siguiente paso propuesto**: recoger las impresiones del propietario tras usar la selección este fin de semana; después, la copia externa automática (1.11), que es lo que más riesgo quita, y el periodo en paralelo de un mes contra `Log` (1.17). La 2.7 pierde urgencia: la comparación valor a valor ya está hecha.
 - La hoja de cálculo sigue siendo la fuente de verdad hasta validar un mes en paralelo.
 
@@ -118,7 +118,7 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 
 ## Pendiente del propietario
 
-- [ ] Sustituir el secreto `FLY_API_TOKEN` por un token de despliegue limitado a la aplicación `investsheet` y revocar el de organización.
+- [x] Sustituir el secreto `FLY_API_TOKEN` por un token de despliegue limitado a la aplicación `investsheet` y revocar el de organización. Hecho el 2026-11-19.
 - [x] Revisar en el informe de importación las filas con fechas fuera de orden (31 en la cartera principal, 16 y 2 en las otras). Solo dos eran erratas (H2).
 - [x] Decidir si las carteras secundarias muestran el «capital invertido» con el resultado de los años cerrados, como la principal, o solo lo aportado. **Decidido: como la principal** (véase Decisiones).
 - [ ] Medir cuánto tarda el primer arranque tras un rato con la máquina parada.
@@ -205,6 +205,7 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 | 2026-11-19 | Tarea 3.2: selección mensual en `/seleccion` con importación de la solapa `Selección` y su histórico; zona (España, EE. UU., resto del mundo), *tier*, precio objetivo y dividendo estimado en la ficha del valor; orden por defecto de los valores de cada cartera según `Control cartera`. Migración 8. Marcados los pasos del propietario de 1.18, 2.2 y 2.3. |
 | 2026-11-19 | Comparado el cuadro de cartera con `Control cartera` de la hoja del día (P6): acciones y dividendo previsto coinciden; capital aportado, coste y cobrado difieren por causas conocidas (C5, C6, C9, C10). Pendiente decidir qué cuenta como cobrado (P10). |
 | 2026-11-19 | «Cobrado» y «% recuperado» del cuadro suman también devoluciones de prima y ventas de derechos (decisión P10); el motor los lleva aparte (`returnsGross`), sin tocar «Por reinvertir». |
+| 2026-11-19 | El propietario ha cambiado `FLY_API_TOKEN` por un token de despliegue limitado a la aplicación. |
 
 ## Ideas para más adelante
 

@@ -17,6 +17,7 @@ Una hoja de Google con una pestaña llamada `actual` y una fila por valor:
 - **Columna D**: es opcional. Sin fecha, el precio se anota en el día de la lectura.
 - Los valores de Londres cotizan en peniques y Google lo indica con `GBX`: la aplicación los pasa a libras sola. No hay que dividir entre 100 en la hoja.
 - Las filas con error (`#N/A`) se saltan y el valor conserva su último precio.
+- **Un ticker sin bolsa puede resolverse en otro mercado**: con valores que ya no cotizan o que cambiaron de ticker, Google puede devolver otra empresa en otra moneda (pasó con `PEAK` en CAD, `BPL` en INR y `WBD` en EUR). Al crear la hoja, conviene repasar la columna C. Si la moneda no es la esperada, se puede escribir la bolsa solo en la fórmula (`=GOOGLEFINANCE("NASDAQ:WBD";"price")`) y dejar en A el ticker que conoce la aplicación, o borrar la fila si el valor ya no se sigue.
 - El orden de las filas y las columnas a la derecha de la D no importan. La fila de títulos es opcional.
 
 ## 2. Publicarla

@@ -32,13 +32,14 @@ La aplicación las ha absorbido o las señala; algunas conviene corregirlas tamb
 | H3 | Monedas mal tecleadas (`EU`, `UEUR`, `IBUSD`) y filas sin moneda. | Se normalizan con `scripts/legacy-config.json`. | corregida |
 | H4 | Valores de Londres en peniques (`GBX`): precio, dividendo previsto y tipo de cambio. | Se pasan a libras al leerlos; dentro todo va en `GBP`. | corregida |
 | H5 | Ticker `KHZ` por `KHC`; una fecha de un dividendo de `GIS`. | Alias y corrección puntual en `scripts/legacy-config.json`. | corregida |
-| H6 | Cinco compras con el ticker mal tecleado: `REE` (tres, por `RED`), `HCP` (por `PEAK`) y `3M` (por `MMM`). La hoja las sumó en la columna del valor bueno. | Se importan a nombre del valor bueno (véase F1). Los valores `REE`, `HCP` y `3M` quedan sin movimientos. | corregida; falta marcarlos inactivos (P3) |
+| H6 | Cinco compras con el ticker mal tecleado: `REE` (tres, por `RED`), `HCP` (por `PEAK`) y `3M` (por `MMM`). La hoja las sumó en la columna del valor bueno. | Se importan a nombre del valor bueno (véase F1). Los valores `REE`, `HCP` y `3M` quedan sin compras, pero sí con dividendos (véase H13). | corregida; falta H13 |
 | H7 | Una compra de octubre de 2026 anotada con ticker `AMS` que no entra en ninguna columna: la hoja no cuenta esas acciones en ningún valor. | En la aplicación aparece como un valor aparte, `AMS`, sin precio ni calendario. | pendiente (P2) |
 | H8 | El valor `MICC`, recibido y vendido en diciembre de 2025, no tiene columna propia. | Se da de alta a coste cero y se vende; el ajuste de coste va al valor del que procede. | esperada |
 | H9 | Dos columnas para un mismo valor que cambió de mercado (dos de `SHELL`). | Manda la que tiene posición. | corregida |
 | H10 | Las solapas de las carteras secundarias no tienen movimientos de 2026 y los rótulos de años de su cabecera están desfasados. | Los objetivos de la cabecera se anotan en el año del último movimiento del libro, no en el del rótulo. | pendiente (P5) |
 | H11 | Algún cambio de dividendo de `Variación divs` tiene la moneda mal puesta (visto en `SAN`, anotado en dólares). | Se importa tal cual; solo afecta al símbolo y al cambio aplicado a ese cambio. | pendiente: revisar la lista de cambios |
 | H12 | Tres totales numéricos de la fila de tickers de `Control cartera` se tomaron por valores. | El importador solo acepta textos con forma de ticker; la migración 5 los borró. | corregida |
+| H13 | Unas 40 filas de `Log`, casi todas dividendos, con el ticker de otro valor o mal tecleado (`REE`, `HCP`, `3M`, `GOOG`, `GBP`, `BME;ELE`, `LON.AV`, o el ticker de la fila de al lado). En los dividendos la hoja no usa esa celda; la aplicación sí, para atribuir el dividendo a un valor. También dos compras (`JNJ` por `BATS`, `AMS` por `PM`) cuyas acciones sí entraron en la columna buena. | Atribuye mal los dividendos cobrados por valor (parte de C6) y deja valores fantasma en el mantenimiento. Al editar una de esas compras, el formulario regeneraría la posición en el valor equivocado. Se corrigen en la aplicación cambiando el valor de cada operación, y en la hoja la celda del ticker. | pendiente (P8) |
 
 ## 3. Fallos de importación encontrados
 
@@ -67,6 +68,7 @@ La aplicación las ha absorbido o las señala; algunas conviene corregirlas tamb
 | P5 | Poner al día las solapas de las carteras secundarias antes del periodo en paralelo, si se quieren validar (H10). | Propietario |
 | P6 | Comprobar si la apertura de 2014 explica toda la diferencia de capital aportado (C5), y revisar valor a valor los dividendos cobrados históricos (C6). | Sesión de trabajo, con los datos reales |
 | P7 | Exportación de validación con el formato de `Control cartera` (tarea 2.7): hoy el cuadro solo se ha comparado en sus totales. | Sesión de trabajo |
+| P8 | Corregir el valor de las operaciones de H13 en la aplicación y en la hoja; después, borrar o desactivar los valores que queden sin movimientos. | Propietario, con ayuda de la API |
 
 ## Lo que sí coincide
 

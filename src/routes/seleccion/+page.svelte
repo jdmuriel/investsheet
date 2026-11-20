@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import PriceChart from '#lib/components/PriceChart.svelte';
 	import { date, eur, pct, price } from '#lib/format.ts';
 	import type { PageProps } from './$types';
 
@@ -33,6 +34,15 @@
 	}
 	const listText = (key: string) => rowsOf(key).map((r) => r.summary).join('\n');
 	const allText = $derived(data.lists.map((l) => `${l.label}\n${listText(l.key)}`).join('\n\n'));
+
+	// Valores con el gráfico de evolución desplegado.
+	let open = $state(new Set<number>());
+	function toggle(id: number) {
+		const next = new Set(open);
+		if (!next.delete(id)) next.add(id);
+		open = next;
+	}
+	const toneClass = (tone: string | null) => (tone ? tone.replace(' ', '-') : '');
 
 	const signedPct = (v: number | null) => (v == null ? '' : `${v > 0 ? '+' : ''}${pct(v)}`);
 	const p = $derived(data.params);
@@ -83,6 +93,7 @@
 							<th>Objetivo</th>
 							<th title="Precio sobre objetivo">Distancia</th>
 							<th title="Desde la última revisión">Var.</th>
+							<th class="l" title="Precio en cada revisión; pulsa para ver el gráfico">Evolución</th>
 							<th class="l">Línea</th>
 							<th></th>
 						</tr>
@@ -112,7 +123,14 @@
 								<td title={r.priceDate ? `Precio del ${date(r.priceDate)}` : 'Sin precio'}>{price(r.price, r.currency)}</td>
 								<td>{price(r.target, r.currency)}</td>
 								<td>{signedPct(r.distance)}</td>
-								<td class:neg={(r.variation ?? 0) <= -data.params.significant} class:pos={(r.variation ?? 0) >= data.params.significant}>{signedPct(r.variation)}</td>
+								<td class="var {toneClass(r.tone)}" title={r.tone ? `${r.description[0].toUpperCase()}${r.description.slice(1)}` : undefined}>{signedPct(r.variation)}</td>
+								<td class="l evo">
+									{#if r.history.length > 1}
+										<button type="button" class="spark" aria-expanded={open.has(r.id)} title="{open.has(r.id) ? 'Ocultar' : 'Ver'} la evolución del precio de {r.ticker}" onclick={() => toggle(r.id)}>
+											<PriceChart small points={r.history} tone={r.tone} label="Evolución del precio de {r.ticker}" />
+										</button>
+									{/if}
+								</td>
 								<td class="l line"><button type="button" class="link" title="Copiar esta línea" onclick={() => copy(r.summary, `l${r.id}`)}>{copied === `l${r.id}` ? 'Copiada' : r.summary}</button></td>
 								<td>
 									<form method="POST" action="?/quitar" use:enhance>
@@ -121,6 +139,20 @@
 									</form>
 								</td>
 							</tr>
+							{#if open.has(r.id)}
+								<tr class="detail">
+									<td colspan="13">
+										<div class="detail-box">
+											<p>
+												<strong>{r.ticker}</strong>{r.name ? ` · ${r.name}` : ''}
+												<span class="muted">· {r.history.filter((h) => !h.today).length} revisiones desde el {date(r.history[0].date)}</span>
+												<button type="button" class="link" onclick={() => toggle(r.id)}>Cerrar</button>
+											</p>
+											<PriceChart points={r.history} currency={r.currency} target={r.target} tone={r.tone} label="Evolución del precio de {r.ticker} en las revisiones" />
+										</div>
+									</td>
+								</tr>
+							{/if}
 						{/each}
 					</tbody>
 				</table>
@@ -264,8 +296,59 @@
 	.neg {
 		color: var(--neg);
 	}
-	.pos {
-		color: var(--accent);
+	/* Variación desde la última revisión: verde si sube, rojo si baja; claro si es reseñable, oscuro si es grande. */
+	td.var {
+		font-weight: 600;
+	}
+	td.var.sube {
+		background: var(--up-soft);
+		color: var(--up-fg);
+	}
+	td.var.baja {
+		background: var(--down-soft);
+		color: var(--down-fg);
+	}
+	td.var.sube-fuerte {
+		background: var(--up-strong);
+		color: var(--on-strong);
+	}
+	td.var.baja-fuerte {
+		background: var(--down-strong);
+		color: var(--on-strong);
+	}
+	td.evo {
+		padding-block: 0;
+	}
+	.spark {
+		display: block;
+		padding: 0.15rem;
+		border: 1px solid transparent;
+		border-radius: 4px;
+		background: none;
+		cursor: pointer;
+	}
+	.spark:hover,
+	.spark[aria-expanded='true'] {
+		border-color: var(--line);
+		background: var(--soft);
+	}
+	tr.detail > td {
+		text-align: left;
+		white-space: normal;
+		background: var(--soft);
+	}
+	.detail-box {
+		position: sticky;
+		left: 0.5rem;
+		max-width: min(48rem, calc(100vw - 3rem));
+		padding: 0.25rem 0 0.5rem;
+	}
+	.detail-box p {
+		margin: 0 0 0.5rem;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		align-items: baseline;
 	}
 	.warn {
 		color: var(--warn, #b26b00);

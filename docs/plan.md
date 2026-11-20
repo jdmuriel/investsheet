@@ -13,7 +13,7 @@ Dificultad orientativa de cada tarea, para elegir modelo: 🟢 mecánica y acota
 - **Funciona (fase 2)**: cuadro de cartera en la portada, con el orden de `Control cartera` por defecto; calendario y cambios de dividendo; precios desde la hoja publicada «investsheet — precios» o a mano; tipos de cambio del BCE; importación de los datos de la hoja que no son operaciones. Comparado valor a valor con `Control cartera`: las diferencias que quedan están explicadas en las [incidencias](incidencias-migracion.md) (C5, C6, C9, C10).
 - **Funciona (fase 3)**: selección mensual en `/seleccion` (3.2), ya cargada con la solapa `Selección` y sus 34 revisiones. El propietario la usará por primera vez en la revisión de este mes.
 - **Migración**: revisadas las erratas de la hoja y corregidas en la aplicación y en la hoja (H2, H11, H13, H14). El resumen está al principio de [incidencias-migracion.md](incidencias-migracion.md).
-- **No existe todavía**: copias automáticas externas (1.11), aplicación instalable (1.15), pruebas de extremo a extremo (1.16), servidor MCP (1.19), exportación de validación de `Control cartera` (2.7), valores en estudio (3.1), evolución de precios de la selección dibujada, edición del orden de la cartera e informes (fase 4).
+- **No existe todavía**: copias automáticas externas (1.11), pruebas de extremo a extremo (1.16), servidor MCP (1.19), exportación de validación de `Control cartera` (2.7), valores en estudio (3.1), edición del orden de la cartera e informes (fase 4).
 - **Pendiente del propietario**: añadir a la hoja de precios `BMY`, `GOOGL` y los 9 candidatos dados de alta desde `Selección` (AD, DGE, ENX, ASML, META, AMZN, BNTX, NOVO-B, LDA); probar el alta de operaciones reales.
 - **Siguiente paso propuesto**: recoger las impresiones del propietario tras usar la selección este fin de semana; después, la copia externa automática (1.11), que es lo que más riesgo quita, y el periodo en paralelo de un mes contra `Log` (1.17). La 2.7 pierde urgencia: la comparación valor a valor ya está hecha.
 - La hoja de cálculo sigue siendo la fuente de verdad hasta validar un mes en paralelo.
@@ -65,7 +65,7 @@ Objetivo: poder dejar de usar la solapa `Log`.
   - [x] Lo más reciente a la vista al abrir.
   - [x] Conciliación (`/conciliacion`): introducir el saldo real del broker y ver la diferencia (RF-12). Queda anotada en la tabla `reconciliation` (migración 4).
 - [x] **1.14 Objetivos anuales** (RF-26): el importador toma los de la cabecera de cada registro; se editan en Ajustes → Objetivos (`/ajustes/objetivos`, lógica en `src/lib/server/goals.ts`) y el listado muestra su consecución junto a las métricas (`src/lib/engine/goals.ts`). 🟢
-- [ ] **1.15 Aplicación instalable**: manifiesto e icono. 🟢
+- [x] **1.15 Aplicación instalable**: manifiesto, icono propio (también para iOS y como icono «maskable» de Android) y accesos directos a «Nuevo movimiento» y «Movimientos». Sin *service worker* ni uso sin conexión (diseño §2). 🟢
 - [ ] **1.16 Pruebas de extremo a extremo** de los flujos principales con Playwright. 🟡
 - [x] **1.18 API para asistentes** ([documentación](api.md)): consulta de estado y operaciones, y alta, edición y borrado con simulación previa, en `/api/v1` con token (`API_TOKEN`). Lógica en `src/lib/server/api.ts`. 🔴
   - [x] *Propietario*: crear el secreto `API_TOKEN` en Fly y guardarlo como secreto de red del entorno de Claude Code. Comprobado el 2026-11-19.
@@ -98,7 +98,8 @@ Objetivo: poder dejar de usar la hoja.
 
 - [ ] **3.1 Valores en estudio** (RF-27 a RF-30): migración de esquema, importación de la solapa, lista y ficha editable, aviso de objetivo sin revisar. 🟡
 - [x] **3.2 Selección mensual** (RF-31 a RF-36) en `/seleccion`: cuatro listas (España, resto del mundo, EE. UU. y sin *tier*) ordenables arrastrando o con flechas; invertido, máximo por *tier* y zona con aviso, RPD, precio, objetivo, distancia y variación desde la última revisión; línea resumen con el formato de la hoja, copiable por valor, por lista o entera; cierre de revisión con el precio del día, propuestas y elección; parámetros editables. Importa de `Selección` las listas, *tiers*, objetivos, parámetros y las 34 revisiones, y da de alta los candidatos que no estaban. Cálculo en `src/lib/engine/selection.ts`, datos en `src/lib/server/selection.ts`, migración 8. 🟡
-  - [ ] Dibujar la evolución mensual de precios de cada valor (los datos ya están en las revisiones).
+  - [x] Dibujar la evolución mensual de precios de cada valor: línea en cada fila (columna «Evolución») que al pulsarla despliega el gráfico con el objetivo y el detalle de cada revisión (`src/lib/components/PriceChart.svelte`; serie en `priceSeries` del motor).
+  - [x] Variación coloreada: verde si sube y rojo si baja; tono claro a partir de la variación reseñable y oscuro a partir de la grande (`variationTone`).
   - [ ] *Propietario*: tras desplegar, Ajustes → «Importar datos de la hoja» con una copia actual de la hoja (carga `Selección` y el orden de `Control cartera`), y añadir a la hoja de precios los candidatos nuevos.
 
 ## Fase 4 — Informes e importación de extractos
@@ -206,6 +207,7 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 | 2026-11-19 | Comparado el cuadro de cartera con `Control cartera` de la hoja del día (P6): acciones y dividendo previsto coinciden; capital aportado, coste y cobrado difieren por causas conocidas (C5, C6, C9, C10). Pendiente decidir qué cuenta como cobrado (P10). |
 | 2026-11-19 | «Cobrado» y «% recuperado» del cuadro suman también devoluciones de prima y ventas de derechos (decisión P10); el motor los lleva aparte (`returnsGross`), sin tocar «Por reinvertir». |
 | 2026-11-19 | El propietario ha cambiado `FLY_API_TOKEN` por un token de despliegue limitado a la aplicación. |
+| 2026-11-20 | Tarea 1.15: aplicación instalable (manifiesto e iconos; Chromium no da ningún error de instalabilidad). Selección: variación coloreada según los umbrales y evolución del precio de cada valor en las revisiones, con gráfico desplegable. |
 
 ## Ideas para más adelante
 

@@ -70,6 +70,7 @@ export interface SelectionRow extends SelectionInput {
 	list: ListKey;
 	distance: number | null;
 	variation: number | null;
+	tone: VariationTone | null;
 	/** «sube fuerte de A a B», «baja de A a B»… o el precio solo si la variación no es reseñable. */
 	description: string;
 	max: Cents | null;
@@ -80,11 +81,41 @@ export interface SelectionRow extends SelectionInput {
 const signed = (fraction: number) => `${fraction > 0 ? '+' : ''}${plain(fraction * 100, 0)}%`;
 const short = (n: number) => String(Math.round(n * 1e4) / 1e4);
 
+/** Tono de una variación según los umbrales: reseñable (claro) o grande (oscuro); `null` si no es reseñable. */
+export type VariationTone = 'sube' | 'sube fuerte' | 'baja' | 'baja fuerte';
+export function variationTone(variation: number | null, params: SelectionParams): VariationTone | null {
+	if (variation == null) return null;
+	if (variation <= -params.high) return 'baja fuerte';
+	if (variation <= -params.significant) return 'baja';
+	if (variation >= params.high) return 'sube fuerte';
+	if (variation >= params.significant) return 'sube';
+	return null;
+}
+
 export function variationText(price: number, last: number | null, params: SelectionParams): string {
 	if (last == null || last <= 0) return short(price);
-	const v = (price - last) / last;
-	const verb = v <= -params.high ? 'baja fuerte' : v <= -params.significant ? 'baja' : v >= params.high ? 'sube fuerte' : v >= params.significant ? 'sube' : null;
+	const verb = variationTone((price - last) / last, params);
 	return verb ? `${verb} de ${short(last)} a ${short(price)}` : short(price);
+}
+
+export interface PricePoint {
+	date: string;
+	price: number;
+	/** El precio de hoy, que aún no es de ninguna revisión. */
+	today?: boolean;
+}
+
+/**
+ * Evolución del precio de un valor: el de cada revisión cerrada, en orden de fecha, y al final el de hoy si es
+ * posterior a la última. Se descartan las revisiones con el precio en otra moneda (un cambio de cotización).
+ */
+export function priceSeries(reviews: { date: string; price: number; currency: string }[], currency: string | null, today: { date: string; price: number } | null): PricePoint[] {
+	const points: PricePoint[] = reviews
+		.filter((r) => r.price > 0 && (currency == null || r.currency === currency))
+		.sort((a, b) => a.date.localeCompare(b.date))
+		.map((r) => ({ date: r.date, price: r.price }));
+	if (today && today.price > 0 && (!points.length || today.date > points[points.length - 1].date)) points.push({ date: today.date, price: today.price, today: true });
+	return points;
 }
 
 export function selectionRow(input: SelectionInput, params: SelectionParams): SelectionRow {
@@ -104,5 +135,5 @@ export function selectionRow(input: SelectionInput, params: SelectionParams): Se
 		input.tier ?? 'sin tier',
 		...(held && input.pmc != null ? [`PMC ${plain(input.pmc)}`] : [])
 	].filter(Boolean);
-	return { ...input, list: listOf(input.zone, input.tier), distance, variation, description, max, status: limitStatus(input.invested, max), summary: `${head} (${parts.join(', ')})` };
+	return { ...input, list: listOf(input.zone, input.tier), distance, variation, tone: variationTone(variation, params), description, max, status: limitStatus(input.invested, max), summary: `${head} (${parts.join(', ')})` };
 }

@@ -4,7 +4,7 @@
  */
 import type { DatabaseSync } from 'node:sqlite';
 import { run, totalReducedCost, totalShares } from '../engine/engine.ts';
-import { DEFAULT_PARAMS, LISTS, listOf, selectionRow, type ListKey, type SelectionParams, type SelectionRow } from '../engine/selection.ts';
+import { DEFAULT_PARAMS, LISTS, listOf, priceSeries, selectionRow, type ListKey, type PricePoint, type SelectionParams, type SelectionRow } from '../engine/selection.ts';
 import { MICRO } from '../engine/types.ts';
 import { currentSchedules } from './dividends.ts';
 import { fxOn, getSetting, latestFx, latestQuotes, setSetting } from './market.ts';
@@ -17,6 +17,8 @@ export interface SelectionItem extends SelectionRow {
 	currency: string | null;
 	priceDate: string | null;
 	position: number;
+	/** Precio en cada revisión y el de hoy, para dibujar su evolución. */
+	history: PricePoint[];
 }
 
 export interface Review {
@@ -85,6 +87,7 @@ export function loadSelection(db: DatabaseSync, portfolioId: number, today = '99
 			FROM selection_entry e JOIN security s ON s.id = e.security_id WHERE e.portfolio_id = ? ORDER BY e.position, s.ticker`
 		)
 		.all(portfolioId) as { id: number; ticker: string; name: string | null; country: string | null; currency: string | null; zone: string | null; tier: string | null; target: number | null; estimate: number | null; position: number }[];
+	const history = priceHistories(db, portfolioId);
 	const { state } = run(loadOperations(portfolioId, db));
 	const quotes = latestQuotes(db);
 	const schedules = currentSchedules(db);
@@ -121,7 +124,8 @@ export function loadSelection(db: DatabaseSync, portfolioId: number, today = '99
 			},
 			params
 		);
-		return { ...row, id: e.id, name: e.name, country: e.country, currency, priceDate: quote?.date ?? null, position: e.position };
+		const series = priceSeries(history.get(e.id) ?? [], currency, quote ? { date: quote.date, price: quote.price } : null);
+		return { ...row, id: e.id, name: e.name, country: e.country, currency, priceDate: quote?.date ?? null, position: e.position, history: series };
 	});
 	const inSelection = new Set(entries.map((e) => e.id));
 	const candidates = (db.prepare('SELECT id, ticker, name FROM security WHERE active = 1 ORDER BY ticker').all() as { id: number; ticker: string; name: string | null }[]).filter((s) => !inSelection.has(s.id));
@@ -199,9 +203,12 @@ export function saveReviewNotes(db: DatabaseSync, portfolioId: number, reviewId:
 	return db.prepare('UPDATE selection_review SET proposals = ?, choice = ? WHERE id = ? AND portfolio_id = ?').run(proposals.trim() || null, choice.trim() || null, reviewId, portfolioId).changes > 0;
 }
 
-/** Precio de cada valor en cada revisión, de la más antigua a la más reciente (evolución mensual). */
-export function priceHistory(db: DatabaseSync, portfolioId: number, securityId: number): { date: string; price: number; currency: string }[] {
-	return db
-		.prepare('SELECT r.date, i.price, i.currency FROM selection_review_item i JOIN selection_review r ON r.id = i.review_id WHERE r.portfolio_id = ? AND i.security_id = ? ORDER BY r.date')
-		.all(portfolioId, securityId) as { date: string; price: number; currency: string }[];
+/** Precio de cada valor en cada revisión de la cartera, de la más antigua a la más reciente (evolución mensual). */
+export function priceHistories(db: DatabaseSync, portfolioId: number): Map<number, { date: string; price: number; currency: string }[]> {
+	const rows = db
+		.prepare('SELECT i.security_id AS id, r.date, i.price, i.currency FROM selection_review_item i JOIN selection_review r ON r.id = i.review_id WHERE r.portfolio_id = ? ORDER BY r.date')
+		.all(portfolioId) as { id: number; date: string; price: number; currency: string }[];
+	const map = new Map<number, { date: string; price: number; currency: string }[]>();
+	for (const { id, ...point } of rows) (map.get(id) ?? map.set(id, []).get(id)!).push(point);
+	return map;
 }

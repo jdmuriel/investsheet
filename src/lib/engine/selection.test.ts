@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_PARAMS, limitStatus, listOf, maxInvestment, selectionRow, variationText } from './selection.ts';
+import { DEFAULT_PARAMS, limitStatus, listOf, maxInvestment, priceSeries, selectionRow, variationText, variationTone } from './selection.ts';
 
 // Todos los datos de estas pruebas son inventados.
 const base = { ticker: 'ACME', zone: 'España', tier: 'T1', price: 11.7, lastPrice: 11.47, target: 9.5, rpd: 0.0359, invested: 433_301, pmc: 9.35 };
@@ -39,5 +39,31 @@ describe('selección', () => {
 		const fresh = selectionRow({ ...base, tier: null, invested: 0, pmc: null, lastPrice: null, rpd: null }, DEFAULT_PARAMS);
 		expect(fresh.summary).toBe('ACME (11.70/9.50 +23%, RPD -, nueva, sin tier)');
 		expect(fresh).toMatchObject({ list: 'SINTIER', max: null, status: null, variation: null });
+	});
+
+	it('da el tono de la variación con los umbrales', () => {
+		expect(variationTone(null, DEFAULT_PARAMS)).toBeNull();
+		expect(variationTone(0.039, DEFAULT_PARAMS)).toBeNull();
+		expect(variationTone(-0.039, DEFAULT_PARAMS)).toBeNull();
+		expect(variationTone(0.04, DEFAULT_PARAMS)).toBe('sube');
+		expect(variationTone(-0.05, DEFAULT_PARAMS)).toBe('baja');
+		expect(variationTone(0.1, DEFAULT_PARAMS)).toBe('sube fuerte');
+		expect(variationTone(-0.25, DEFAULT_PARAMS)).toBe('baja fuerte');
+	});
+
+	it('monta la serie de precios con las revisiones y el precio de hoy', () => {
+		const reviews = [
+			{ date: '2026-10-01', price: 12, currency: 'EUR' },
+			{ date: '2026-09-01', price: 10, currency: 'EUR' },
+			{ date: '2026-08-01', price: 900, currency: 'GBX' }
+		];
+		expect(priceSeries(reviews, 'EUR', { date: '2026-11-20', price: 13 })).toEqual([
+			{ date: '2026-09-01', price: 10 },
+			{ date: '2026-10-01', price: 12 },
+			{ date: '2026-11-20', price: 13, today: true }
+		]);
+		// El precio de hoy no se repite si es de la fecha de la última revisión.
+		expect(priceSeries(reviews, 'EUR', { date: '2026-10-01', price: 12 })).toHaveLength(2);
+		expect(priceSeries([], 'EUR', null)).toEqual([]);
 	});
 });

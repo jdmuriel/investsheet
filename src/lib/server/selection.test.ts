@@ -92,6 +92,11 @@ describe('selección y revisiones', () => {
 		expect(later.lastReview).toMatchObject({ date: '2030-02-02', proposals: 'ACME o UKCO', choice: 'ACME', items: 1 });
 		expect(later.lists[0].rows[0].variation).toBeCloseTo(0.1);
 		expect(later.lists[0].rows[0].description).toBe('sube de 11 a 12.1');
+		expect(later.lists[0].rows[0].tone).toBe('sube');
+		expect(later.lists[0].rows[0].history).toEqual([
+			{ date: '2030-02-02', price: 11 },
+			{ date: '2030-03-01', price: 12.1, today: true }
+		]);
 		// Cerrar la de hoy no deja a cero las variaciones del día.
 		closeReview(db, 1, '2030-03-01', '', '');
 		expect(loadSelection(db, 1, '2030-03-01').lists[0].rows[0].variation).toBeCloseTo(0.1);

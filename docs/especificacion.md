@@ -253,7 +253,7 @@ Situación de cada requisito a 16 de noviembre de 2026. Los requisitos no cambia
 | RF-22 | Indicador de reinversión | Parcial: se muestra lo cobrado desde la última compra; falta definir «mantener el equilibrio» |
 | RF-25, RF-26 | Métricas anuales y objetivos | Hecho. La fracción de año se mide por días |
 | RF-27 a RF-30 | Valores en estudio | Fase 3, sin empezar. El precio objetivo y el dividendo estimado ya están en la ficha del valor (los usa la selección) |
-| RF-31 a RF-36 | Selección mensual | Hecho (`/seleccion`): listas por zona y *tier* ordenables, cierre de revisión, histórico importado, máximos por *tier* y zona, línea resumen copiable, propuestas y elección. La evolución de precios por valor se guarda pero aún no se dibuja |
+| RF-31 a RF-36 | Selección mensual | Hecho (`/seleccion`): listas por zona y *tier* ordenables, cierre de revisión, histórico importado, máximos por *tier* y zona, línea resumen copiable, propuestas y elección. Variación coloreada (verde si sube, rojo si baja; claro si es reseñable, oscuro si es grande) y evolución del precio de cada valor en las revisiones, en una línea por fila que se despliega en un gráfico con el objetivo |
 | RF-37 a RF-40, RF-42 | Informes y fotos de cartera | Fase 4, sin empezar |
 | RF-41 | Informe fiscal | Excluido |
 | RF-43, RF-46 | Precios con una hora de retraso, último conocido y precio a mano | Hecho; falta que el propietario cree la hoja de precios |

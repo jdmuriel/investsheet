@@ -1,5 +1,4 @@
 <script lang="ts">
-	import favicon from '#lib/assets/favicon.svg';
 	import { page } from '$app/state';
 	import type { LayoutProps } from './$types';
 
@@ -11,7 +10,6 @@
 </script>
 
 <svelte:head>
-	<link rel="icon" href={favicon} />
 	<title>Inversión</title>
 </svelte:head>
 
@@ -46,6 +44,14 @@
 		--soft: #f4f6f8;
 		--accent: #0b6bcb;
 		--neg: #c62828;
+		/* Subidas y bajadas: claro para lo reseñable, oscuro para lo grande. */
+		--up-fg: #1d6b34;
+		--up-soft: #dcf2e2;
+		--up-strong: #2e7d32;
+		--down-fg: #a3221a;
+		--down-soft: #fde2df;
+		--down-strong: #c62828;
+		--on-strong: #fff;
 		color-scheme: light dark;
 	}
 	@media (prefers-color-scheme: dark) {
@@ -57,6 +63,12 @@
 			--soft: #1a1e24;
 			--accent: #6cb2ff;
 			--neg: #ff8a80;
+			--up-fg: #8fdca5;
+			--up-soft: #17331f;
+			--up-strong: #23753a;
+			--down-fg: #ffb4ab;
+			--down-soft: #42201d;
+			--down-strong: #b3261e;
 		}
 	}
 	:global(body) {

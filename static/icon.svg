@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+	<title>Inversión</title>
+	<rect width="512" height="512" rx="112" fill="#0b6bcb"/>
+	<g fill="#fff">
+		<rect x="120" y="292" width="64" height="104" rx="14"/>
+		<rect x="224" y="236" width="64" height="160" rx="14"/>
+		<rect x="328" y="172" width="64" height="224" rx="14" opacity=".9"/>
+	</g>
+	<path d="M112 236 L200 164 L264 196 L376 112" fill="none" stroke="#ffd166" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+	<path d="M330 104 L392 100 L388 162" fill="none" stroke="#ffd166" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

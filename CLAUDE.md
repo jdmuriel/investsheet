@@ -26,7 +26,7 @@ Aplicación web personal para llevar una cartera de acciones de dividendos; sust
 
 ## Despliegue
 
-Cada cambio en `main` que no sea solo documentación despliega en Fly.io (`.github/workflows/desplegar.yml`). Se trabaja en una rama y se fusiona en `main` solo con el visto bueno del propietario. Tras un cambio de esquema, la migración se aplica sola al arrancar. Un *push* a `main` hecho desde una sesión de Claude Code en la nube no lanza la acción: hay que lanzarla a mano (`workflow_dispatch` de `desplegar.yml`) y comprobar que la nueva versión responde.
+Cada cambio en `main` que no sea solo documentación despliega en Fly.io (`.github/workflows/desplegar.yml`). Se trabaja en una rama y se fusiona en `main` solo con el visto bueno del propietario. Tras un cambio de esquema, la migración se aplica sola al arrancar. Un *push* a `main` hecho desde una sesión de Claude Code en la nube unas veces lanza la acción y otras no: tras el *push*, mirar si aparece una ejecución de `desplegar.yml`; solo si no aparece, lanzarla a mano (`workflow_dispatch`). En los dos casos, comprobar que la nueva versión responde.
 
 ## Convenciones
 

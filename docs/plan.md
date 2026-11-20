@@ -27,7 +27,7 @@ Dificultad orientativa de cada tarea, para elegir modelo: 🟢 mecánica y acota
 5. Antes de dar por nueva una diferencia con la hoja, mirar [incidencias-migracion.md](incidencias-migracion.md); si lo es, anotarla allí.
 6. Desde el entorno de desarrollo en la nube no se ha comprobado el acceso al servidor del BCE ni a la hoja de precios publicada: sus lecturas se prueban con ficheros de ejemplo.
 7. **API de producción desde la sesión**: el token está guardado como secreto de red del entorno de Claude Code para `invest.jdmuriel.com`; basta con `curl https://invest.jdmuriel.com/api/v1/...` sin cabecera de autorización (la pone el proxy). Uso en [api.md](api.md). Así se han hecho las correcciones de datos en producción (`keepEffects`, `PATCH` de valores y de cambios de dividendo).
-8. **Desplegar**: con el visto bueno del propietario, fusionar en `main`, lanzar a mano la acción `desplegar.yml` (`workflow_dispatch`: un *push* desde la sesión no la lanza) y comprobar que responde la versión nueva.
+8. **Desplegar**: con el visto bueno del propietario, fusionar en `main`, mirar si el *push* ha lanzado la acción `desplegar.yml` (desde la sesión unas veces la lanza y otras no); si no, lanzarla a mano (`workflow_dispatch`), y comprobar que responde la versión nueva.
 9. **Google**: el conector de Drive puede buscar, crear y descargar ficheros del propietario, pero el de Google Sheets da «Permission denied» con sus hojas: no se pueden editar desde la sesión.
 
 ## Fase 1 — Registro de operaciones
@@ -208,6 +208,7 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 | 2026-11-19 | «Cobrado» y «% recuperado» del cuadro suman también devoluciones de prima y ventas de derechos (decisión P10); el motor los lleva aparte (`returnsGross`), sin tocar «Por reinvertir». |
 | 2026-11-19 | El propietario ha cambiado `FLY_API_TOKEN` por un token de despliegue limitado a la aplicación. |
 | 2026-11-20 | Tarea 1.15: aplicación instalable (manifiesto e iconos; Chromium no da ningún error de instalabilidad). Selección: variación coloreada según los umbrales y evolución del precio de cada valor en las revisiones, con gráfico desplegable. |
+| 2026-11-20 | Fusionado en `main` y desplegado (el *push* desde la sesión lanzó la acción por sí solo). |
 
 ## Ideas para más adelante
 

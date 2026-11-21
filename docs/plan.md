@@ -134,6 +134,7 @@ Lista de cambios tras usar la aplicación. Se van haciendo uno a uno, en este or
 
 - [ ] **M2.1** Repetir abajo el «X de X movimientos» y el botón «Nuevo movimiento». 🟢
 - [ ] **M2.2** Columnas más estrechas: «Capital invertido» y «Ganancias año» ocultables con un interruptor; las de cuentas, más compactas (fuente estrecha, menos separación); a la izquierda, cabecera «M.» para la moneda y descripción recortada con el texto completo al pasar el ratón. Quizá elegir qué cuentas se ven. 🟡
+- [x] **M2.4** Recordar si las «Métricas anuales y objetivos» se dejaron abiertas o cerradas (cookie `metricas`, un año; sin ella, cerradas solo en móvil). 🟢
 - [ ] **M2.3** Edición de un movimiento en ventana emergente; al guardar se refrescan esa fila y las siguientes (acumulados). 🟡
 
 ## Aplazado
@@ -234,7 +235,7 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 | 2026-11-19 | El propietario ha cambiado `FLY_API_TOKEN` por un token de despliegue limitado a la aplicación. |
 | 2026-11-20 | Tarea 1.15: aplicación instalable (manifiesto e iconos; Chromium no da ningún error de instalabilidad). Selección: variación coloreada según los umbrales y evolución del precio de cada valor en las revisiones, con gráfico desplegable. |
 | 2026-11-20 | Fusionado en `main` y desplegado (el *push* desde la sesión lanzó la acción por sí solo). |
-| 2026-11-21 | Lista de mejoras del propietario (M1.x, M2.x). Hechas M1.1 a M1.6 en el cuadro de cartera: cabecera con la hora de la última lectura de precios, tarjetas reordenadas con «Total» y sin «P/G», peso equiponderado en un (i) de la columna «Peso», columnas «Precio» y «YOC» movidas. |
+| 2026-11-21 | Lista de mejoras del propietario (M1.x, M2.x). Hechas M1.1 a M1.6 en el cuadro de cartera: cabecera con la hora de la última lectura de precios, tarjetas reordenadas con «Total» y sin «P/G», peso equiponderado en un (i) de la columna «Peso», columnas «Precio» y «YOC» movidas. M2.4: el listado de movimientos recuerda si las métricas anuales están abiertas. |
 
 ## Ideas para más adelante
 

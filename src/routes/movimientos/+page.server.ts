@@ -8,7 +8,11 @@ import { loadGoals } from '#lib/server/goals.ts';
 import { getDb, listAccounts, loadOperations } from '#lib/server/store.ts';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = ({ url, locals }) => {
+// Si las métricas anuales se dejaron abiertas o cerradas; sin la cookie, decide el tamaño de pantalla.
+const METRICS_COOKIE = 'metricas';
+const METRICS: Record<string, boolean> = { '1': true, '0': false };
+
+export const load: PageServerLoad = ({ url, locals, cookies }) => {
 	// La cartera llega por `locals`, pero depende del parámetro: leerlo hace que la carga se repita al cambiarla desde la barra.
 	void url.searchParams.get('cartera');
 	const portfolioId = locals.portfolioId;
@@ -89,5 +93,5 @@ export const load: PageServerLoad = ({ url, locals }) => {
 	// Objetivos del año en curso (RF-26), frente a la parte del año ya transcurrida.
 	const goals = { year: currentYear, elapsed: yearFraction(currentYear, today), rows: goalProgress(state.years.get(currentYear), loadGoals(getDb(), portfolioId, currentYear)) };
 
-	return { portfolioId, accounts: columns, summary, goals, currentYear, years, year: period.year, period: period.key, pastYears, rows, warnings: warnings.length, saved };
+	return { portfolioId, accounts: columns, summary, goals, currentYear, years, year: period.year, period: period.key, pastYears, rows, warnings: warnings.length, saved, metricsOpen: METRICS[cookies.get(METRICS_COOKIE) ?? ''] ?? null };
 };

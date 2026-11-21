@@ -24,11 +24,18 @@
 	const accCount = $derived(2 + data.accounts.length);
 
 	let ledger: HTMLDivElement | undefined = $state();
-	let metricsOpen = $state(true);
+	// Abiertas o cerradas como se dejaron (cookie `metricas`, un año); sin preferencia, cerradas solo en móvil.
+	// svelte-ignore state_referenced_locally
+	let metricsOpen = $state(data.metricsOpen ?? true);
 	const isMobile = () => window.matchMedia('(max-width: 700px)').matches;
 	$effect(() => {
-		if (isMobile()) metricsOpen = false;
+		if (data.metricsOpen == null && isMobile()) metricsOpen = false;
 	});
+	// Solo se guarda lo que hace el usuario: el cierre automático en móvil también dispara `toggle`.
+	function metricsClicked() {
+		const open = !metricsOpen;
+		document.cookie = `metricas=${open ? 1 : 0}; path=/movimientos; max-age=31536000; samesite=lax`;
+	}
 	$effect(() => {
 		// Al abrir (o cambiar de periodo o cartera) queda a la vista lo más reciente; tras guardar, la operación guardada.
 		void data.rows;
@@ -93,7 +100,7 @@
 {/if}
 
 <details class="metrics" bind:open={metricsOpen}>
-	<summary>Métricas anuales y objetivos</summary>
+	<summary onclick={metricsClicked}>Métricas anuales y objetivos</summary>
 	{#if data.goals.rows.length}
 		<div class="scroll goals">
 			<table>

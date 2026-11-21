@@ -9,6 +9,17 @@ export function eur(cents: number | null | undefined, blankZero = false): string
 	if (cents == null || (blankZero && cents === 0)) return '';
 	return money.format(cents / 100);
 }
+const whole = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0, useGrouping: 'always' });
+/** Céntimos a euros redondeados, sin decimales: para columnas donde no hace falta tanta precisión. */
+export function eurWhole(cents: number | null | undefined, blankZero = false): string {
+	if (cents == null || (blankZero && Math.round(cents / 100) === 0)) return '';
+	return whole.format(Math.round(cents / 100));
+}
+const two = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' });
+/** Número con dos decimales exactos: «12,50». */
+export function dec2(value: number | null | undefined): string {
+	return value == null ? '' : two.format(value);
+}
 export function num(value: number | null | undefined): string {
 	return value == null ? '' : number.format(value);
 }
@@ -28,10 +39,10 @@ export function date(iso: string): string {
 
 const clock = new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid' });
 const day = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Madrid' });
-/** Instante ISO a «HH:MM del DD/MM/AAAA», en hora de Madrid. */
+/** Instante ISO a «DD/MM/AAAA HH:MM», en hora de Madrid. */
 export function dateTime(iso: string): string {
 	const d = new Date(iso);
-	return `${clock.format(d)} del ${date(day.format(d))}`;
+	return `${date(day.format(d))} ${clock.format(d)}`;
 }
 
 /** Símbolo de una moneda para mostrar importes en listados; el código si no tiene uno inequívoco. */

@@ -4,33 +4,33 @@
 	import Dialog from '#lib/components/Dialog.svelte';
 	import SecurityDialog from '#lib/components/SecurityDialog.svelte';
 	import { MONTH_NAMES, MONTH_SHORT } from '#lib/engine/dividends.ts';
-	import { date, dateTime, eur, num, pct, price, symbol } from '#lib/format.ts';
+	import { date, dateTime, dec2, eur, eurWhole, num, pct, price, symbol } from '#lib/format.ts';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 	type Row = (typeof data.rows)[number];
 
 	// Columnas de la tabla: de cada una, el dato por el que se ordena y cómo se pinta.
-	const columns: { key: string; label: string; title?: string; value: (r: Row) => number | string | null; text: (r: Row) => string; signed?: boolean; total?: (r: Row) => number | null; percent?: boolean }[] = [
+	const columns: { key: string; label: string; title?: string; value: (r: Row) => number | string | null; text: (r: Row) => string; signed?: boolean; total?: (r: Row) => number | null; percent?: boolean; whole?: boolean }[] = [
 		{ key: 'ticker', label: 'Valor', value: (r) => r.ticker, text: (r) => r.ticker },
 		{ key: 'shares', label: 'Acciones', value: (r) => r.shares, text: (r) => num(r.shares) },
-		{ key: 'averagePrice', label: 'P. medio', title: 'Coste reducido por acción, en euros', value: (r) => r.averagePrice, text: (r) => price(r.averagePrice) },
+		{ key: 'averagePrice', label: 'P.\nmedio', title: 'Coste reducido por acción, en euros', value: (r) => r.averagePrice, text: (r) => dec2(r.averagePrice) },
 		{ key: 'price', label: 'Precio', title: 'Último precio, en la moneda en que cotiza', value: (r) => r.priceEur, text: (r) => (r.quote ? price(r.quote.price, r.quote.currency) : '') },
-		{ key: 'reducedCost', label: 'Coste', title: 'Coste reducido: el de compra menos ventas de derechos y devoluciones de prima', value: (r) => r.reducedCost, text: (r) => eur(r.reducedCost), total: (r) => r.reducedCost },
-		{ key: 'value', label: 'Valor mercado', value: (r) => r.value, text: (r) => eur(r.value), total: (r) => r.value },
-		{ key: 'gain', label: 'P/G', title: 'Valor de mercado menos coste reducido', value: (r) => r.gain, text: (r) => eur(r.gain), signed: true, total: (r) => r.gain },
+		{ key: 'reducedCost', label: 'Coste', title: 'Coste reducido: el de compra menos ventas de derechos y devoluciones de prima', value: (r) => r.reducedCost, text: (r) => eurWhole(r.reducedCost), total: (r) => r.reducedCost, whole: true },
+		{ key: 'value', label: 'Valor\nmercado', value: (r) => r.value, text: (r) => eurWhole(r.value), total: (r) => r.value, whole: true },
+		{ key: 'gain', label: 'P/G', title: 'Valor de mercado menos coste reducido', value: (r) => r.gain, text: (r) => eurWhole(r.gain), signed: true, total: (r) => r.gain, whole: true },
 		{ key: 'gainPct', label: 'P/G %', value: (r) => r.gainPct, text: (r) => pct(r.gainPct), signed: true },
 		{ key: 'weight', label: 'Peso', title: 'Parte del valor de mercado de la cartera', value: (r) => r.weight, text: (r) => pct(r.weight), total: (r) => r.weight, percent: true },
-		{ key: 'dpaEur', label: 'DPA', title: 'Dividendo anual por acción previsto, en euros', value: (r) => r.dpaEur, text: (r) => price(r.dpaEur) },
-		{ key: 'dividendGross', label: 'Div. bruto', title: 'Dividendo bruto previsto a 12 meses', value: (r) => r.dividendGross, text: (r) => eur(r.dividendGross), total: (r) => r.dividendGross },
-		{ key: 'dividendNet', label: 'Div. neto', title: 'Tras las retenciones en origen y en destino', value: (r) => r.dividendNet, text: (r) => eur(r.dividendNet), total: (r) => r.dividendNet },
+		{ key: 'dpaEur', label: 'DPA (€)', title: 'Dividendo anual por acción previsto, en euros', value: (r) => r.dpaEur, text: (r) => dec2(r.dpaEur) },
+		{ key: 'dividendGross', label: 'Div.\nbruto', title: 'Dividendo bruto previsto a 12 meses', value: (r) => r.dividendGross, text: (r) => eur(r.dividendGross), total: (r) => r.dividendGross },
+		{ key: 'dividendNet', label: 'Div.\nneto', title: 'Tras las retenciones en origen y en destino', value: (r) => r.dividendNet, text: (r) => eur(r.dividendNet), total: (r) => r.dividendNet },
 		{ key: 'yieldGross', label: 'RPD', title: 'Dividendo bruto sobre el valor de mercado', value: (r) => r.yieldGross, text: (r) => pct(r.yieldGross) },
-		{ key: 'yieldNet', label: 'RPD neta', title: 'Dividendo neto sobre el valor de mercado', value: (r) => r.yieldNet, text: (r) => pct(r.yieldNet) },
+		{ key: 'yieldNet', label: 'RPD\nneta', title: 'Dividendo neto sobre el valor de mercado', value: (r) => r.yieldNet, text: (r) => pct(r.yieldNet) },
 		{ key: 'yocNet', label: 'YOC', title: 'Dividendo neto sobre el coste reducido', value: (r) => r.yocNet, text: (r) => pct(r.yocNet) },
-		{ key: 'dividendWeight', label: 'Peso div.', title: 'Parte del dividendo bruto previsto de la cartera', value: (r) => r.dividendWeight, text: (r) => pct(r.dividendWeight), total: (r) => r.dividendWeight, percent: true },
-		{ key: 'received', label: 'Cobrado', title: 'Dividendos, devoluciones de prima y ventas de derechos cobrados desde siempre, brutos', value: (r) => r.received, text: (r) => eur(r.received, true), total: (r) => r.received },
-		{ key: 'recovered', label: '% recup.', title: 'Lo cobrado sobre el coste', value: (r) => r.recovered, text: (r) => (r.received ? pct(r.recovered) : '') },
-		{ key: 'sinceLastBuy', label: 'Por reinvertir', title: 'Cobrado desde la última compra, en los valores que se reinvierten', value: (r) => (r.reinvest ? r.sinceLastBuy : null), text: (r) => (r.reinvest ? eur(r.sinceLastBuy, true) : 'no'), total: (r) => (r.reinvest ? r.sinceLastBuy : 0) }
+		{ key: 'dividendWeight', label: 'Peso\ndiv.', title: 'Parte del dividendo bruto previsto de la cartera', value: (r) => r.dividendWeight, text: (r) => pct(r.dividendWeight), total: (r) => r.dividendWeight, percent: true },
+		{ key: 'received', label: 'Cobrado', title: 'Dividendos, devoluciones de prima y ventas de derechos cobrados desde siempre, brutos', value: (r) => r.received, text: (r) => eurWhole(r.received, true), total: (r) => r.received, whole: true },
+		{ key: 'recovered', label: '%\nrecup.', title: 'Lo cobrado sobre el coste', value: (r) => r.recovered, text: (r) => (r.received ? pct(r.recovered) : '') },
+		{ key: 'sinceLastBuy', label: 'Por\nreinvertir', title: 'Cobrado desde la última compra, en los valores que se reinvierten', value: (r) => (r.reinvest ? r.sinceLastBuy : null), text: (r) => (r.reinvest ? eurWhole(r.sinceLastBuy, true) : 'no'), total: (r) => (r.reinvest ? r.sinceLastBuy : 0), whole: true }
 	];
 
 	// Por defecto, el orden de la cartera (el de las columnas de `Control cartera`); los valores sin él, al final por ticker.
@@ -133,7 +133,7 @@
 	<h1>Cartera</h1>
 	<span class="muted">
 		{#if data.status.pricesConfigured && data.status.pricesCheckedAt && !data.status.pricesError}
-			Precios actualizados a las {dateTime(data.status.pricesCheckedAt)}{#if data.oldestQuote && data.oldestQuote !== data.newestQuote}&nbsp;(el más antiguo, del {date(data.oldestQuote)}){/if}
+			Precios actualizados: {dateTime(data.status.pricesCheckedAt)}{#if data.oldestQuote && data.oldestQuote !== data.newestQuote}&nbsp;(el más antiguo, del {date(data.oldestQuote)}){/if}
 		{:else if data.newestQuote}
 			Precios del {date(data.newestQuote)}{#if data.oldestQuote !== data.newestQuote}&nbsp;(el más antiguo, del {date(data.oldestQuote!)}){/if}
 		{:else}
@@ -157,11 +157,11 @@
 
 <dl class="tiles">
 	<div><dt>PADI bruto</dt><dd>{eur(t.padiGross)} €</dd><dd class="sub">{eur(t.monthlyGross)} € al mes · RPD {pct(t.yieldGross)}</dd></div>
-	<div><dt>PADI neto</dt><dd>{eur(t.padiNet)} €</dd><dd class="sub">{eur(t.monthlyNet)} € al mes · YOC {pct(t.yocNet)} · retenciones {pct(t.taxRate)}</dd></div>
+	<div><dt>PADI neto</dt><dd>{eur(t.padiNet)} €</dd><dd class="sub">{eur(t.monthlyNet)} € al mes · YOC {pct(t.yocNet)}</dd></div>
 	<div><dt>Liquidez</dt><dd>{eur(t.liquidity)} €</dd><dd class="sub">{pct(t.liquidityPct)} del total</dd></div>
 	<div><dt>Valor de mercado</dt><dd>{eur(t.value)} €</dd><dd class="sub">{t.count} valores · coste {eur(t.reducedCost)} €</dd></div>
-	<div><dt>Capital aportado</dt><dd>{eur(t.capital)} €</dd></div>
-	<div><dt>Total</dt><dd>{eur(t.value + t.liquidity)} €</dd><dd class="sub" class:neg={t.totalGain < 0} title="Valor de mercado más liquidez menos capital aportado">resultado total {eur(t.totalGain)} €</dd></div>
+	<div><dt>Capital aportado y reinvertido</dt><dd>{eur(t.invested)} €</dd><dd class="sub" title="Aportaciones menos retiradas; el resto es el resultado de los años cerrados, que se considera reinvertido">Solo aportación: {eur(t.capital)} €</dd></div>
+	<div><dt>Total</dt><dd>{eur(t.value + t.liquidity)} €</dd><dd class="sub" class:neg={t.totalGain < 0} title="Valor de mercado más liquidez menos lo aportado; el porcentaje es sobre lo aportado">resultado total {eur(t.totalGain)}&nbsp;€{#if t.capital > 0}&nbsp;({pct(t.totalGain / t.capital)}){/if}</dd></div>
 </dl>
 
 {#if data.rows.length === 0}
@@ -180,17 +180,20 @@
 		{/if}
 		<label class="mobile">
 			Ordenar por
-			<select bind:value={sortKey}><option value={DEFAULT}>Orden de la cartera</option>{#each columns as c (c.key)}<option value={c.key}>{c.label}</option>{/each}</select>
+			<select bind:value={sortKey}><option value={DEFAULT}>Orden de la cartera</option>{#each columns as c (c.key)}<option value={c.key}>{c.label.replace('\n', ' ')}</option>{/each}</select>
 		</label>
 		{#if sortKey !== DEFAULT}<button type="button" class="link desktop" onclick={() => ((sortKey = DEFAULT), (descending = false))}>Orden de la cartera</button>{/if}
 		{#if filtered && !ordering}<span class="muted">{visible.length} de {data.rows.length} valores</span>{/if}
-		<span class="choices desktop" role="group" aria-label="Columnas de meses">
-			<span class="muted">Meses:</span>
-			{#each [[null, 'ocultos'], ['accion', 'por acción'], ['total', 'total €']] as [mode, label] (label)}
-				<button type="button" class:on={monthsMode === mode} aria-pressed={monthsMode === mode} onclick={() => setMonths(mode as MonthsMode)}>{label}</button>
-			{/each}
+		<span class="right desktop">
+			{#if !ordering}<button type="button" class="link" onclick={startOrdering}>Cambiar el orden de la cartera</button>{/if}
+			<span role="group" aria-label="Columnas de meses">
+				<span class="muted">Meses:</span>
+				{#each [[null, 'ocultos'], ['accion', 'por acción'], ['total', 'total €']] as [mode, label], i (label)}
+					{#if i > 0}<span class="muted">&nbsp;·&nbsp;</span>{/if}
+					<button type="button" class="link" class:on={monthsMode === mode} aria-pressed={monthsMode === mode} onclick={() => setMonths(mode as MonthsMode)}>{label}</button>
+				{/each}
+			</span>
 		</span>
-		{#if !ordering}<button type="button" class="link desktop" onclick={startOrdering}>Cambiar el orden de la cartera</button>{/if}
 	</form>
 
 	{#if ordering}
@@ -276,7 +279,7 @@
 					<th class="l" scope="row">{filtered ? 'Suma' : 'Total'}</th>
 					{#each columns.slice(1) as c (c.key)}
 						{@const v = c.total ? sum(c.total) : null}
-						<td class:neg={c.signed && v != null && v < 0}>{v == null ? '' : c.percent ? pct(v) : eur(v)}</td>
+						<td class:neg={c.signed && v != null && v < 0}>{v == null ? '' : c.percent ? pct(v) : c.whole ? eurWhole(v) : eur(v)}</td>
 					{/each}
 					{#if monthsMode}
 						{#each MONTH_SHORT as _, i (i)}
@@ -305,7 +308,7 @@
 					</p>
 					<dl>
 						{#each columns.slice(1) as c (c.key)}
-							{#if c.text(r)}<div><dt>{c.label}</dt><dd>{c.text(r)}</dd></div>{/if}
+							{#if c.text(r)}<div><dt>{c.label.replace('\n', ' ')}</dt><dd>{c.text(r)}</dd></div>{/if}
 						{/each}
 					</dl>
 				</details>
@@ -592,6 +595,24 @@
 		width: 100%;
 		text-align: inherit;
 	}
+	.holdings thead th {
+		vertical-align: bottom;
+	}
+	.holdings thead button {
+		white-space: pre-line;
+	}
+	.filters .right {
+		margin-left: auto;
+		display: flex;
+		gap: 1.2rem;
+		align-items: baseline;
+	}
+	.link.on {
+		color: var(--fg);
+		font-weight: 600;
+		text-decoration: none;
+		cursor: default;
+	}
 	.holdings thead th:has(.info) button:first-child {
 		width: auto;
 		padding-right: 0.15rem;
@@ -711,6 +732,9 @@
 		font-variant-numeric: tabular-nums;
 	}
 	@media (max-width: 700px) {
+		.filters .right {
+			display: none;
+		}
 		.desktop {
 			display: none;
 		}

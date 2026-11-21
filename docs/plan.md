@@ -130,10 +130,13 @@ Lista de cambios tras usar la aplicación. Se van haciendo uno a uno, en este or
 - [x] **M1.8** Dividendo mensual previsto por valor (como las filas 30 a 53 de `Control cartera`): columnas de enero a diciembre que se muestran por acción o en euros totales (se recuerda en la cookie `meses`) y ventana emergente al pulsar el DPA. 🟡
 - [x] **M1.9** Editar el orden de los valores de cada cartera (`portfolio_security.sort_order`), para colocar un valor nuevo donde se quiera: «Cambiar el orden de la cartera» en el cuadro, arrastrando o con flechas. Los valores sin posición conservan su sitio (`reorder` del motor). 🟡
 
+- [x] **M1.10** Retoques tras la revisión: cabecera «Precios actualizados: DD/MM/AAAA HH:MM»; tarjeta «Capital aportado y reinvertido» (capital invertido) con «Solo aportación»; PADI neto sin retenciones; «Total» con el resultado en % sobre lo aportado; coste, valor, P/G, cobrado y por reinvertir sin decimales; precio medio y DPA con dos; cabecera «DPA (€)»; cabeceras en dos líneas; «Meses» y «Cambiar el orden» como enlaces a la derecha. 🟢
+
 **Listado de movimientos (`/movimientos`)**
 
 - [x] **M2.1** Repetir abajo el «X de X movimientos» y el botón «Nuevo movimiento». 🟢
 - [x] **M2.2** Columnas más estrechas: «Capital invertido» y «Ganancias año» ocultables con un interruptor; las de cuentas, más compactas (fuente estrecha, menos separación); a la izquierda, cabecera «M.» para la moneda y descripción recortada con el texto completo al pasar el ratón. Quizá elegir qué cuentas se ven (no hecho: de momento se ven todas). 🟡
+- [x] **M2.5** Listado más compacto: la misma letra pequeña en todas las columnas, menos separación, descripción y tipo más cortos (completos al pasar el ratón), fecha con el año en dos cifras, cambio con cuatro decimales, «Imp. €» y códigos de cuenta en las cabeceras. A 1.500 px de ancho cabe entero con «Últimos movimientos». 🟢
 - [x] **M2.4** Recordar si las «Métricas anuales y objetivos» se dejaron abiertas o cerradas (cookie `metricas`, un año; sin ella, cerradas solo en móvil). 🟢
 - [x] **M2.3** Edición de un movimiento en ventana emergente; al guardar se refrescan esa fila y las siguientes (acumulados). 🟡
 
@@ -237,6 +240,7 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 | 2026-11-20 | Fusionado en `main` y desplegado (el *push* desde la sesión lanzó la acción por sí solo). |
 | 2026-11-21 | Lista de mejoras del propietario (M1.x, M2.x). Hechas M1.1 a M1.6 en el cuadro de cartera: cabecera con la hora de la última lectura de precios, tarjetas reordenadas con «Total» y sin «P/G», peso equiponderado en un (i) de la columna «Peso», columnas «Precio» y «YOC» movidas. M2.4: el listado de movimientos recuerda si las métricas anuales están abiertas. M1.7: desde cada valor de la cartera, su ficha en ventana emergente (`SecurityDialog`, también en Ajustes → Valores; con Ctrl se abre la página) y sus movimientos de todos los años (`/movimientos?periodo=todos&valor=TICKER`); la ficha admite el ticker en la dirección. Fusionado en `main`. |
 | 2026-11-21 | M1.8, M1.9 y M2.1 a M2.3: columnas de meses y detalle del DPA en el cuadro; edición del orden de la cartera; en movimientos, barra repetida abajo, columnas más estrechas con «Capital invertido» y «Ganancias año» ocultables (cookie `acumulados`) y edición en ventana emergente (`OperationDialog`, que reutiliza `OperationEditor` de la página del movimiento). Fusionado en `main`. |
+| 2026-11-21 | Retoques del propietario: M1.10 (tarjetas, redondeos y cabeceras del cuadro) y M2.5 (listado de movimientos más compacto). Añadida a `CLAUDE.md` la frase sobre la responsabilidad de Claude en el diseño. Fusionado en `main`. |
 
 ## Ideas para más adelante
 

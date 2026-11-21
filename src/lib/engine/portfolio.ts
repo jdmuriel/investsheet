@@ -2,7 +2,7 @@
  * Cuadro de cartera (RF-19 a RF-22): combina las posiciones del motor con el último precio,
  * el tipo de cambio y el calendario de dividendos vigente. No guarda nada.
  */
-import { totalCost, totalReducedCost, totalShares } from './engine.ts';
+import { investedCapital, totalCost, totalReducedCost, totalShares } from './engine.ts';
 import { MICRO, type Cents, type State } from './types.ts';
 
 export interface SecurityInfo {
@@ -98,6 +98,8 @@ export interface PortfolioTotals {
 	/** Capital aportado (aportaciones menos retiradas) y resultado total: valor + liquidez − capital. */
 	capital: Cents;
 	totalGain: Cents;
+	/** Capital invertido: lo aportado más el resultado de los años cerrados, que se considera reinvertido. */
+	invested: Cents;
 	padiGross: Cents;
 	padiNet: Cents;
 	monthlyGross: Cents;
@@ -207,6 +209,7 @@ export function portfolioView(inputs: PortfolioInputs): PortfolioView {
 		liquidityPct: ratio(liquidity, value + liquidity),
 		capital,
 		totalGain: value + liquidity - capital,
+		invested: investedCapital(inputs.state),
 		padiGross,
 		padiNet,
 		monthlyGross: Math.round(padiGross / 12),

@@ -78,6 +78,8 @@
 		if (saved) saved.scrollIntoView({ block: 'center' });
 		else if (ledger) ledger.scrollTop = ledger.scrollHeight;
 	});
+	// El cambio, con cuatro decimales como mucho en la tabla (el completo, al pasar el ratón).
+	const fx = (rate: number | null) => (rate == null ? '' : num(Math.round(rate * 1e4) / 1e4));
 	const signed = (cents: number) => `${cents > 0 ? '+' : ''}${eur(cents)}`;
 </script>
 
@@ -223,7 +225,7 @@
 				<th>Cambio</th>
 				<th class="l">Cuenta</th>
 				<th>Bruto €</th>
-				<th>Impuestos €</th>
+				<th title="Impuestos €">Imp. €</th>
 				<th>Gastos €</th>
 				<th>Resultado €</th>
 				<th>Capital ±</th>
@@ -233,7 +235,7 @@
 					<th class="acc" style="--acc-i: 1">Ganancias año</th>
 				{/if}
 				{#each data.accounts as a, i (a.id)}
-					<th class="acc" class:first={!showTotals && i === 0} style="--acc-i: {i + extra}">{a.name} ({symbol(a.currency)})</th>
+					<th class="acc" class:first={!showTotals && i === 0} style="--acc-i: {i + extra}" title={a.name}>{a.code} ({symbol(a.currency)})</th>
 				{/each}
 			</tr>
 		</thead>
@@ -243,14 +245,14 @@
 					<td class="l actions">
 						{#if r.canCopy}<a href="/movimientos/nuevo?cartera={data.portfolioId}&copiar={r.id}" title="Duplicar con la fecha de hoy" aria-label="Duplicar {r.description}">⧉</a>{/if}
 					</td>
-					<td class="l nowrap"><a href="/movimientos/{r.id}" title="Editar" onclick={(e) => edit(e, r.id)}>{date(r.date)}</a></td>
+					<td class="l nowrap"><a href="/movimientos/{r.id}" title="Editar" onclick={(e) => edit(e, r.id)}>{date(r.date).slice(0, 6) + r.date.slice(2, 4)}</a></td>
 					<td class="l desc" title={r.description}>{r.description}</td>
-					<td class="l">{r.type}</td>
+					<td class="l type" title={r.type}>{r.type}</td>
 					<td class="l">{r.ticker ?? ''}</td>
 					<td>{num(r.quantity)}</td>
 					<td>{num(r.price)}</td>
 					<td class="l">{symbol(r.currency)}</td>
-					<td>{num(r.fxRate)}</td>
+					<td title={r.fxRate != null && r.fxRate !== 1 ? num(r.fxRate) : undefined}>{fx(r.fxRate)}</td>
 					<td class="l">{r.account ?? ''}</td>
 					<td>{eur(r.grossEur, true)}</td>
 					<td>{eur(r.taxEur, true)}</td>
@@ -481,11 +483,21 @@
 	.l {
 		text-align: left;
 	}
+	/* Letra algo más pequeña y apretada en todo el listado, para que quepan las columnas. */
+	.ledger table {
+		font-size: 12.5px;
+		letter-spacing: -0.02em;
+	}
 	.ledger :is(th, td) {
-		padding: 0.2rem 0.35rem;
+		padding: 0.2rem 0.25rem;
+	}
+	.ledger .type {
+		max-width: 6rem;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 	.desc {
-		max-width: 15rem;
+		max-width: 10rem;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
@@ -501,9 +513,7 @@
 	/* Acumulados siempre a la vista: columnas de ancho fijo pegadas al borde derecho. */
 	@media (min-width: 1100px) {
 		.ledger .acc {
-			--acc-w: 5.6rem;
-			font-size: 13px;
-			letter-spacing: -0.02em;
+			--acc-w: 5rem;
 			position: sticky;
 			right: calc(var(--acc-w) * (var(--acc-count) - 1 - var(--acc-i)));
 			box-sizing: border-box;

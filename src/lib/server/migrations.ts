@@ -278,5 +278,13 @@ CREATE TABLE selection_review_item (
 	PRIMARY KEY (review_id, security_id)
 );
 `
+	},
+	{
+		version: 9,
+		sql: `
+-- Cuentas de brokers extranjeros: no aplican retención española, así que la de los dividendos es siempre en origen.
+ALTER TABLE account ADD COLUMN foreign_broker INTEGER NOT NULL DEFAULT 0;
+UPDATE account SET foreign_broker = 1 WHERE code IN ('DEGIRO', 'DEGIRO2', 'IBUSD', 'IBEUR');
+`
 	}
 ];

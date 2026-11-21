@@ -19,6 +19,8 @@ export interface AccountRecord {
 	currency: string;
 	sortOrder: number;
 	closed: number;
+	/** 1 si es de un broker extranjero: la retención de sus dividendos es en origen. */
+	foreignBroker: number;
 	/** Nº de movimientos de efectivo de la cuenta. */
 	movements: number;
 	/** Saldo actual, en su moneda. */
@@ -73,7 +75,7 @@ const flag = (fields: Fields, key: string) => (['1', 'on', 'true'].includes(clea
 export function listAccountRecords(db: DatabaseSync, portfolioId: number): AccountRecord[] {
 	const rows = db
 		.prepare(
-			`SELECT a.id, a.portfolio_id AS portfolioId, a.code, a.name, a.broker, a.currency, a.sort_order AS sortOrder, a.closed,
+			`SELECT a.id, a.portfolio_id AS portfolioId, a.code, a.name, a.broker, a.currency, a.sort_order AS sortOrder, a.closed, a.foreign_broker AS foreignBroker,
 				(SELECT count(*) FROM cash_leg c WHERE c.account_id = a.id) AS movements
 			FROM account a WHERE a.portfolio_id = ? ORDER BY a.sort_order, a.id`
 		)
@@ -96,6 +98,7 @@ export function saveAccount(db: DatabaseSync, portfolioId: number, id: number | 
 		const name = clean(fields, 'name') || code;
 		const currency = clean(fields, 'currency').toUpperCase();
 		const closed = flag(fields, 'closed');
+		const foreignBroker = flag(fields, 'foreignBroker');
 		const order = clean(fields, 'sortOrder');
 		const sortOrder = order === '' ? (existing?.sortOrder ?? Math.max(-1, ...accounts.map((a) => a.sortOrder)) + 1) : Number(order);
 
@@ -107,12 +110,12 @@ export function saveAccount(db: DatabaseSync, portfolioId: number, id: number | 
 		if (closed && existing && existing.balance !== 0) errors.push('No se puede cerrar una cuenta con saldo: traspásalo o retíralo antes.');
 		if (errors.length) return { ok: false, errors };
 
-		const values = [code, name, optional(fields, 'broker'), currency, sortOrder, closed];
+		const values = [code, name, optional(fields, 'broker'), currency, sortOrder, closed, foreignBroker];
 		const savedId = existing
-			? (db.prepare('UPDATE account SET code = ?, name = ?, broker = ?, currency = ?, sort_order = ?, closed = ? WHERE id = ?').run(...values, existing.id), existing.id)
-			: Number(db.prepare('INSERT INTO account (code, name, broker, currency, sort_order, closed, portfolio_id) VALUES (?,?,?,?,?,?,?)').run(...values, portfolioId).lastInsertRowid);
-		const row = (a: AccountRecord | null | undefined) => a && { code: a.code, name: a.name, broker: a.broker, currency: a.currency, sortOrder: a.sortOrder, closed: a.closed };
-		audit(db, 'account', savedId, row(existing), { code, name, broker: optional(fields, 'broker'), currency, sortOrder, closed });
+			? (db.prepare('UPDATE account SET code = ?, name = ?, broker = ?, currency = ?, sort_order = ?, closed = ?, foreign_broker = ? WHERE id = ?').run(...values, existing.id), existing.id)
+			: Number(db.prepare('INSERT INTO account (code, name, broker, currency, sort_order, closed, foreign_broker, portfolio_id) VALUES (?,?,?,?,?,?,?,?)').run(...values, portfolioId).lastInsertRowid);
+		const row = (a: AccountRecord | null | undefined) => a && { code: a.code, name: a.name, broker: a.broker, currency: a.currency, sortOrder: a.sortOrder, closed: a.closed, foreignBroker: a.foreignBroker };
+		audit(db, 'account', savedId, row(existing), { code, name, broker: optional(fields, 'broker'), currency, sortOrder, closed, foreignBroker });
 		return { ok: true, id: savedId };
 	});
 }

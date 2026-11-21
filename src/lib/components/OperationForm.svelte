@@ -7,7 +7,7 @@
 	import { eur, num } from '#lib/format.ts';
 
 	interface Props {
-		accounts: { id: number; code: string; name: string; currency: string; closed?: number }[];
+		accounts: { id: number; code: string; name: string; currency: string; closed?: number; foreignBroker?: number }[];
 		securities: { id: number; ticker: string; name: string | null; currency: string | null; whtSourcePct: number | null; whtDestPct: number | null; active?: number }[];
 		/** Acciones por valor y saldo por cuenta, sin contar la operación que se edita. */
 		holdings: Record<number, number>;
@@ -151,14 +151,17 @@
 	}
 	function accountChanged() {
 		if (has('currency') && !raw.currency) raw.currency = account?.currency ?? 'EUR';
+		suggestWithholding();
 	}
 	/** Retenciones del dividendo según los porcentajes del valor, mientras no se hayan tecleado. */
 	function suggestWithholding() {
 		if (type !== 'DIVIDENDOS' || whtTouched || !security) return;
 		const amount = parseDecimal(raw.amount) ?? computedAmount;
 		if (!amount) return;
-		const source = copiedRates?.source ?? security.whtSourcePct;
-		const dest = copiedRates?.dest ?? security.whtDestPct;
+		// Un broker extranjero no retiene impuestos españoles: solo hay retención en origen.
+		const foreign = Boolean(account?.foreignBroker);
+		const source = foreign && copiedRates ? copiedRates.source + copiedRates.dest : (copiedRates?.source ?? security.whtSourcePct);
+		const dest = foreign ? 0 : (copiedRates?.dest ?? security.whtDestPct);
 		raw.whtSource = source ? text(amount * source) : '';
 		raw.whtDest = dest ? text(amount * dest) : '';
 	}

@@ -26,6 +26,8 @@ export interface Account {
 	currency: string;
 	/** 1 si la cuenta está cerrada: no se ofrece para operaciones nuevas. */
 	closed: number;
+	/** 1 si es de un broker extranjero: sin retención española, la de los dividendos es en origen. */
+	foreignBroker: number;
 }
 /** Operación con los campos informativos que muestra el listado, además de sus efectos. */
 export interface OperationRow extends Operation {
@@ -47,7 +49,7 @@ export function listPortfolios(d: DatabaseSync = getDb()): Portfolio[] {
 }
 
 export function listAccounts(portfolioId: number, d: DatabaseSync = getDb()): Account[] {
-	return d.prepare('SELECT id, code, name, currency, closed FROM account WHERE portfolio_id = ? ORDER BY sort_order, id').all(portfolioId) as unknown as Account[];
+	return d.prepare('SELECT id, code, name, currency, closed, foreign_broker AS foreignBroker FROM account WHERE portfolio_id = ? ORDER BY sort_order, id').all(portfolioId) as unknown as Account[];
 }
 
 export interface Security {

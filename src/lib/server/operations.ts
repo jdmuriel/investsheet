@@ -78,6 +78,9 @@ export function getOperation(db: DatabaseSync, id: number): OperationRecord | nu
 		// Operación importada: se propone lo que se deduce de la cabecera, para revisarlo antes de recalcular.
 		const local = (value: unknown, eur: unknown) => money((value as number | null) ?? (eur as number));
 		const other = cash.find((c) => c.accountId !== r.account_id);
+		const tax = r.wht_source_local == null ? local(r.tax_local, r.tax_eur) : money(r.wht_dest_local as number | null);
+		// La hoja solo guarda la retención total: en un broker extranjero es toda en origen; en uno español, en destino.
+		const foreign = r.wht_source_local == null && r.account_id != null && Boolean((db.prepare('SELECT foreign_broker FROM account WHERE id = ?').get(r.account_id) as { foreign_broker: number } | undefined)?.foreign_broker);
 		raw = {
 			account: r.account_id == null ? '' : String(r.account_id),
 			toAccount: other ? String(other.accountId) : '',
@@ -87,8 +90,8 @@ export function getOperation(db: DatabaseSync, id: number): OperationRecord | nu
 			currency: String(r.currency ?? ''),
 			fxRate: decimal(r.fx_rate as number | null, 9),
 			amount: local(r.amount_local, (r.gross_eur as number) || (r.purchase_eur as number) || (r.capital_in_eur as number) || (r.capital_out_eur as number)),
-			whtSource: money(r.wht_source_local as number | null),
-			whtDest: r.wht_source_local == null ? local(r.tax_local, r.tax_eur) : money(r.wht_dest_local as number | null),
+			whtSource: foreign ? tax : money(r.wht_source_local as number | null),
+			whtDest: foreign ? '' : tax,
 			fees: local(r.fees_local, r.fees_eur)
 		};
 	}

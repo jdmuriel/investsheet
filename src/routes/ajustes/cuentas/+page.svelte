@@ -4,7 +4,7 @@
 
 	let { data, form }: PageProps = $props();
 
-	const blank = { id: null, code: '', name: '', broker: '', currency: 'EUR', sortOrder: '', closed: 0, movements: 0, balance: 0 };
+	const blank = { id: null, code: '', name: '', broker: '', currency: 'EUR', sortOrder: '', closed: 0, foreignBroker: 0, movements: 0, balance: 0 };
 	/** Valor de un campo: lo tecleado si el envío de esa fila se rechazó, o lo guardado. */
 	const value = (row: { id: number | null }, key: string) => String((form?.raw && form.id === row.id ? form.raw[key] : (row as Record<string, unknown>)[key]) ?? '');
 </script>
@@ -25,7 +25,7 @@
 
 <p class="note">
 	El código es el nombre corto que aparece en el listado y en la API. Una cuenta cerrada deja de ofrecerse al dar de alta movimientos, pero conserva su historial. La moneda no se puede cambiar cuando ya hay
-	movimientos.
+	movimientos. «Extranjero» marca un broker de fuera de España: no retiene impuestos españoles, y la retención de sus dividendos se anota en origen.
 </p>
 
 <div class="scroll">
@@ -37,6 +37,7 @@
 				<th>Broker</th>
 				<th>Moneda</th>
 				<th>Orden</th>
+				<th title="Broker extranjero: no retiene impuestos españoles, la retención de los dividendos es en origen">Extranjero</th>
 				<th>Cerrada</th>
 				<th class="r">Movimientos</th>
 				<th class="r">Saldo</th>
@@ -60,6 +61,9 @@
 						</select>
 					</td>
 					<td><input name="sortOrder" form={f} value={value(a, 'sortOrder')} size="3" inputmode="numeric" aria-label="Orden" /></td>
+					<td class="c">
+						<input type="checkbox" name="foreignBroker" value="1" form={f} checked={form?.raw && form.id === a.id ? form.raw.foreignBroker === '1' : Boolean(a.foreignBroker)} aria-label="Broker extranjero" />
+					</td>
 					<td class="c">
 						{#if a.id != null}<input type="checkbox" name="closed" value="1" form={f} checked={form?.raw && form.id === a.id ? form.raw.closed === '1' : Boolean(a.closed)} aria-label="Cerrada" />{/if}
 					</td>

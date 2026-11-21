@@ -44,7 +44,7 @@ Importes en **céntimos enteros** de su moneda. Cantidades, precios y tipos de c
 
 ```
 portfolio(id, name)
-account(id, portfolio_id, code, name, broker, currency, sort_order, closed)
+account(id, portfolio_id, code, name, broker, currency, sort_order, closed, foreign_broker)
 security(id, ticker, price_ticker, name, country, currency, sector, supersector,
          zone, tier, wht_source_pct, wht_dest_pct, reinvest, active)
 

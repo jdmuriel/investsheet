@@ -147,6 +147,17 @@ describe('edición y borrado', () => {
 		expect(db.prepare("SELECT count(*) AS n FROM audit_log WHERE entity_id IN (60, 61) AND action = 'update'").get()).toMatchObject({ n: 2 });
 	});
 
+	it('al editar un dividendo importado propone la retención en origen si la cuenta es de un broker extranjero', () => {
+		db.exec(`
+			UPDATE account SET foreign_broker = 1 WHERE id = 2;
+			INSERT INTO operation (id, portfolio_id, date, seq, type, account_id, security_id, currency, fx_rate, amount_local, tax_local, gross_eur, tax_eur, description, source)
+				VALUES (70, 1, '2024-06-01', 1, 'DIVIDENDOS', 1, 1, 'EUR', 1, 1000, 190, 1000, 190, 'Dividendos ACME', 'legacy'),
+				       (71, 1, '2024-06-01', 2, 'DIVIDENDOS', 2, 1, 'USD', 1.1, 1100, 165, 1000, 150, 'Dividendos ACME', 'legacy');
+		`);
+		expect(getOperation(db, 70)?.raw).toMatchObject({ whtSource: '', whtDest: '1.90' });
+		expect(getOperation(db, 71)?.raw).toMatchObject({ whtSource: '1.65', whtDest: '' });
+	});
+
 	it('borrar deja rastro y respeta las validaciones', () => {
 		const money = deposit();
 		const purchase = buy('2025-01-02', '10');

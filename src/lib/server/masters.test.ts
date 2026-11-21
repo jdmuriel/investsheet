@@ -35,6 +35,13 @@ describe('cuentas', () => {
 		expect(audits('account')).toMatchObject([{ action: 'create', before: null }]);
 	});
 
+	it('guarda la marca de broker extranjero', () => {
+		expect(saveAccount(db, 1, 1, { code: 'BANCO', name: 'Banco', currency: 'EUR', foreignBroker: '1' }).ok).toBe(true);
+		expect(listAccountRecords(db, 1)[0].foreignBroker).toBe(1);
+		expect(saveAccount(db, 1, 1, { code: 'BANCO', name: 'Banco', currency: 'EUR' }).ok).toBe(true);
+		expect(listAccountRecords(db, 1)[0].foreignBroker).toBe(0);
+	});
+
 	it('rechaza códigos repetidos en la cartera, monedas desconocidas y datos sin sentido', () => {
 		expect(saveAccount(db, 1, null, { code: 'banco', currency: 'EUR' })).toMatchObject({ ok: false });
 		expect(saveAccount(db, 1, null, { code: 'CON ESPACIO', currency: 'EUR' })).toMatchObject({ ok: false });

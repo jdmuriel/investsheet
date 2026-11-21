@@ -8,7 +8,7 @@ Dificultad orientativa de cada tarea, para elegir modelo: 🟢 mecánica y acota
 
 ## Estado actual (21 de noviembre de 2026)
 
-- **En producción**: <https://invest.jdmuriel.com>, con inicio de sesión de Google y los datos históricos cargados (3 carteras, 2.918 operaciones). Todo lo hecho está fusionado en `main`; el esquema va por la migración 8.
+- **En producción**: <https://invest.jdmuriel.com>, con inicio de sesión de Google y los datos históricos cargados (3 carteras, 2.918 operaciones). Todo lo hecho está fusionado en `main`; el esquema va por la migración 9.
 - **Funciona (fase 1)**: listado de movimientos con acumulados, métricas anuales y objetivos, con vista de móvil y edición en ventana emergente; alta, edición, duplicado y borrado de operaciones; cartera fija en la barra superior; mantenimiento de cuentas y valores; conciliación de saldos; exportación de validación con el formato de `Log`; API para asistentes (con token, ya activa); descarga y restauración de la base de datos; instalable como aplicación (1.15).
 - **Funciona (fase 2)**: cuadro de cartera en la portada, con el orden de `Control cartera` por defecto y editable, columnas de dividendo por meses y ficha del valor en ventana emergente; calendario y cambios de dividendo; precios desde la hoja publicada «investsheet — precios» o a mano; tipos de cambio del BCE; importación de los datos de la hoja que no son operaciones. Comparado valor a valor con `Control cartera`: las diferencias que quedan están explicadas en las [incidencias](incidencias-migracion.md) (C5, C6, C9, C10).
 - **Funciona (fase 3)**: selección mensual en `/seleccion` (3.2), ya cargada con la solapa `Selección` y sus 34 revisiones, con la variación coloreada y la evolución del precio de cada valor dibujada. El propietario la usará por primera vez en la revisión de este mes.
@@ -246,6 +246,7 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 | 2026-11-21 | Actualizado el estado del plan y el diseño (§6: ventanas emergentes y preferencias en *cookies*) para empezar la siguiente sesión con el contexto limpio. |
 | 2026-11-21 | Corregidos los cambios de dividendo con fecha anterior al calendario importado (salía «de 0 a…» y el calendario importado seguía mandando); borrar un cambio deshace su versión del calendario; versiones borrables en la ficha; la pista del tipo de cambio es la de la fecha del cambio. Fusionado en `main`. |
 | 2026-11-21 | Skill `add_movement` (`.claude/skills/`) para anotar operaciones por la API sin leer la documentación. Retenciones de las cuentas extranjeras (DEGIRO, DEGIRO2, IBUSD, IBEUR): las importadas solo guardan el total, sin reparto entre origen y destino, así que no hay datos que cambiar; el «destino» que se ve al editarlas es solo lo que propone el formulario. |
+| 2026-11-21 | Cuentas de broker extranjero (migración 9, `account.foreign_broker`, marcada en DEGIRO, DEGIRO2, IBUSD e IBEUR y editable en Ajustes → Cuentas): al editar un dividendo importado de esas cuentas se propone su retención en origen, y en el alta el formulario ya no sugiere retención en destino. Fusionado en `main`. |
 
 ## Ideas para más adelante
 

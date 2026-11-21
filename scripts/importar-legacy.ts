@@ -396,7 +396,9 @@ for (const s of securities.values()) {
 	securityId.set(s.ticker, Number(r.lastInsertRowid));
 }
 const insPortfolio = db.prepare('INSERT INTO portfolio (name, sort_order) VALUES (?,?)');
-const insAccount = db.prepare('INSERT INTO account (portfolio_id, code, name, currency, sort_order) VALUES (?,?,?,?,?)');
+const insAccount = db.prepare('INSERT INTO account (portfolio_id, code, name, currency, sort_order, foreign_broker) VALUES (?,?,?,?,?,?)');
+/** Cuentas de brokers extranjeros: la retención de sus dividendos es siempre en origen (igual que la migración 9). */
+const FOREIGN_BROKERS = new Set(['DEGIRO', 'DEGIRO2', 'IBUSD', 'IBEUR']);
 const insOp = db.prepare(`INSERT INTO operation (id, portfolio_id, date, seq, type, account_id, security_id, quantity, price, currency, fx_rate,
 	amount_local, tax_local, fees_local, gross_eur, tax_eur, fees_eur, capital_in_eur, capital_out_eur, purchase_eur, description, source, legacy_ref)
 	VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
@@ -407,7 +409,7 @@ const summaries: string[] = [];
 portfolios.forEach((p, index) => {
 	const portfolioId = Number(insPortfolio.run(p.name, index).lastInsertRowid);
 	const accountId = new Map<string, number>();
-	p.accounts.forEach((a, i) => accountId.set(a.code, Number(insAccount.run(portfolioId, a.code, a.code, a.currency, i).lastInsertRowid)));
+	p.accounts.forEach((a, i) => accountId.set(a.code, Number(insAccount.run(portfolioId, a.code, a.code, a.currency, i, FOREIGN_BROKERS.has(a.code) ? 1 : 0).lastInsertRowid)));
 
 	const unknownAccounts = new Set<string>();
 	const outOfOrder: string[] = [];

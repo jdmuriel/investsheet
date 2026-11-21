@@ -118,12 +118,12 @@ Lista de cambios tras usar la aplicación. Se van haciendo uno a uno, en este or
 
 **Cuadro de cartera (`/`)**
 
-- [ ] **M1.1** Cabecera: «Precios actualizados a las [fecha y hora] · gestionar precios y tipos de cambio» en lugar de «Precios del [fecha] · precios y cambios». 🟢
-- [ ] **M1.2** Quitar la tarjeta «P/G» de los valores. 🟢
-- [ ] **M1.3** Orden de las tarjetas: PADI bruto · PADI neto · Liquidez · Valor de mercado · Capital aportado. 🟢
-- [ ] **M1.4** Tarjeta final «Total» = liquidez + valor de mercado, con la línea «resultado total», que sale de «Capital aportado». 🟢
-- [ ] **M1.5** Quitar la línea «Peso equiponderado» y mostrar ese dato en un aviso (i) en la cabecera de la columna «Peso». 🟢
-- [ ] **M1.6** Columnas: «Precio» antes de «Coste»; «YOC» detrás de «RPD neta». 🟢
+- [x] **M1.1** Cabecera: «Precios actualizados a las [fecha y hora] · gestionar precios y tipos de cambio» en lugar de «Precios del [fecha] · precios y cambios». 🟢
+- [x] **M1.2** Quitar la tarjeta «P/G» de los valores. 🟢
+- [x] **M1.3** Orden de las tarjetas: PADI bruto · PADI neto · Liquidez · Valor de mercado · Capital aportado. 🟢
+- [x] **M1.4** Tarjeta final «Total» = liquidez + valor de mercado, con la línea «resultado total», que sale de «Capital aportado». 🟢
+- [x] **M1.5** Quitar la línea «Peso equiponderado» y mostrar ese dato en un aviso (i) en la cabecera de la columna «Peso». 🟢
+- [x] **M1.6** Columnas: «Precio» antes de «Coste»; «YOC» detrás de «RPD neta». 🟢
 - [ ] **M1.7** Desde cada fila: (a) ir a movimientos con todos los movimientos de todos los años de ese ticker; (b) editar el valor en una ventana emergente que, al guardar, refresca la fila. 🟡
   - [ ] `/ajustes/valores/[id]` acepta también el ticker.
   - [ ] En Ajustes → Valores, la edición también en ventana emergente.
@@ -234,6 +234,7 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 | 2026-11-19 | El propietario ha cambiado `FLY_API_TOKEN` por un token de despliegue limitado a la aplicación. |
 | 2026-11-20 | Tarea 1.15: aplicación instalable (manifiesto e iconos; Chromium no da ningún error de instalabilidad). Selección: variación coloreada según los umbrales y evolución del precio de cada valor en las revisiones, con gráfico desplegable. |
 | 2026-11-20 | Fusionado en `main` y desplegado (el *push* desde la sesión lanzó la acción por sí solo). |
+| 2026-11-21 | Lista de mejoras del propietario (M1.x, M2.x). Hechas M1.1 a M1.6 en el cuadro de cartera: cabecera con la hora de la última lectura de precios, tarjetas reordenadas con «Total» y sin «P/G», peso equiponderado en un (i) de la columna «Peso», columnas «Precio» y «YOC» movidas. |
 
 ## Ideas para más adelante
 

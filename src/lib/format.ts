@@ -26,6 +26,14 @@ export function date(iso: string): string {
 	return `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
 }
 
+const clock = new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Madrid' });
+const day = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Madrid' });
+/** Instante ISO a «HH:MM del DD/MM/AAAA», en hora de Madrid. */
+export function dateTime(iso: string): string {
+	const d = new Date(iso);
+	return `${clock.format(d)} del ${date(day.format(d))}`;
+}
+
 /** Símbolo de una moneda para mostrar importes en listados; el código si no tiene uno inequívoco. */
 export function symbol(currency: string | null | undefined): string {
 	return SYMBOLS[currency ?? ''] ?? currency ?? '';

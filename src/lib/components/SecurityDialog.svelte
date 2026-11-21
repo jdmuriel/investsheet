@@ -18,7 +18,8 @@
 	let loaded = $state<Record<string, any> | null>(null);
 	let problem = $state<string | null>(null);
 	$effect(() => {
-		preloadData(path).then((r) => {
+		// `preloadData` guarda lo que carga: con un parámetro propio, cada apertura trae los datos de ahora.
+		preloadData(`${path}?lectura=${Date.now()}`).then((r) => {
 			if (r.type === 'loaded' && r.status === 200) loaded = r.data;
 			else problem = r.type === 'error' ? r.error.message : 'No se ha podido cargar el valor.';
 		});

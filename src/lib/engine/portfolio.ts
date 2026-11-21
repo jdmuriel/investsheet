@@ -78,6 +78,8 @@ export interface HoldingRow extends SecurityInfo {
 	sinceLastBuy: Cents;
 	/** Bruto previsto de cada mes, de enero a diciembre, en céntimos de euro. */
 	monthly: Cents[];
+	/** Dividendo por acción previsto de cada mes, de enero a diciembre, en `dpaCurrency`; `null` sin calendario. */
+	months: number[] | null;
 }
 
 export interface PortfolioTotals {
@@ -170,7 +172,8 @@ export function portfolioView(inputs: PortfolioInputs): PortfolioView {
 			received: (position?.dividendsGross ?? 0) + (position?.returnsGross ?? 0),
 			recovered: ratio((position?.dividendsGross ?? 0) + (position?.returnsGross ?? 0), cost),
 			sinceLastBuy: position?.dividendsSinceLastBuy ?? 0,
-			monthly
+			monthly,
+			months
 		});
 	}
 
@@ -241,4 +244,16 @@ export function distribution(rows: HoldingRow[], group: (r: HoldingRow) => strin
 	}
 	const total = [...totals.values()].reduce((a, b) => a + b, 0);
 	return [...totals].map(([label, a]) => ({ label, amount: a, share: total ? a / total : 0 })).sort((a, b) => b.amount - a.amount);
+}
+
+/**
+ * Orden completo de una cartera tras reordenar los valores que se ven (`shown`, ya en el orden nuevo).
+ * `current` es el orden guardado, que incluye valores sin posición: esos no se mueven, y los que se ven
+ * ocupan, en el orden nuevo, los huecos que ya ocupaban. Los que aún no tenían sitio entran al final.
+ */
+export function reorder(current: number[], shown: number[]): number[] {
+	const full = [...current, ...shown.filter((id) => !current.includes(id))];
+	const wanted = new Set(shown);
+	const next = shown[Symbol.iterator]();
+	return full.map((id) => (wanted.has(id) ? next.next().value! : id));
 }

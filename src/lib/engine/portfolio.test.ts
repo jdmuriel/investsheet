@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { run } from './engine.ts';
-import { distribution, portfolioView, type SecurityInfo } from './portfolio.ts';
+import { distribution, portfolioView, reorder, type SecurityInfo } from './portfolio.ts';
 import { MICRO, type Operation } from './types.ts';
 
 // Todos los datos de estas pruebas son inventados.
@@ -97,5 +97,17 @@ describe('cuadro de cartera', () => {
 			{ label: 'Industria', amount: 120000, share: 120000 / 420000 }
 		]);
 		expect(distribution(view.rows, (r) => r.zone, (r) => r.dividendGross)).toEqual([{ label: 'Sin clasificar', amount: 13000, share: 1 }]);
+	});
+});
+
+describe('orden de la cartera', () => {
+	it('reordena los valores que se ven sin mover los que no tienen posición', () => {
+		// 2 y 4 no se ven (sin posición): siguen en sus huecos.
+		expect(reorder([1, 2, 3, 4, 5], [5, 1, 3])).toEqual([5, 2, 1, 4, 3]);
+	});
+	it('añade al final los valores que aún no tenían sitio y los coloca donde se pida', () => {
+		expect(reorder([1, 2], [1, 2, 9])).toEqual([1, 2, 9]);
+		expect(reorder([1, 2, 3], [1, 9, 3])).toEqual([1, 2, 9, 3]);
+		expect(reorder([], [3, 1])).toEqual([3, 1]);
 	});
 });

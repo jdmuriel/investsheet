@@ -1,8 +1,10 @@
 <script lang="ts">
 	import BarList from '#lib/components/BarList.svelte';
+	import { enhance } from '$app/forms';
+	import Dialog from '#lib/components/Dialog.svelte';
 	import SecurityDialog from '#lib/components/SecurityDialog.svelte';
-	import { MONTH_NAMES } from '#lib/engine/dividends.ts';
-	import { date, dateTime, eur, num, pct, price } from '#lib/format.ts';
+	import { MONTH_NAMES, MONTH_SHORT } from '#lib/engine/dividends.ts';
+	import { date, dateTime, eur, num, pct, price, symbol } from '#lib/format.ts';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -52,6 +54,7 @@
 	const sectors = $derived(options((r) => r.sector));
 	const tiers = $derived(options((r) => r.tier));
 	const visible = $derived.by(() => {
+		if (ordering) return ordering.map((id) => data.rows.find((r) => r.id === id)!).filter(Boolean);
 		const q = search.trim().toLowerCase();
 		const column = columns.find((c) => c.key === sortKey) ?? { value: position };
 		const rows = data.rows.filter((r) => (!zone || r.zone === zone) && (!sector || r.sector === sector) && (!tier || r.tier === tier) && (!q || r.ticker.toLowerCase().includes(q) || (r.name ?? '').toLowerCase().includes(q)));
@@ -65,6 +68,37 @@
 		});
 	});
 	const filtered = $derived(visible.length !== data.rows.length);
+
+	// Columnas de meses (enero a diciembre): ocultas, dividendo por acción o bruto total en euros. Se recuerda en la cookie `meses`.
+	type MonthsMode = 'accion' | 'total' | null;
+	// svelte-ignore state_referenced_locally
+	let monthsMode = $state<MonthsMode>(data.monthsMode);
+	function setMonths(mode: MonthsMode) {
+		monthsMode = mode;
+		document.cookie = `meses=${mode ?? ''}; path=/; max-age=31536000; samesite=lax`;
+	}
+	const monthLabel = (i: number) => MONTH_SHORT[i][0].toUpperCase() + MONTH_SHORT[i].slice(1);
+	const monthShare = (r: Row, i: number) => (r.months && r.months[i] ? price(r.months[i]) : '');
+	const monthTotal = (r: Row, i: number) => eur(r.monthly[i], true);
+
+	// Detalle del DPA de un valor en ventana emergente.
+	let dpaRow = $state<Row | null>(null);
+
+	// Edición del orden de la cartera: lista de ids en el orden nuevo mientras se edita.
+	let ordering = $state<number[] | null>(null);
+	let dragging: number | null = null;
+	function startOrdering() {
+		sortKey = DEFAULT;
+		descending = false;
+		search = zone = sector = tier = '';
+		ordering = [...data.rows].sort((a, b) => (position(a) ?? Infinity) - (position(b) ?? Infinity) || a.ticker.localeCompare(b.ticker)).map((r) => r.id);
+	}
+	function move(from: number, to: number) {
+		if (!ordering || to < 0 || to >= ordering.length || from === to) return;
+		const next = [...ordering];
+		next.splice(to, 0, ...next.splice(from, 1));
+		ordering = next;
+	}
 	const sum = (pick: (r: Row) => number | null) => visible.reduce((a, r) => a + (pick(r) ?? 0), 0);
 
 	const t = $derived(data.totals);
@@ -149,8 +183,33 @@
 			<select bind:value={sortKey}><option value={DEFAULT}>Orden de la cartera</option>{#each columns as c (c.key)}<option value={c.key}>{c.label}</option>{/each}</select>
 		</label>
 		{#if sortKey !== DEFAULT}<button type="button" class="link desktop" onclick={() => ((sortKey = DEFAULT), (descending = false))}>Orden de la cartera</button>{/if}
-		{#if filtered}<span class="muted">{visible.length} de {data.rows.length} valores</span>{/if}
+		{#if filtered && !ordering}<span class="muted">{visible.length} de {data.rows.length} valores</span>{/if}
+		<span class="choices desktop" role="group" aria-label="Columnas de meses">
+			<span class="muted">Meses:</span>
+			{#each [[null, 'ocultos'], ['accion', 'por acción'], ['total', 'total €']] as [mode, label] (label)}
+				<button type="button" class:on={monthsMode === mode} aria-pressed={monthsMode === mode} onclick={() => setMonths(mode as MonthsMode)}>{label}</button>
+			{/each}
+		</span>
+		{#if !ordering}<button type="button" class="link desktop" onclick={startOrdering}>Cambiar el orden de la cartera</button>{/if}
 	</form>
+
+	{#if ordering}
+		<form
+			method="POST"
+			action="?/orden"
+			class="ordering desktop"
+			use:enhance={() =>
+				async ({ result, update }) => {
+					await update();
+					if (result.type === 'success') ordering = null;
+				}}
+		>
+			<input type="hidden" name="ids" value={ordering.join(',')} />
+			<span>Arrastra las filas o usa las flechas para colocar cada valor; el orden se guarda para esta cartera.</span>
+			<button>Guardar el orden</button>
+			<button type="button" onclick={() => (ordering = null)}>Cancelar</button>
+		</form>
+	{/if}
 
 	<div class="scroll desktop">
 		<table class="holdings">
@@ -165,22 +224,50 @@
 							{/if}
 						</th>
 					{/each}
+					{#if monthsMode}
+						{#each MONTH_SHORT as _, i (i)}
+							<th class="month" class:first={i === 0} title="{monthsMode === 'accion' ? 'Dividendo por acción previsto' : 'Bruto previsto, en euros'} en {MONTH_NAMES[i]}"><button type="button" disabled>{monthLabel(i)}</button></th>
+						{/each}
+					{/if}
 				</tr>
 			</thead>
 			<tbody>
-				{#each visible as r (r.id)}
-					<tr>
+				{#each visible as r, index (r.id)}
+					<tr
+						draggable={ordering ? 'true' : undefined}
+						class:dragrow={ordering}
+						ondragstart={() => (dragging = index)}
+						ondragover={(e) => ordering && dragging != null && e.preventDefault()}
+						ondrop={(e) => {
+							e.preventDefault();
+							if (dragging != null) move(dragging, index);
+							dragging = null;
+						}}
+					>
 						{#each columns as c (c.key)}
 							{@const v = c.value(r)}
 							{#if c.key === 'ticker'}
 								<th class="l" scope="row">
+									{#if ordering}
+										<span class="arrows">
+											<button type="button" title="Subir" aria-label="Subir {r.ticker}" disabled={index === 0} onclick={() => move(index, index - 1)}>↑</button>
+											<button type="button" title="Bajar" aria-label="Bajar {r.ticker}" disabled={index === visible.length - 1} onclick={() => move(index, index + 1)}>↓</button>
+										</span>
+									{/if}
 									<a class="ticker" href={editHref(r)} onclick={(e) => edit(e, r.id)} title="{[r.name, r.sector, r.country].filter(Boolean).join(' · ')}. Editar el valor">{r.ticker}</a>
 									<a class="moves" href={movesHref(r)} title="Movimientos de {r.ticker}, todos los años" aria-label="Movimientos de {r.ticker}">☰</a>
 								</th>
+							{:else if c.key === 'dpaEur' && r.months}
+								<td><button type="button" class="cell" title="Ver el dividendo previsto de cada mes" onclick={() => (dpaRow = r)}>{c.text(r)}</button></td>
 							{:else}
 								<td class:neg={c.signed && typeof v === 'number' && v < 0} title={c.key === 'price' && r.quote ? `Precio del ${date(r.quote.date)}` : undefined}>{c.text(r)}</td>
 							{/if}
 						{/each}
+						{#if monthsMode}
+							{#each MONTH_SHORT as _, i (i)}
+								<td class="month" class:first={i === 0}>{monthsMode === 'accion' ? monthShare(r, i) : monthTotal(r, i)}</td>
+							{/each}
+						{/if}
 					</tr>
 				{/each}
 			</tbody>
@@ -191,11 +278,16 @@
 						{@const v = c.total ? sum(c.total) : null}
 						<td class:neg={c.signed && v != null && v < 0}>{v == null ? '' : c.percent ? pct(v) : eur(v)}</td>
 					{/each}
+					{#if monthsMode}
+						{#each MONTH_SHORT as _, i (i)}
+							<td class="month" class:first={i === 0}>{monthsMode === 'total' ? eur(sum((r) => r.monthly[i])) : ''}</td>
+						{/each}
+					{/if}
 				</tr>
 			</tfoot>
 		</table>
 	</div>
-	<p class="muted desktop">Importes en €, salvo el precio, que va en la moneda en que cotiza cada valor.</p>
+	<p class="muted desktop">Importes en €, salvo el precio, que va en la moneda en que cotiza cada valor{monthsMode === 'accion' ? ', y el dividendo por acción de cada mes, que va en la moneda de su calendario' : ''}. Pulsa el DPA de un valor para ver su previsión mes a mes.</p>
 
 	<ul class="cards mobile">
 		{#each visible as r (r.id)}
@@ -206,7 +298,11 @@
 						<span>{eur(r.value)} €</span>
 						<span class:neg={(r.gainPct ?? 0) < 0}>{pct(r.gainPct)}</span>
 					</summary>
-					<p class="actions"><a href={movesHref(r)}>Movimientos</a> <a href={editHref(r)} onclick={(e) => edit(e, r.id)}>Editar el valor</a></p>
+					<p class="actions">
+						<a href={movesHref(r)}>Movimientos</a>
+						<a href={editHref(r)} onclick={(e) => edit(e, r.id)}>Editar el valor</a>
+						{#if r.months}<button type="button" class="link" onclick={() => (dpaRow = r)}>Dividendo por meses</button>{/if}
+					</p>
 					<dl>
 						{#each columns.slice(1) as c (c.key)}
 							{#if c.text(r)}<div><dt>{c.label}</dt><dd>{c.text(r)}</dd></div>{/if}
@@ -238,11 +334,109 @@
 	</div>
 {/if}
 
+{#if dpaRow?.months}
+	{@const r = dpaRow}
+	<Dialog title="{r.ticker}: dividendo previsto por meses" onclose={() => (dpaRow = null)} fit>
+		<table class="dpa">
+			<thead>
+				<tr><th class="l">Mes</th><th>Por acción ({symbol(r.dpaCurrency)})</th><th>Bruto total (€)</th></tr>
+			</thead>
+			<tbody>
+				{#each MONTH_NAMES as m, i (m)}
+					<tr class:empty={!r.months![i]}><th class="l" scope="row">{m[0].toUpperCase() + m.slice(1)}</th><td>{monthShare(r, i)}</td><td>{monthTotal(r, i)}</td></tr>
+				{/each}
+			</tbody>
+			<tfoot>
+				<tr><th class="l" scope="row">Año</th><td>{price(r.dpa)}</td><td>{eur(r.dividendGross)}</td></tr>
+			</tfoot>
+		</table>
+		<p class="muted">Con las {num(r.shares)} acciones de hoy. El calendario se cambia en <a href="/dividendos">Dividendos</a>.</p>
+	</Dialog>
+{/if}
+
 {#if editing != null}
 	<SecurityDialog security={editing} onclose={() => (editing = null)} />
 {/if}
 
 <style>
+	.holdings .month {
+		color: var(--muted);
+	}
+	.holdings .month.first {
+		box-shadow: inset 1px 0 0 var(--line);
+	}
+	.holdings thead .month button {
+		cursor: default;
+		text-align: right;
+	}
+	button.cell {
+		font: inherit;
+		color: inherit;
+		background: none;
+		border: none;
+		padding: 0;
+		cursor: pointer;
+		text-decoration: underline dotted var(--muted);
+	}
+	button.cell:hover {
+		color: var(--accent);
+	}
+	.arrows button {
+		font: inherit;
+		font-size: 12px;
+		padding: 0 0.25rem;
+		margin-right: 0.1rem;
+		border: 1px solid var(--line);
+		border-radius: 3px;
+		background: var(--bg);
+		color: var(--fg);
+		cursor: pointer;
+	}
+	.arrows button:disabled {
+		color: var(--muted);
+		cursor: default;
+	}
+	tr.dragrow {
+		cursor: grab;
+	}
+	.ordering {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem 1rem;
+		align-items: center;
+		margin-bottom: 0.5rem;
+		padding: 0.4rem 0.6rem;
+		border-left: 3px solid var(--accent);
+		background: var(--soft);
+	}
+	.ordering button {
+		font: inherit;
+		padding: 0.25rem 0.8rem;
+	}
+	.dpa {
+		border-collapse: collapse;
+		font-variant-numeric: tabular-nums;
+		margin-bottom: 0.6rem;
+	}
+	.dpa :is(th, td) {
+		padding: 0.2rem 0.8rem;
+		text-align: right;
+		border-bottom: 1px solid var(--line);
+	}
+	.dpa .l {
+		text-align: left;
+	}
+	.dpa thead th {
+		font-size: 12px;
+		color: var(--muted);
+	}
+	.dpa tr.empty td {
+		color: var(--muted);
+	}
+	.dpa tfoot :is(th, td) {
+		font-weight: 600;
+		border-bottom: none;
+	}
 	.holdings a.ticker {
 		color: inherit;
 		text-decoration: none;

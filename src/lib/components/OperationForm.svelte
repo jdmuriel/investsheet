@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
+	import type { SubmitFunction } from '$app/forms';
 	import { parseDecimal, parseInput, type RawInput } from '#lib/engine/form.ts';
 	import { buildOperation, isOperationType, OPERATION_TYPES, typeDefinition, type FieldName, type OperationType } from '#lib/engine/operations.ts';
 	import { MICRO } from '#lib/engine/types.ts';
@@ -21,8 +23,11 @@
 		allowAnother?: boolean;
 		/** Copia de otra operación: se adapta a la posición actual y los importes derivados se recalculan. */
 		duplicate?: boolean;
+		/** Envío sin recargar la página (ventana emergente): quien lo da decide qué hacer con la respuesta. */
+		submit?: SubmitFunction;
 	}
-	let { accounts, securities, holdings, balances, initial, rejected = null, imported = false, supported = true, action = '', allowAnother = false, duplicate = false }: Props = $props();
+	let { accounts, securities, holdings, balances, initial, rejected = null, imported = false, supported = true, action = '', allowAnother = false, duplicate = false, submit }: Props = $props();
+	const enhanceIf = (node: HTMLFormElement, fn: SubmitFunction | undefined) => (fn ? enhance(node, fn) : undefined);
 
 	const CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF', 'CAD', 'DKK', 'SEK', 'NOK'];
 	const NEW = 'nuevo';
@@ -180,7 +185,7 @@
 	const others = Object.entries(OPERATION_TYPES).filter(([, d]) => !('frequent' in d && d.frequent));
 </script>
 
-<form method="POST" {action} class="operation">
+<form method="POST" {action} class="operation" use:enhanceIf={submit}>
 	{#if rejected?.errors.length}
 		<ul class="errors">
 			{#each rejected.errors as e (e)}<li>{e}</li>{/each}

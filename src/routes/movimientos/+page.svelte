@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
+	import OperationDialog from '#lib/components/OperationDialog.svelte';
 	import { amount, date, eur, num, pct, symbol } from '#lib/format.ts';
 	import type { PageProps } from './$types';
 
@@ -30,7 +32,31 @@
 	// En móvil la lista va de lo más reciente a lo más antiguo.
 	const newestFirst = $derived([...visible].reverse());
 	// Las columnas de acumulados quedan fijas a la derecha; cada una necesita saber cuántas tiene detrás.
-	const accCount = $derived(2 + data.accounts.length);
+	// «Capital invertido» y «Ganancias año» se pueden ocultar (cookie `acumulados`).
+	// svelte-ignore state_referenced_locally
+	let showTotals = $state(data.showTotals);
+	function toggleTotals() {
+		showTotals = !showTotals;
+		document.cookie = `acumulados=${showTotals ? 1 : 0}; path=/movimientos; max-age=31536000; samesite=lax`;
+	}
+	const extra = $derived(showTotals ? 2 : 0);
+	const accCount = $derived(extra + data.accounts.length);
+
+	// Edición en ventana emergente; al guardar se recarga el listado (los acumulados de esa fila y las siguientes)
+	// y queda resaltada la operación guardada.
+	let editing = $state<number | null>(null);
+	function edit(e: MouseEvent, id: number) {
+		if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+		e.preventDefault();
+		editing = id;
+	}
+	async function edited(what: 'saved' | 'deleted', id: number) {
+		editing = null;
+		if (what === 'deleted') return invalidateAll();
+		const url = new URL(page.url.href);
+		url.searchParams.set('op', String(id));
+		await goto(url.pathname + url.search, { replace: true, reset: false, refreshAll: true });
+	}
 
 	let ledger: HTMLDivElement | undefined = $state();
 	// Abiertas o cerradas como se dejaron (cookie `metricas`, un año); sin preferencia, cerradas solo en móvil.
@@ -86,6 +112,7 @@
 	{#if security}<span class="chip">Valor: <strong>{security}</strong> <a href={withoutSecurity} aria-label="Quitar el filtro de valor" title="Ver todos los valores">✕</a></span>{/if}
 	<span class="count">{visible.length} de {data.rows.length} movimientos</span>
 	<a class="new" href="/movimientos/nuevo?cartera={data.portfolioId}">Nuevo movimiento</a>
+	<label class="check desktop"><input type="checkbox" checked={showTotals} onchange={toggleTotals} /> Capital invertido y ganancias del año</label>
 	<a class="reconcile" href="/conciliacion?cartera={data.portfolioId}">Conciliar saldos</a>
 </form>
 
@@ -192,7 +219,7 @@
 				<th class="l">Valor</th>
 				<th>Cantidad</th>
 				<th>Precio</th>
-				<th class="l">Moneda</th>
+				<th class="l" title="Moneda">M.</th>
 				<th>Cambio</th>
 				<th class="l">Cuenta</th>
 				<th>Bruto €</th>
@@ -201,10 +228,12 @@
 				<th>Resultado €</th>
 				<th>Capital ±</th>
 				<th>Compra €</th>
-				<th class="acc first" style="--acc-i: 0">Capital invertido</th>
-				<th class="acc" style="--acc-i: 1">Ganancias año</th>
+				{#if showTotals}
+					<th class="acc first" style="--acc-i: 0">Capital invertido</th>
+					<th class="acc" style="--acc-i: 1">Ganancias año</th>
+				{/if}
 				{#each data.accounts as a, i (a.id)}
-					<th class="acc" style="--acc-i: {i + 2}">{a.name} ({symbol(a.currency)})</th>
+					<th class="acc" class:first={!showTotals && i === 0} style="--acc-i: {i + extra}">{a.name} ({symbol(a.currency)})</th>
 				{/each}
 			</tr>
 		</thead>
@@ -214,7 +243,7 @@
 					<td class="l actions">
 						{#if r.canCopy}<a href="/movimientos/nuevo?cartera={data.portfolioId}&copiar={r.id}" title="Duplicar con la fecha de hoy" aria-label="Duplicar {r.description}">⧉</a>{/if}
 					</td>
-					<td class="l nowrap"><a href="/movimientos/{r.id}" title="Editar">{date(r.date)}</a></td>
+					<td class="l nowrap"><a href="/movimientos/{r.id}" title="Editar" onclick={(e) => edit(e, r.id)}>{date(r.date)}</a></td>
 					<td class="l desc" title={r.description}>{r.description}</td>
 					<td class="l">{r.type}</td>
 					<td class="l">{r.ticker ?? ''}</td>
@@ -229,10 +258,12 @@
 					<td class:neg={r.netEur < 0}>{eur(r.netEur, true)}</td>
 					<td class:neg={r.capitalEur < 0}>{eur(r.capitalEur, true)}</td>
 					<td class:neg={r.purchaseEur < 0}>{eur(r.purchaseEur, true)}</td>
-					<td class="acc first" style="--acc-i: 0">{eur(r.invested)}</td>
-					<td class="acc" style="--acc-i: 1" class:neg={r.yearResult < 0}>{eur(r.yearResult)}</td>
+					{#if showTotals}
+						<td class="acc first" style="--acc-i: 0">{eur(r.invested)}</td>
+						<td class="acc" style="--acc-i: 1" class:neg={r.yearResult < 0}>{eur(r.yearResult)}</td>
+					{/if}
 					{#each r.cash as c, i (i)}
-						<td class="acc" style="--acc-i: {i + 2}" class:neg={c < 0}>{eur(c)}</td>
+						<td class="acc" class:first={!showTotals && i === 0} style="--acc-i: {i + extra}" class:neg={c < 0}>{eur(c)}</td>
 					{/each}
 				</tr>
 			{/each}
@@ -277,7 +308,7 @@
 					{/each}
 				</dl>
 				<p class="links">
-					<a href="/movimientos/{r.id}">Editar</a>
+					<a href="/movimientos/{r.id}" onclick={(e) => edit(e, r.id)}>Editar</a>
 					{#if r.canCopy}<a href="/movimientos/nuevo?cartera={data.portfolioId}&copiar={r.id}">Duplicar con la fecha de hoy</a>{/if}
 				</p>
 			</details>
@@ -285,7 +316,32 @@
 	{/each}
 </ul>
 
+<!-- Lo de arriba, repetido debajo para no tener que volver arriba tras desplazarse. -->
+<p class="bottom">
+	<span class="count">{visible.length} de {data.rows.length} movimientos</span>
+	<a class="new" href="/movimientos/nuevo?cartera={data.portfolioId}">Nuevo movimiento</a>
+</p>
+
+{#if editing != null}
+	<OperationDialog id={editing} onclose={() => (editing = null)} ondone={edited} />
+{/if}
+
 <style>
+	.bottom {
+		display: flex;
+		gap: 1rem;
+		align-items: center;
+		justify-content: flex-end;
+		margin: 0.5rem 0 0;
+	}
+	label.check {
+		display: flex;
+		gap: 0.3rem;
+		align-items: center;
+		align-self: end;
+		font-size: 12px;
+		color: var(--muted);
+	}
 	.chip {
 		align-self: end;
 		padding: 0.2rem 0.6rem;
@@ -425,8 +481,11 @@
 	.l {
 		text-align: left;
 	}
+	.ledger :is(th, td) {
+		padding: 0.2rem 0.35rem;
+	}
 	.desc {
-		max-width: 22rem;
+		max-width: 15rem;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
@@ -442,7 +501,9 @@
 	/* Acumulados siempre a la vista: columnas de ancho fijo pegadas al borde derecho. */
 	@media (min-width: 1100px) {
 		.ledger .acc {
-			--acc-w: 6.6rem;
+			--acc-w: 5.6rem;
+			font-size: 13px;
+			letter-spacing: -0.02em;
 			position: sticky;
 			right: calc(var(--acc-w) * (var(--acc-count) - 1 - var(--acc-i)));
 			box-sizing: border-box;

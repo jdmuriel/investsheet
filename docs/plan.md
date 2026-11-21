@@ -13,7 +13,7 @@ Dificultad orientativa de cada tarea, para elegir modelo: 🟢 mecánica y acota
 - **Funciona (fase 2)**: cuadro de cartera en la portada, con el orden de `Control cartera` por defecto; calendario y cambios de dividendo; precios desde la hoja publicada «investsheet — precios» o a mano; tipos de cambio del BCE; importación de los datos de la hoja que no son operaciones. Comparado valor a valor con `Control cartera`: las diferencias que quedan están explicadas en las [incidencias](incidencias-migracion.md) (C5, C6, C9, C10).
 - **Funciona (fase 3)**: selección mensual en `/seleccion` (3.2), ya cargada con la solapa `Selección` y sus 34 revisiones, con la variación coloreada y la evolución del precio de cada valor dibujada. El propietario la usará por primera vez en la revisión de este mes.
 - **Migración**: revisadas las erratas de la hoja y corregidas en la aplicación y en la hoja (H2, H11, H13, H14). El resumen está al principio de [incidencias-migracion.md](incidencias-migracion.md).
-- **No existe todavía**: copias automáticas externas (1.11), pruebas de extremo a extremo (1.16), servidor MCP (1.19), exportación de validación de `Control cartera` (2.7), valores en estudio (3.1), edición del orden de la cartera e informes (fase 4).
+- **No existe todavía**: copias automáticas externas (1.11), pruebas de extremo a extremo (1.16), servidor MCP (1.19), exportación de validación de `Control cartera` (2.7), valores en estudio (3.1), e informes (fase 4).
 - **Pendiente del propietario**: añadir a la hoja de precios `BMY`, `GOOGL` y los 9 candidatos dados de alta desde `Selección` (AD, DGE, ENX, ASML, META, AMZN, BNTX, NOVO-B, LDA); probar el alta de operaciones reales; instalar la aplicación en el móvil y el Chromebook y probar los colores y gráficos de la selección (desplegado el 2026-11-20, sin probar aún por él).
 - **Siguiente paso propuesto**: recoger las impresiones del propietario sobre la aplicación instalada y tras usar la selección este fin de semana; después, la copia externa automática (1.11), que es lo que más riesgo quita, y el periodo en paralelo de un mes contra `Log` (1.17). La 2.7 pierde urgencia: la comparación valor a valor ya está hecha.
 - La hoja de cálculo sigue siendo la fuente de verdad hasta validar un mes en paralelo.
@@ -88,7 +88,7 @@ Objetivo: poder dejar de usar `Control cartera` y `Variación divs`.
 - [x] **2.4 Importar el calendario de dividendos** desde `Control cartera`, junto con el último precio y cambio de cada valor (`src/lib/server/legacy-extras.ts`). Lo hace el importador y, sobre una base ya en uso, Ajustes → «Importar datos de la hoja». 🟡
 - [x] **2.5 Cuadro de cartera** en `/` (RF-19 a RF-24): totales, tabla por valor ordenable y filtrable, previsión de 12 meses y distribución por valor, sector, supersector y país; vista de móvil. Cálculo en `src/lib/engine/portfolio.ts`. 🔴
   - [x] Zona y *tier* de cada valor: se importan de `Selección` (3.2) y se editan en Ajustes → Valores. La zona es España, EE. UU. o resto del mundo: decide la lista de la selección y su inversión máxima, y filtra el cuadro.
-  - [x] Orden por defecto de los valores de cada cartera: el de las columnas de `Control cartera` (tabla `portfolio_security`, migración 8), importado con los demás datos de la hoja. Al ordenar por una columna, un botón vuelve a él. Aún no se edita desde la aplicación.
+  - [x] Orden por defecto de los valores de cada cartera: el de las columnas de `Control cartera` (tabla `portfolio_security`, migración 8), importado con los demás datos de la hoja. Al ordenar por una columna, un botón vuelve a él. Se edita desde el cuadro (M1.9).
   - [ ] RF-22 completo: hoy se muestra lo cobrado desde la última compra en los valores que se reinvierten; falta definir con el propietario qué es «mantener el equilibrio».
 - [x] **2.6 Cambios de dividendo** (RF-16 a RF-18) en `/dividendos`: una sola acción versiona el calendario y deja constancia; efecto anual por cartera y total por año; histórico de `Variación divs` importado. 🟡
 - [ ] **2.7 Exportación de validación con el formato de `Control cartera`.** 🟡
@@ -127,15 +127,15 @@ Lista de cambios tras usar la aplicación. Se van haciendo uno a uno, en este or
 - [x] **M1.7** Desde cada fila: (a) ir a movimientos con todos los movimientos de todos los años de ese ticker; (b) editar el valor en una ventana emergente que, al guardar, refresca la fila. 🟡
   - [x] `/ajustes/valores/[id]` acepta también el ticker.
   - [x] En Ajustes → Valores, la edición también en ventana emergente.
-- [ ] **M1.8** Dividendo mensual previsto por valor (como las filas 30 a 53 de `Control cartera`): ventana emergente al pulsar el DPA y/o columnas de meses que se muestran u ocultan. Pendiente de decidir la forma. 🟡
-- [ ] **M1.9** Editar el orden de los valores de cada cartera (`portfolio_security.sort_order`), para colocar un valor nuevo donde se quiera. Pendiente de decidir la forma. 🟡
+- [x] **M1.8** Dividendo mensual previsto por valor (como las filas 30 a 53 de `Control cartera`): columnas de enero a diciembre que se muestran por acción o en euros totales (se recuerda en la cookie `meses`) y ventana emergente al pulsar el DPA. 🟡
+- [x] **M1.9** Editar el orden de los valores de cada cartera (`portfolio_security.sort_order`), para colocar un valor nuevo donde se quiera: «Cambiar el orden de la cartera» en el cuadro, arrastrando o con flechas. Los valores sin posición conservan su sitio (`reorder` del motor). 🟡
 
 **Listado de movimientos (`/movimientos`)**
 
-- [ ] **M2.1** Repetir abajo el «X de X movimientos» y el botón «Nuevo movimiento». 🟢
-- [ ] **M2.2** Columnas más estrechas: «Capital invertido» y «Ganancias año» ocultables con un interruptor; las de cuentas, más compactas (fuente estrecha, menos separación); a la izquierda, cabecera «M.» para la moneda y descripción recortada con el texto completo al pasar el ratón. Quizá elegir qué cuentas se ven. 🟡
+- [x] **M2.1** Repetir abajo el «X de X movimientos» y el botón «Nuevo movimiento». 🟢
+- [x] **M2.2** Columnas más estrechas: «Capital invertido» y «Ganancias año» ocultables con un interruptor; las de cuentas, más compactas (fuente estrecha, menos separación); a la izquierda, cabecera «M.» para la moneda y descripción recortada con el texto completo al pasar el ratón. Quizá elegir qué cuentas se ven (no hecho: de momento se ven todas). 🟡
 - [x] **M2.4** Recordar si las «Métricas anuales y objetivos» se dejaron abiertas o cerradas (cookie `metricas`, un año; sin ella, cerradas solo en móvil). 🟢
-- [ ] **M2.3** Edición de un movimiento en ventana emergente; al guardar se refrescan esa fila y las siguientes (acumulados). 🟡
+- [x] **M2.3** Edición de un movimiento en ventana emergente; al guardar se refrescan esa fila y las siguientes (acumulados). 🟡
 
 ## Aplazado
 
@@ -236,6 +236,7 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 | 2026-11-20 | Tarea 1.15: aplicación instalable (manifiesto e iconos; Chromium no da ningún error de instalabilidad). Selección: variación coloreada según los umbrales y evolución del precio de cada valor en las revisiones, con gráfico desplegable. |
 | 2026-11-20 | Fusionado en `main` y desplegado (el *push* desde la sesión lanzó la acción por sí solo). |
 | 2026-11-21 | Lista de mejoras del propietario (M1.x, M2.x). Hechas M1.1 a M1.6 en el cuadro de cartera: cabecera con la hora de la última lectura de precios, tarjetas reordenadas con «Total» y sin «P/G», peso equiponderado en un (i) de la columna «Peso», columnas «Precio» y «YOC» movidas. M2.4: el listado de movimientos recuerda si las métricas anuales están abiertas. M1.7: desde cada valor de la cartera, su ficha en ventana emergente (`SecurityDialog`, también en Ajustes → Valores; con Ctrl se abre la página) y sus movimientos de todos los años (`/movimientos?periodo=todos&valor=TICKER`); la ficha admite el ticker en la dirección. Fusionado en `main`. |
+| 2026-11-21 | M1.8, M1.9 y M2.1 a M2.3: columnas de meses y detalle del DPA en el cuadro; edición del orden de la cartera; en movimientos, barra repetida abajo, columnas más estrechas con «Capital invertido» y «Ganancias año» ocultables (cookie `acumulados`) y edición en ventana emergente (`OperationDialog`, que reutiliza `OperationEditor` de la página del movimiento). Fusionado en `main`. |
 
 ## Ideas para más adelante
 

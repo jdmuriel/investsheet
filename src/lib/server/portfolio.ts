@@ -1,7 +1,7 @@
 /** Datos del cuadro de cartera: posiciones del registro con el último precio, cambio y calendario guardados. */
 import type { DatabaseSync } from 'node:sqlite';
 import { run } from '../engine/engine.ts';
-import { portfolioView, type PortfolioView, type SecurityInfo } from '../engine/portfolio.ts';
+import { portfolioView, reorder, type PortfolioView, type SecurityInfo } from '../engine/portfolio.ts';
 import { currentSchedules } from './dividends.ts';
 import { latestFx, latestQuotes } from './market.ts';
 import { listAccounts, loadOperations } from './store.ts';
@@ -36,4 +36,23 @@ export function loadPortfolio(db: DatabaseSync, portfolioId: number, today: stri
 	const dates = view.rows.flatMap((r) => (r.quote ? [r.quote.date] : [])).sort();
 	const order = db.prepare('SELECT security_id AS id, sort_order AS n FROM portfolio_security WHERE portfolio_id = ?').all(portfolioId) as { id: number; n: number }[];
 	return { ...view, order: Object.fromEntries(order.map((o) => [o.id, o.n])), oldestQuote: dates[0] ?? null, newestQuote: dates.at(-1) ?? null, fx: [...fx].map(([currency, r]) => ({ currency, ...r })).sort((a, b) => a.currency.localeCompare(b.currency)) };
+}
+
+/** Guarda el orden de los valores que se ven en el cuadro (`ids`, en el orden nuevo), sin mover los demás. */
+export function savePortfolioOrder(db: DatabaseSync, portfolioId: number, ids: number[]): void {
+	const current = db.prepare('SELECT security_id AS id FROM portfolio_security WHERE portfolio_id = ? ORDER BY sort_order').all(portfolioId) as { id: number }[];
+	const known = new Set((db.prepare('SELECT id FROM security').all() as { id: number }[]).map((r) => r.id));
+	const order = reorder(
+		current.map((r) => r.id),
+		[...new Set(ids)].filter((id) => known.has(id))
+	);
+	const save = db.prepare('INSERT INTO portfolio_security (portfolio_id, security_id, sort_order) VALUES (?, ?, ?) ON CONFLICT (portfolio_id, security_id) DO UPDATE SET sort_order = excluded.sort_order');
+	db.exec('BEGIN IMMEDIATE');
+	try {
+		order.forEach((id, i) => save.run(portfolioId, id, i));
+		db.exec('COMMIT');
+	} catch (e) {
+		db.exec('ROLLBACK');
+		throw e;
+	}
 }

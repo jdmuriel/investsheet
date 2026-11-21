@@ -93,5 +93,5 @@ export const load: PageServerLoad = ({ url, locals, cookies }) => {
 	// Objetivos del año en curso (RF-26), frente a la parte del año ya transcurrida.
 	const goals = { year: currentYear, elapsed: yearFraction(currentYear, today), rows: goalProgress(state.years.get(currentYear), loadGoals(getDb(), portfolioId, currentYear)) };
 
-	return { portfolioId, accounts: columns, summary, goals, currentYear, years, year: period.year, period: period.key, pastYears, rows, warnings: warnings.length, saved, metricsOpen: METRICS[cookies.get(METRICS_COOKIE) ?? ''] ?? null };
+	return { portfolioId, accounts: columns, summary, goals, currentYear, years, year: period.year, period: period.key, pastYears, rows, warnings: warnings.length, saved, metricsOpen: METRICS[cookies.get(METRICS_COOKIE) ?? ''] ?? null, showTotals: cookies.get('acumulados') !== '0' };
 };

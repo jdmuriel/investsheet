@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 import { openDatabase } from './db.ts';
-import { deleteSecurity, listAccountRecords, listSecurityRecords, saveAccount, saveSecurity, securityFields } from './masters.ts';
+import { deleteSecurity, findSecurityRecord, listAccountRecords, listSecurityRecords, saveAccount, saveSecurity, securityFields } from './masters.ts';
 import { saveOperation } from './operations.ts';
 import { accountBalances, deleteReconciliation, listReconciliations, saveReconciliation } from './reconciliation.ts';
 
@@ -62,6 +62,12 @@ describe('cuentas', () => {
 });
 
 describe('valores', () => {
+	it('encuentra un valor por su ticker sin distinguir mayúsculas', () => {
+		expect(findSecurityRecord(db, 'acme')?.id).toBe(1);
+		expect(findSecurityRecord(db, ' ACME ')?.id).toBe(1);
+		expect(findSecurityRecord(db, 'NADA')).toBeNull();
+	});
+
 	it('da de alta un valor con las retenciones en porcentaje', () => {
 		const result = saveSecurity(db, null, { ticker: 'nuevo', name: 'Nuevo, S. A.', currency: 'usd', country: 'us', whtSourcePct: '15', whtDestPct: '4,5 %', reinvest: '1', active: '1' });
 		expect(result.ok).toBe(true);

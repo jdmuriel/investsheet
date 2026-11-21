@@ -1,7 +1,19 @@
 <script lang="ts">
+	import SecurityDialog from '#lib/components/SecurityDialog.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+
+	// La ficha se abre en ventana emergente; con Ctrl, Mayúsculas o el botón central, en su página como siempre.
+	let editing = $state<number | 'nuevo' | null>(null);
+	// svelte-ignore state_referenced_locally
+	let savedId = $state(data.savedId);
+	function open(e: MouseEvent, id: number | 'nuevo') {
+		if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+		e.preventDefault();
+		editing = id;
+	}
+	const saved = (location: string) => (savedId = Number(new URL(location, 'http://x').searchParams.get('guardado')) || null);
 
 	let search = $state('');
 	let onlyActive = $state(false);
@@ -20,7 +32,7 @@
 	<input type="search" bind:value={search} placeholder="ticker, nombre, sector o país" aria-label="Buscar" />
 	<label class="check"><input type="checkbox" bind:checked={onlyActive} /> Solo activos</label>
 	<span class="count">{visible.length} de {data.securities.length}</span>
-	<a class="new" href="/ajustes/valores/nuevo">Nuevo valor</a>
+	<a class="new" href="/ajustes/valores/nuevo" onclick={(e) => open(e, 'nuevo')}>Nuevo valor</a>
 	<a href="/ajustes">Volver a Ajustes</a>
 </header>
 
@@ -46,8 +58,8 @@
 		</thead>
 		<tbody>
 			{#each visible as s (s.id)}
-				<tr class:inactive={!s.active} class:saved={s.id === data.savedId}>
-					<td><a href="/ajustes/valores/{s.id}">{s.ticker}</a></td>
+				<tr class:inactive={!s.active} class:saved={s.id === savedId}>
+					<td><a href="/ajustes/valores/{s.id}" onclick={(e) => open(e, s.id)}>{s.ticker}</a></td>
 					<td>{s.name ?? ''}</td>
 					<td>{s.priceTicker ?? ''}</td>
 					<td>{s.country ?? ''}</td>
@@ -66,6 +78,10 @@
 		</tbody>
 	</table>
 </div>
+
+{#if editing != null}
+	<SecurityDialog security={editing} onclose={() => (editing = null)} onsaved={saved} />
+{/if}
 
 <style>
 	.page {

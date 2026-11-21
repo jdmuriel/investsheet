@@ -136,6 +136,12 @@ export function getSecurityRecord(db: DatabaseSync, id: number): SecurityRecord 
 	return listSecurityRecords(db).find((s) => s.id === id) ?? null;
 }
 
+/** Valor por su ticker, sin distinguir mayúsculas. */
+export function findSecurityRecord(db: DatabaseSync, ticker: string): SecurityRecord | null {
+	const wanted = ticker.trim().toUpperCase();
+	return listSecurityRecords(db).find((s) => s.ticker.toUpperCase() === wanted) ?? null;
+}
+
 /** Porcentaje tecleado («15», «15,5») a fracción; `undefined` si no es válido. */
 function percent(text: string): number | null | undefined {
 	if (text === '') return null;

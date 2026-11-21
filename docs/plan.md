@@ -124,9 +124,9 @@ Lista de cambios tras usar la aplicación. Se van haciendo uno a uno, en este or
 - [x] **M1.4** Tarjeta final «Total» = liquidez + valor de mercado, con la línea «resultado total», que sale de «Capital aportado». 🟢
 - [x] **M1.5** Quitar la línea «Peso equiponderado» y mostrar ese dato en un aviso (i) en la cabecera de la columna «Peso». 🟢
 - [x] **M1.6** Columnas: «Precio» antes de «Coste»; «YOC» detrás de «RPD neta». 🟢
-- [ ] **M1.7** Desde cada fila: (a) ir a movimientos con todos los movimientos de todos los años de ese ticker; (b) editar el valor en una ventana emergente que, al guardar, refresca la fila. 🟡
-  - [ ] `/ajustes/valores/[id]` acepta también el ticker.
-  - [ ] En Ajustes → Valores, la edición también en ventana emergente.
+- [x] **M1.7** Desde cada fila: (a) ir a movimientos con todos los movimientos de todos los años de ese ticker; (b) editar el valor en una ventana emergente que, al guardar, refresca la fila. 🟡
+  - [x] `/ajustes/valores/[id]` acepta también el ticker.
+  - [x] En Ajustes → Valores, la edición también en ventana emergente.
 - [ ] **M1.8** Dividendo mensual previsto por valor (como las filas 30 a 53 de `Control cartera`): ventana emergente al pulsar el DPA y/o columnas de meses que se muestran u ocultan. Pendiente de decidir la forma. 🟡
 - [ ] **M1.9** Editar el orden de los valores de cada cartera (`portfolio_security.sort_order`), para colocar un valor nuevo donde se quiera. Pendiente de decidir la forma. 🟡
 
@@ -235,7 +235,7 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 | 2026-11-19 | El propietario ha cambiado `FLY_API_TOKEN` por un token de despliegue limitado a la aplicación. |
 | 2026-11-20 | Tarea 1.15: aplicación instalable (manifiesto e iconos; Chromium no da ningún error de instalabilidad). Selección: variación coloreada según los umbrales y evolución del precio de cada valor en las revisiones, con gráfico desplegable. |
 | 2026-11-20 | Fusionado en `main` y desplegado (el *push* desde la sesión lanzó la acción por sí solo). |
-| 2026-11-21 | Lista de mejoras del propietario (M1.x, M2.x). Hechas M1.1 a M1.6 en el cuadro de cartera: cabecera con la hora de la última lectura de precios, tarjetas reordenadas con «Total» y sin «P/G», peso equiponderado en un (i) de la columna «Peso», columnas «Precio» y «YOC» movidas. M2.4: el listado de movimientos recuerda si las métricas anuales están abiertas. |
+| 2026-11-21 | Lista de mejoras del propietario (M1.x, M2.x). Hechas M1.1 a M1.6 en el cuadro de cartera: cabecera con la hora de la última lectura de precios, tarjetas reordenadas con «Total» y sin «P/G», peso equiponderado en un (i) de la columna «Peso», columnas «Precio» y «YOC» movidas. M2.4: el listado de movimientos recuerda si las métricas anuales están abiertas. M1.7: desde cada valor de la cartera, su ficha en ventana emergente (`SecurityDialog`, también en Ajustes → Valores; con Ctrl se abre la página) y sus movimientos de todos los años (`/movimientos?periodo=todos&valor=TICKER`); la ficha admite el ticker en la dirección. Fusionado en `main`. |
 
 ## Ideas para más adelante
 

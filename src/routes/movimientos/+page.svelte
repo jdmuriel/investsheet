@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { amount, date, eur, num, pct, symbol } from '#lib/format.ts';
 	import type { PageProps } from './$types';
 
@@ -6,11 +7,19 @@
 
 	let search = $state('');
 	let type = $state('');
+	// `valor=TICKER` en la dirección: solo los movimientos de ese valor (se llega desde la cartera, con todos los años).
+	const security = $derived(page.url.searchParams.get('valor')?.toUpperCase() || null);
+	const withoutSecurity = $derived.by(() => {
+		const u = new URL(page.url.href);
+		u.searchParams.delete('valor');
+		return u.pathname + u.search;
+	});
 
 	const types = $derived([...new Set(data.rows.map((r) => r.type))].sort());
 	const visible = $derived(
 		data.rows.filter((r) => {
 			if (type && r.type !== type) return false;
+			if (security && (r.ticker ?? '').toUpperCase() !== security) return false;
 			if (!search) return true;
 			const q = search.toLowerCase();
 			return r.description.toLowerCase().includes(q) || (r.ticker ?? '').toLowerCase().includes(q) || (r.account ?? '').toLowerCase().includes(q);
@@ -48,6 +57,7 @@
 
 <form method="GET" class="filters">
 	<input type="hidden" name="cartera" value={data.portfolioId} />
+	{#if security}<input type="hidden" name="valor" value={security} />{/if}
 	<label>
 		Periodo
 		<select name="periodo" onchange={(e) => e.currentTarget.form?.requestSubmit()}>
@@ -73,6 +83,7 @@
 		Buscar
 		<input type="search" bind:value={search} placeholder="descripción, valor o cuenta" />
 	</label>
+	{#if security}<span class="chip">Valor: <strong>{security}</strong> <a href={withoutSecurity} aria-label="Quitar el filtro de valor" title="Ver todos los valores">✕</a></span>{/if}
 	<span class="count">{visible.length} de {data.rows.length} movimientos</span>
 	<a class="new" href="/movimientos/nuevo?cartera={data.portfolioId}">Nuevo movimiento</a>
 	<a class="reconcile" href="/conciliacion?cartera={data.portfolioId}">Conciliar saldos</a>
@@ -275,6 +286,18 @@
 </ul>
 
 <style>
+	.chip {
+		align-self: end;
+		padding: 0.2rem 0.6rem;
+		border: 1px solid var(--accent);
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--accent) 12%, var(--bg));
+	}
+	.chip a {
+		margin-left: 0.3rem;
+		color: var(--muted);
+		text-decoration: none;
+	}
 	.filters {
 		display: flex;
 		flex-wrap: wrap;

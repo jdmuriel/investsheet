@@ -1,5 +1,6 @@
 <script lang="ts">
 	import BarList from '#lib/components/BarList.svelte';
+	import SecurityDialog from '#lib/components/SecurityDialog.svelte';
 	import { MONTH_NAMES } from '#lib/engine/dividends.ts';
 	import { date, dateTime, eur, num, pct, price } from '#lib/format.ts';
 	import type { PageProps } from './$types';
@@ -68,6 +69,16 @@
 
 	const t = $derived(data.totals);
 	let weightInfo = $state(false);
+
+	// Desde cada valor: su ficha en ventana emergente (al guardar se recarga el cuadro) y sus movimientos de todos los años.
+	let editing = $state<number | null>(null);
+	function edit(e: MouseEvent, id: number) {
+		if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+		e.preventDefault();
+		editing = id;
+	}
+	const editHref = (r: Row) => `/ajustes/valores/${encodeURIComponent(r.ticker)}?volver=/`;
+	const movesHref = (r: Row) => `/movimientos?cartera=${data.portfolioId}&periodo=todos&valor=${encodeURIComponent(r.ticker)}`;
 	const capitalize = (s: string) => s[0].toUpperCase() + s.slice(1);
 	const forecast = $derived(data.forecast.map((f) => ({ label: capitalize(MONTH_NAMES[f.month - 1]), amount: f.gross, note: `${capitalize(MONTH_NAMES[f.month - 1])}: ${eur(f.gross)} € brutos, ${eur(f.net)} € netos` })));
 
@@ -162,7 +173,10 @@
 						{#each columns as c (c.key)}
 							{@const v = c.value(r)}
 							{#if c.key === 'ticker'}
-								<th class="l" scope="row" title={[r.name, r.sector, r.country].filter(Boolean).join(' · ')}>{r.ticker}</th>
+								<th class="l" scope="row">
+									<a class="ticker" href={editHref(r)} onclick={(e) => edit(e, r.id)} title="{[r.name, r.sector, r.country].filter(Boolean).join(' · ')}. Editar el valor">{r.ticker}</a>
+									<a class="moves" href={movesHref(r)} title="Movimientos de {r.ticker}, todos los años" aria-label="Movimientos de {r.ticker}">☰</a>
+								</th>
 							{:else}
 								<td class:neg={c.signed && typeof v === 'number' && v < 0} title={c.key === 'price' && r.quote ? `Precio del ${date(r.quote.date)}` : undefined}>{c.text(r)}</td>
 							{/if}
@@ -192,6 +206,7 @@
 						<span>{eur(r.value)} €</span>
 						<span class:neg={(r.gainPct ?? 0) < 0}>{pct(r.gainPct)}</span>
 					</summary>
+					<p class="actions"><a href={movesHref(r)}>Movimientos</a> <a href={editHref(r)} onclick={(e) => edit(e, r.id)}>Editar el valor</a></p>
 					<dl>
 						{#each columns.slice(1) as c (c.key)}
 							{#if c.text(r)}<div><dt>{c.label}</dt><dd>{c.text(r)}</dd></div>{/if}
@@ -223,7 +238,34 @@
 	</div>
 {/if}
 
+{#if editing != null}
+	<SecurityDialog security={editing} onclose={() => (editing = null)} />
+{/if}
+
 <style>
+	.holdings a.ticker {
+		color: inherit;
+		text-decoration: none;
+	}
+	.holdings a.ticker:hover {
+		color: var(--accent);
+		text-decoration: underline;
+	}
+	.holdings a.moves {
+		margin-left: 0.3rem;
+		color: var(--muted);
+		text-decoration: none;
+		font-size: 12px;
+		font-weight: 400;
+	}
+	.holdings a.moves:hover {
+		color: var(--accent);
+	}
+	.cards .actions {
+		display: flex;
+		gap: 1rem;
+		margin: 0 0.2rem 0.4rem;
+	}
 	.link {
 		background: none;
 		border: none;

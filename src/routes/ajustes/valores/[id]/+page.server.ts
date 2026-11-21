@@ -1,5 +1,5 @@
 import { error, fail, redirect } from '@sveltejs/kit';
-import { CURRENCIES, deleteSecurity, getSecurityRecord, saveSecurity } from '#lib/server/masters.ts';
+import { CURRENCIES, deleteSecurity, findSecurityRecord, getSecurityRecord, saveSecurity } from '#lib/server/masters.ts';
 import { rawFromForm } from '#lib/server/operations.ts';
 import { TIERS, ZONES } from '#lib/engine/selection.ts';
 import { getDb } from '#lib/server/store.ts';
@@ -7,7 +7,8 @@ import type { Actions, PageServerLoad } from './$types';
 
 function recordFrom(param: string) {
 	if (param === 'nuevo') return null;
-	const record = /^\d+$/.test(param) ? getSecurityRecord(getDb(), Number(param)) : null;
+	// Por id o por ticker (`/ajustes/valores/AAPL`).
+	const record = (/^\d+$/.test(param) ? getSecurityRecord(getDb(), Number(param)) : null) ?? findSecurityRecord(getDb(), param);
 	if (!record) error(404, 'Valor no encontrado');
 	return record;
 }

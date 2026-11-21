@@ -245,6 +245,7 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 | 2026-11-21 | El propietario ha probado el alta de operaciones reales y medido el primer arranque con la máquina parada: entre 5 y 10 segundos. |
 | 2026-11-21 | Actualizado el estado del plan y el diseño (§6: ventanas emergentes y preferencias en *cookies*) para empezar la siguiente sesión con el contexto limpio. |
 | 2026-11-21 | Corregidos los cambios de dividendo con fecha anterior al calendario importado (salía «de 0 a…» y el calendario importado seguía mandando); borrar un cambio deshace su versión del calendario; versiones borrables en la ficha; la pista del tipo de cambio es la de la fecha del cambio. Fusionado en `main`. |
+| 2026-11-21 | Skill `add_movement` (`.claude/skills/`) para anotar operaciones por la API sin leer la documentación. Retenciones de las cuentas extranjeras (DEGIRO, DEGIRO2, IBUSD, IBEUR): las importadas solo guardan el total, sin reparto entre origen y destino, así que no hay datos que cambiar; el «destino» que se ve al editarlas es solo lo que propone el formulario. |
 
 ## Ideas para más adelante
 

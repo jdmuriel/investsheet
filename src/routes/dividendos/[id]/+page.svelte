@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { annualDividend, changeEffect, MONTH_NAMES, MONTH_SHORT } from '#lib/engine/dividends.ts';
+	import { annualDividend, changeEffect, MONTH_NAMES, MONTH_SHORT, scheduleBefore } from '#lib/engine/dividends.ts';
 	import { parseDecimal } from '#lib/engine/form.ts';
 	import { date, eur, num, pct, price } from '#lib/format.ts';
 	import type { PageProps } from './$types';
@@ -16,10 +16,32 @@
 	// svelte-ignore state_referenced_locally
 	let fxText = $state(form?.raw?.fxRate ?? '');
 
-	const oldAnnual = $derived(data.schedule ? annualDividend(data.schedule.months) : 0);
+	// svelte-ignore state_referenced_locally
+	let validFrom = $state(form?.raw?.date ?? data.today);
+	// El calendario «de antes» depende de la fecha: el vigente entonces o, si es anterior a todos, el primero
+	// (el importado de la hoja lleva la fecha de la importación). Si ya hay una versión en esa fecha, se sustituye.
+	const previous = $derived(
+		scheduleBefore(
+			data.versions.filter((v) => v.validFrom !== validFrom),
+			validFrom
+		)
+	);
+	const oldAnnual = $derived(previous ? annualDividend(previous.months) : 0);
+	// Tipo de cambio de la fecha del cambio (el que se usará si se deja en blanco).
+	let dateFx = $state<{ rate: number; date: string } | null>(null);
+	$effect(() => {
+		const wanted = { currency, date: validFrom };
+		if (currency === 'EUR' || !/^\d{4}-\d{2}-\d{2}$/.test(wanted.date)) return void (dateFx = null);
+		fetch(`/movimientos/cambio?moneda=${wanted.currency}&fecha=${wanted.date}`)
+			.then((r) => (r.ok ? r.json() : null))
+			.then((found) => {
+				if (wanted.currency === currency && wanted.date === validFrom) dateFx = found;
+			})
+			.catch(() => (dateFx = null));
+	});
 	const newAnnual = $derived(annualDividend(months.map((m) => parseDecimal(m) ?? 0).map((n) => (Number.isFinite(n) ? n : 0))));
-	const fxRate = $derived(currency === 'EUR' ? 1 : (parseDecimal(fxText) ?? data.fx?.rate ?? null));
-	const effect = $derived(fxRate && Number.isFinite(fxRate) ? changeEffect(oldAnnual, newAnnual, fxRate, data.shares) : null);
+	const fxRate = $derived(currency === 'EUR' ? 1 : (parseDecimal(fxText) ?? dateFx?.rate ?? null));
+	const impact = $derived(fxRate && Number.isFinite(fxRate) ? changeEffect(oldAnnual, newAnnual, fxRate, data.shares) : null);
 </script>
 
 <header class="page">
@@ -34,11 +56,11 @@
 	</ul>
 {/if}
 
-<form method="POST">
+<form method="POST" action="?/guardar">
 	<div class="grid">
 		<label>
 			En vigor desde
-			<input type="date" name="date" value={form?.raw?.date ?? data.today} required />
+			<input type="date" name="date" bind:value={validFrom} required />
 		</label>
 		<label>
 			Moneda del dividendo
@@ -62,11 +84,11 @@
 
 	<p class="summary">
 		Dividendo anual por acción: <strong>{price(newAnnual)} {currency}</strong>
-		{#if data.schedule}
-			(antes {price(oldAnnual)} {currency}{#if effect?.pct != null && newAnnual !== oldAnnual}, {effect.pct > 0 ? '+' : ''}{pct(effect.pct)}{/if}).
+		{#if previous}
+			(antes {price(oldAnnual)} {previous.currency}{#if impact?.pct != null && newAnnual !== oldAnnual}, {impact.pct > 0 ? '+' : ''}{pct(impact.pct)}{/if}).
 		{/if}
-		{#if effect && data.shares > 0 && newAnnual !== oldAnnual}
-			Con {num(data.shares)} acciones, el ingreso anual pasa de {eur(Math.round(effect.beforeEur * 100))} a {eur(Math.round(effect.afterEur * 100))} EUR.
+		{#if impact && data.shares > 0 && newAnnual !== oldAnnual}
+			Con {num(data.shares)} acciones, el ingreso anual pasa de {eur(Math.round(impact.beforeEur * 100))} a {eur(Math.round(impact.afterEur * 100))} EUR.
 		{/if}
 	</p>
 
@@ -81,8 +103,8 @@
 			{#if currency !== 'EUR'}
 				<label>
 					Tipo de cambio ({currency} por EUR)
-					<input name="fxRate" bind:value={fxText} inputmode="decimal" autocomplete="off" placeholder={data.fx ? String(data.fx.rate).replace('.', ',') : ''} />
-					<small>{data.fx ? `En blanco se usa el de la fecha (último conocido: ${date(data.fx.date)})` : 'No hay ninguno guardado: tecléalo'}</small>
+					<input name="fxRate" bind:value={fxText} inputmode="decimal" autocomplete="off" placeholder={dateFx ? String(dateFx.rate).replace('.', ',') : ''} />
+					<small>{dateFx ? `En blanco se usa el del BCE del ${date(dateFx.date)}, el de la fecha del cambio o el último día hábil anterior` : 'No hay ninguno del BCE para esa fecha: tecléalo'}</small>
 				</label>
 			{/if}
 			<label class="wide">
@@ -117,6 +139,7 @@
 					<th class="l">Moneda</th>
 					{#each MONTH_SHORT as m (m)}<th>{m}</th>{/each}
 					<th>Anual</th>
+					<th></th>
 				</tr>
 			</thead>
 			<tbody>
@@ -126,6 +149,12 @@
 						<td class="l">{v.currency}</td>
 						{#each v.months as m, i (i)}<td>{m ? price(m) : ''}</td>{/each}
 						<td>{price(annualDividend(v.months))}</td>
+						<td>
+							<form method="POST" action="?/borrarVersion" onsubmit={(e) => confirm(`¿Borrar la versión del calendario del ${date(v.validFrom)}? Los cambios anotados no se tocan.`) || e.preventDefault()}>
+								<input type="hidden" name="validFrom" value={v.validFrom} />
+								<button class="link" title="Borrar esta versión">Borrar</button>
+							</form>
+						</td>
 					</tr>
 				{/each}
 			</tbody>
@@ -134,6 +163,15 @@
 {/if}
 
 <style>
+	button.link {
+		background: none;
+		border: none;
+		padding: 0;
+		font: inherit;
+		color: var(--accent);
+		text-decoration: underline;
+		cursor: pointer;
+	}
 	.page {
 		display: flex;
 		gap: 0.3rem 1rem;

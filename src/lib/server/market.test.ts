@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 import { openDatabase } from './db.ts';
-import { currentSchedules, deleteChange, listChanges, saveSchedule } from './dividends.ts';
+import { currentSchedules, deleteChange, deleteScheduleVersion, listChanges, saveSchedule, scheduleVersions } from './dividends.ts';
 import { fxOn, latestFx, latestQuotes, marketStatus, refreshFx, refreshPrices, saveManualPrice, savePrice } from './market.ts';
 
 // Todos los datos de estas pruebas son inventados.
@@ -101,6 +101,45 @@ describe('calendario y cambios de dividendo', () => {
 		expect(db.prepare(`SELECT count(*) AS n FROM audit_log WHERE entity IN ('dividend_schedule', 'dividend_change')`).get()).toEqual({ n: 3 });
 		expect(deleteChange(db, listChanges(db)[0].id)).toBe(true);
 		expect(listChanges(db)).toEqual([]);
+	});
+
+	it('un cambio anterior al calendario importado toma ese calendario como el de antes y lo sustituye', () => {
+		// El importado lleva la fecha de la importación (15 de marzo) aunque ya regía antes.
+		saveSchedule(db, ACME, { date: '2030-03-15', ...months({ 1: '0,5', 7: '0,5' }) });
+		const result = saveSchedule(db, ACME, { date: '2030-03-10', change: '1', ...months({ 1: '0,6', 7: '0,6' }) });
+		expect(result.ok).toBe(true);
+		expect(listChanges(db)).toMatchObject([{ date: '2030-03-10', oldAnnual: 1, newAnnual: 1.2 }]);
+		expect(scheduleVersions(db, ACME).map((v) => v.validFrom)).toEqual(['2030-03-10']);
+		expect(currentSchedules(db).get(ACME)!.months[0]).toBe(0.6);
+		// Al borrar el cambio, todo vuelve a como estaba.
+		expect(deleteChange(db, listChanges(db)[0].id)).toBe(true);
+		expect(scheduleVersions(db, ACME)).toMatchObject([{ validFrom: '2030-03-15', months: [0.5, 0, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 0] }]);
+	});
+
+	it('un cambio con fecha pasada no quita las versiones posteriores que sí cambiaban algo', () => {
+		saveSchedule(db, ACME, { date: '2030-01-01', ...months({ 1: '1' }) });
+		saveSchedule(db, ACME, { date: '2030-06-01', change: '1', ...months({ 1: '2' }) });
+		saveSchedule(db, ACME, { date: '2030-03-01', change: '1', ...months({ 1: '1,5' }) });
+		expect(scheduleVersions(db, ACME).map((v) => [v.validFrom, v.months[0]])).toEqual([
+			['2030-01-01', 1],
+			['2030-03-01', 1.5],
+			['2030-06-01', 2]
+		]);
+		expect(listChanges(db).map((c) => [c.date, c.oldAnnual, c.newAnnual])).toEqual([
+			['2030-06-01', 1, 2],
+			['2030-03-01', 1, 1.5]
+		]);
+		// Borrar el cambio de marzo quita su versión y deja las demás.
+		deleteChange(db, listChanges(db)[1].id);
+		expect(scheduleVersions(db, ACME).map((v) => v.validFrom)).toEqual(['2030-01-01', '2030-06-01']);
+	});
+
+	it('borra una versión del calendario anotada por error', () => {
+		saveSchedule(db, ACME, { date: '2030-01-01', ...months({ 1: '1' }) });
+		saveSchedule(db, ACME, { date: '2030-02-01', ...months({ 1: '2' }) });
+		expect(deleteScheduleVersion(db, ACME, '2030-02-01')).toBe(true);
+		expect(deleteScheduleVersion(db, ACME, '2030-02-01')).toBe(false);
+		expect(currentSchedules(db).get(ACME)!.months[0]).toBe(1);
 	});
 
 	it('rechaza un cambio sin variación, sin tipo de cambio o con importes no válidos', () => {

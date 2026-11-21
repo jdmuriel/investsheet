@@ -46,3 +46,13 @@ export function sharesAt(operations: Operation[], queries: { securityId: number;
 	flush(null);
 	return out;
 }
+
+/**
+ * Calendario que había antes de uno nuevo fechado en `date`: el vigente en esa fecha o, si la fecha es anterior a
+ * todas las versiones, la primera. Así se tratan los calendarios importados de la hoja, que llevan la fecha de la
+ * importación aunque ya regían antes.
+ */
+export function scheduleBefore<T extends { validFrom: string }>(versions: T[], date: string): T | null {
+	const sorted = [...versions].sort((a, b) => a.validFrom.localeCompare(b.validFrom));
+	return sorted.filter((v) => v.validFrom <= date).at(-1) ?? sorted.find((v) => v.validFrom > date) ?? null;
+}

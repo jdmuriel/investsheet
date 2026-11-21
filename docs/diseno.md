@@ -178,6 +178,10 @@ La aplicación lee `actual` cuando la última lectura tiene más de 60 minutos y
 
 Un selector de cartera en la cabecera fija a cuál se refiere todo lo demás. La elección se recuerda en una *cookie* de un año. En el móvil, las tablas anchas se reducen a las columnas esenciales con detalle al tocar una fila, y el alta de operaciones es un formulario de una columna.
 
+**Ventanas emergentes.** La ficha de un valor (desde el cuadro y desde Ajustes → Valores) y la edición de un movimiento (desde el listado) se abren encima de la pantalla en vez de cambiar de página. Componentes en `src/lib/components/`: `Dialog` (la ventana, con `<dialog>`), `SecurityDialog` y `OperationDialog`. Cargan los datos de la página de siempre con `preloadData` (con un parámetro `lectura` distinto en cada lectura, porque `preloadData` guarda lo que carga) y envían a sus acciones con `use:enhance`; al guardar cierran y recargan la pantalla de debajo. Los formularios están en componentes que comparten la página y la ventana (`SecurityForm`, `OperationEditor` con `OperationForm`). Con Ctrl, ⌘ o Mayúsculas el enlace abre la página completa.
+
+**Preferencias de pantalla** en *cookies* de un año, para que el servidor pinte ya la vista elegida: `metricas` (métricas anuales abiertas o cerradas en movimientos), `acumulados` (columnas «Capital invertido» y «Ganancias año») y `meses` (columnas de meses del cuadro: ocultas, por acción o total).
+
 ## 7. Acceso y seguridad
 
 - Inicio de sesión con Google (OpenID Connect). Solo se admite **una dirección de correo**, configurada como secreto; cualquier otra cuenta se rechaza.

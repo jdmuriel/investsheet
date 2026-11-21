@@ -6,16 +6,17 @@ Documentos de referencia: [especificación](especificacion.md) (qué hay que hac
 
 Dificultad orientativa de cada tarea, para elegir modelo: 🟢 mecánica y acotada · 🟡 normal · 🔴 delicada (cálculo financiero, seguridad o migración de datos).
 
-## Estado actual (20 de noviembre de 2026)
+## Estado actual (21 de noviembre de 2026)
 
 - **En producción**: <https://invest.jdmuriel.com>, con inicio de sesión de Google y los datos históricos cargados (3 carteras, 2.918 operaciones). Todo lo hecho está fusionado en `main`; el esquema va por la migración 8.
-- **Funciona (fase 1)**: listado de movimientos con acumulados, métricas anuales y objetivos, con vista de móvil; alta, edición, duplicado y borrado de operaciones; cartera fija en la barra superior; mantenimiento de cuentas y valores; conciliación de saldos; exportación de validación con el formato de `Log`; API para asistentes (con token, ya activa); descarga y restauración de la base de datos; instalable como aplicación (1.15).
-- **Funciona (fase 2)**: cuadro de cartera en la portada, con el orden de `Control cartera` por defecto; calendario y cambios de dividendo; precios desde la hoja publicada «investsheet — precios» o a mano; tipos de cambio del BCE; importación de los datos de la hoja que no son operaciones. Comparado valor a valor con `Control cartera`: las diferencias que quedan están explicadas en las [incidencias](incidencias-migracion.md) (C5, C6, C9, C10).
+- **Funciona (fase 1)**: listado de movimientos con acumulados, métricas anuales y objetivos, con vista de móvil y edición en ventana emergente; alta, edición, duplicado y borrado de operaciones; cartera fija en la barra superior; mantenimiento de cuentas y valores; conciliación de saldos; exportación de validación con el formato de `Log`; API para asistentes (con token, ya activa); descarga y restauración de la base de datos; instalable como aplicación (1.15).
+- **Funciona (fase 2)**: cuadro de cartera en la portada, con el orden de `Control cartera` por defecto y editable, columnas de dividendo por meses y ficha del valor en ventana emergente; calendario y cambios de dividendo; precios desde la hoja publicada «investsheet — precios» o a mano; tipos de cambio del BCE; importación de los datos de la hoja que no son operaciones. Comparado valor a valor con `Control cartera`: las diferencias que quedan están explicadas en las [incidencias](incidencias-migracion.md) (C5, C6, C9, C10).
 - **Funciona (fase 3)**: selección mensual en `/seleccion` (3.2), ya cargada con la solapa `Selección` y sus 34 revisiones, con la variación coloreada y la evolución del precio de cada valor dibujada. El propietario la usará por primera vez en la revisión de este mes.
 - **Migración**: revisadas las erratas de la hoja y corregidas en la aplicación y en la hoja (H2, H11, H13, H14). El resumen está al principio de [incidencias-migracion.md](incidencias-migracion.md).
 - **No existe todavía**: copias automáticas externas (1.11), pruebas de extremo a extremo (1.16), servidor MCP (1.19), exportación de validación de `Control cartera` (2.7), valores en estudio (3.1), e informes (fase 4).
-- **Pendiente del propietario**: añadir a la hoja de precios `BMY`, `GOOGL` y los 9 candidatos dados de alta desde `Selección` (AD, DGE, ENX, ASML, META, AMZN, BNTX, NOVO-B, LDA); probar el alta de operaciones reales; instalar la aplicación en el móvil y el Chromebook y probar los colores y gráficos de la selección (desplegado el 2026-11-20, sin probar aún por él).
-- **Siguiente paso propuesto**: recoger las impresiones del propietario sobre la aplicación instalada y tras usar la selección este fin de semana; después, la copia externa automática (1.11), que es lo que más riesgo quita, y el periodo en paralelo de un mes contra `Log` (1.17). La 2.7 pierde urgencia: la comparación valor a valor ya está hecha.
+- **Mejoras tras el primer uso** (2026-11-21): hecha toda la lista M1.x y M2.x (más abajo), fusionada y desplegada, y corregidos los cambios de dividendo con fecha anterior al calendario importado.
+- **Pendiente del propietario**: dejar bien el dividendo de `O` (en su ficha, borrar la versión suelta del calendario del 11/11/2026 y volver a meter el cambio a 0,274 desde el 11/11; el calendario importado tenía 0,27 aunque los cambios anotados llegaban a 0,2715); añadir a la hoja de precios `BMY`, `GOOGL` y los 9 candidatos dados de alta desde `Selección` (AD, DGE, ENX, ASML, META, AMZN, BNTX, NOVO-B, LDA); probar el alta de operaciones reales; instalar la aplicación en el móvil y el Chromebook y probar los colores y gráficos de la selección (desplegado el 2026-11-20, sin probar aún por él).
+- **Siguiente paso propuesto**: recoger más impresiones del propietario tras usar la aplicación y la selección este fin de semana (la lista de mejoras ya está hecha); después, la copia externa automática (1.11), que es lo que más riesgo quita, y el periodo en paralelo de un mes contra `Log` (1.17). La 2.7 pierde urgencia: la comparación valor a valor ya está hecha.
 - La hoja de cálculo sigue siendo la fuente de verdad hasta validar un mes en paralelo.
 
 ## Cómo retomar el trabajo en una sesión nueva
@@ -114,7 +115,7 @@ Objetivo: poder dejar de usar la hoja.
 
 ## Mejoras pedidas por el propietario (2026-11-21)
 
-Lista de cambios tras usar la aplicación. Se van haciendo uno a uno, en este orden salvo que el propietario diga otro.
+Lista de cambios tras usar la aplicación. **Toda hecha y desplegada el 2026-11-21.** Cómo están hechas las ventanas emergentes y las preferencias de pantalla: [diseño §6](diseno.md#6-interfaz).
 
 **Cuadro de cartera (`/`)**
 
@@ -129,16 +130,15 @@ Lista de cambios tras usar la aplicación. Se van haciendo uno a uno, en este or
   - [x] En Ajustes → Valores, la edición también en ventana emergente.
 - [x] **M1.8** Dividendo mensual previsto por valor (como las filas 30 a 53 de `Control cartera`): columnas de enero a diciembre que se muestran por acción o en euros totales (se recuerda en la cookie `meses`) y ventana emergente al pulsar el DPA. 🟡
 - [x] **M1.9** Editar el orden de los valores de cada cartera (`portfolio_security.sort_order`), para colocar un valor nuevo donde se quiera: «Cambiar el orden de la cartera» en el cuadro, arrastrando o con flechas. Los valores sin posición conservan su sitio (`reorder` del motor). 🟡
-
 - [x] **M1.10** Retoques tras la revisión: cabecera «Precios actualizados: DD/MM/AAAA HH:MM»; tarjeta «Capital aportado y reinvertido» (capital invertido) con «Solo aportación»; PADI neto sin retenciones; «Total» con el resultado en % sobre lo aportado; coste, valor, P/G, cobrado y por reinvertir sin decimales; precio medio y DPA con dos; cabecera «DPA (€)»; cabeceras en dos líneas; «Meses» y «Cambiar el orden» como enlaces a la derecha. 🟢
 
 **Listado de movimientos (`/movimientos`)**
 
 - [x] **M2.1** Repetir abajo el «X de X movimientos» y el botón «Nuevo movimiento». 🟢
 - [x] **M2.2** Columnas más estrechas: «Capital invertido» y «Ganancias año» ocultables con un interruptor; las de cuentas, más compactas (fuente estrecha, menos separación); a la izquierda, cabecera «M.» para la moneda y descripción recortada con el texto completo al pasar el ratón. Quizá elegir qué cuentas se ven (no hecho: de momento se ven todas). 🟡
-- [x] **M2.5** Listado más compacto: la misma letra pequeña en todas las columnas, menos separación, descripción y tipo más cortos (completos al pasar el ratón), fecha con el año en dos cifras, cambio con cuatro decimales, «Imp. €» y códigos de cuenta en las cabeceras. A 1.500 px de ancho cabe entero con «Últimos movimientos». 🟢
-- [x] **M2.4** Recordar si las «Métricas anuales y objetivos» se dejaron abiertas o cerradas (cookie `metricas`, un año; sin ella, cerradas solo en móvil). 🟢
 - [x] **M2.3** Edición de un movimiento en ventana emergente; al guardar se refrescan esa fila y las siguientes (acumulados). 🟡
+- [x] **M2.4** Recordar si las «Métricas anuales y objetivos» se dejaron abiertas o cerradas (cookie `metricas`, un año; sin ella, cerradas solo en móvil). 🟢
+- [x] **M2.5** Listado más compacto: la misma letra pequeña en todas las columnas, menos separación, descripción y tipo más cortos (completos al pasar el ratón), fecha con el año en dos cifras, cambio con cuatro decimales, «Imp. €» y códigos de cuenta en las cabeceras. A 1.500 px de ancho cabe entero con «Últimos movimientos». 🟢
 
 ## Aplazado
 
@@ -242,6 +242,7 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 | 2026-11-21 | Lista de mejoras del propietario (M1.x, M2.x). Hechas M1.1 a M1.6 en el cuadro de cartera: cabecera con la hora de la última lectura de precios, tarjetas reordenadas con «Total» y sin «P/G», peso equiponderado en un (i) de la columna «Peso», columnas «Precio» y «YOC» movidas. M2.4: el listado de movimientos recuerda si las métricas anuales están abiertas. M1.7: desde cada valor de la cartera, su ficha en ventana emergente (`SecurityDialog`, también en Ajustes → Valores; con Ctrl se abre la página) y sus movimientos de todos los años (`/movimientos?periodo=todos&valor=TICKER`); la ficha admite el ticker en la dirección. Fusionado en `main`. |
 | 2026-11-21 | M1.8, M1.9 y M2.1 a M2.3: columnas de meses y detalle del DPA en el cuadro; edición del orden de la cartera; en movimientos, barra repetida abajo, columnas más estrechas con «Capital invertido» y «Ganancias año» ocultables (cookie `acumulados`) y edición en ventana emergente (`OperationDialog`, que reutiliza `OperationEditor` de la página del movimiento). Fusionado en `main`. |
 | 2026-11-21 | Retoques del propietario: M1.10 (tarjetas, redondeos y cabeceras del cuadro) y M2.5 (listado de movimientos más compacto). Añadida a `CLAUDE.md` la frase sobre la responsabilidad de Claude en el diseño. Fusionado en `main`. |
+| 2026-11-21 | Actualizado el estado del plan y el diseño (§6: ventanas emergentes y preferencias en *cookies*) para empezar la siguiente sesión con el contexto limpio. |
 | 2026-11-21 | Corregidos los cambios de dividendo con fecha anterior al calendario importado (salía «de 0 a…» y el calendario importado seguía mandando); borrar un cambio deshace su versión del calendario; versiones borrables en la ficha; la pista del tipo de cambio es la de la fecha del cambio. Fusionado en `main`. |
 
 ## Ideas para más adelante

@@ -112,6 +112,30 @@ Objetivo: poder dejar de usar la hoja.
 - [ ] **4.5 Crecimiento de dividendos**: orgánico frente a compras (RF-40). 🟡
 - [ ] **4.6 Importación de extractos CSV** de Degiro e Interactive Brokers (RF-09). 🔴
 
+## Mejoras pedidas por el propietario (2026-11-21)
+
+Lista de cambios tras usar la aplicación. Se van haciendo uno a uno, en este orden salvo que el propietario diga otro.
+
+**Cuadro de cartera (`/`)**
+
+- [ ] **M1.1** Cabecera: «Precios actualizados a las [fecha y hora] · gestionar precios y tipos de cambio» en lugar de «Precios del [fecha] · precios y cambios». 🟢
+- [ ] **M1.2** Quitar la tarjeta «P/G» de los valores. 🟢
+- [ ] **M1.3** Orden de las tarjetas: PADI bruto · PADI neto · Liquidez · Valor de mercado · Capital aportado. 🟢
+- [ ] **M1.4** Tarjeta final «Total» = liquidez + valor de mercado, con la línea «resultado total», que sale de «Capital aportado». 🟢
+- [ ] **M1.5** Quitar la línea «Peso equiponderado» y mostrar ese dato en un aviso (i) en la cabecera de la columna «Peso». 🟢
+- [ ] **M1.6** Columnas: «Precio» antes de «Coste»; «YOC» detrás de «RPD neta». 🟢
+- [ ] **M1.7** Desde cada fila: (a) ir a movimientos con todos los movimientos de todos los años de ese ticker; (b) editar el valor en una ventana emergente que, al guardar, refresca la fila. 🟡
+  - [ ] `/ajustes/valores/[id]` acepta también el ticker.
+  - [ ] En Ajustes → Valores, la edición también en ventana emergente.
+- [ ] **M1.8** Dividendo mensual previsto por valor (como las filas 30 a 53 de `Control cartera`): ventana emergente al pulsar el DPA y/o columnas de meses que se muestran u ocultan. Pendiente de decidir la forma. 🟡
+- [ ] **M1.9** Editar el orden de los valores de cada cartera (`portfolio_security.sort_order`), para colocar un valor nuevo donde se quiera. Pendiente de decidir la forma. 🟡
+
+**Listado de movimientos (`/movimientos`)**
+
+- [ ] **M2.1** Repetir abajo el «X de X movimientos» y el botón «Nuevo movimiento». 🟢
+- [ ] **M2.2** Columnas más estrechas: «Capital invertido» y «Ganancias año» ocultables con un interruptor; las de cuentas, más compactas (fuente estrecha, menos separación); a la izquierda, cabecera «M.» para la moneda y descripción recortada con el texto completo al pasar el ratón. Quizá elegir qué cuentas se ven. 🟡
+- [ ] **M2.3** Edición de un movimiento en ventana emergente; al guardar se refrescan esa fila y las siguientes (acumulados). 🟡
+
 ## Aplazado
 
 Tareas que el propietario ha decidido dejar para mucho más adelante; no se abordan sin que lo pida.

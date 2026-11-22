@@ -55,6 +55,6 @@ Respuestas: `201` o `200` con `saved`, `id`, descripción y saldos resultantes; 
 
 El token se guarda como secreto de red del entorno para el host de la aplicación; el asistente no llega a verlo. Flujo recomendado al pedir «anota esta operación»: leer la guía, enviar la operación con `dryRun`, enseñar el resultado y, con el visto bueno, repetirla sin `dryRun`.
 
-## Pendiente
+## Servidor MCP
 
-Servidor MCP con OAuth sobre esta misma lógica, para usarlo como conector desde la aplicación de Claude (tarea 1.19 del plan).
+Para Claude Code hay un servidor MCP local sobre esta API, con herramientas para anotar, consultar y sacar gráficos de dividendos: ver [mcp.md](mcp.md). Pendiente: el conector remoto con OAuth para la aplicación de Claude (tarea 1.19 del plan).

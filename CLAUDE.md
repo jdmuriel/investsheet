@@ -24,7 +24,7 @@ Claude, you are the owner and long-term maintainer of this codebase, and its des
 
 - `src/lib/engine/` — motor de cálculo puro (sin base de datos ni red). Importes en céntimos enteros, acciones en millonésimas. `operations.ts` genera los efectos de cada tipo de operación a partir del formulario; lo usan igual el servidor y la vista previa del navegador. `log-export.ts` calcula el registro con la disposición de la solapa `Log` y sus diferencias con la hoja. `portfolio.ts` calcula el cuadro de cartera a partir de posiciones, precios, cambios y calendario de dividendos; `market.ts` interpreta las fuentes de precios y cambios; `dividends.ts`, los cambios de dividendo.
 - `src/lib/server/` — SQLite (`node:sqlite`), migraciones en `migrations.ts` (no modificar una ya desplegada: añadir otra), acceso y copias. `market.ts` guarda y pone al día precios (hoja publicada en `PRICES_CSV_URL`) y tipos de cambio (BCE); `legacy-extras.ts` lee de la hoja antigua lo que no son operaciones.
-- `src/routes/` — pantallas, y la API para asistentes en `src/routes/api/v1` (lógica en `src/lib/server/api.ts`, uso en `docs/api.md`). `scripts/` — importador de la hoja antigua.
+- `src/routes/` — pantallas, y la API para asistentes en `src/routes/api/v1` (lógica en `src/lib/server/api.ts`, uso en `docs/api.md`). `scripts/` — importador de la hoja antigua y servidor MCP local (`scripts/mcp.ts`, herramientas en `src/lib/mcp/`, uso en `docs/mcp.md`).
 
 ## Despliegue
 

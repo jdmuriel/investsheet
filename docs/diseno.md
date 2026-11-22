@@ -34,7 +34,7 @@ Aplicación (SvelteKit + Node)
 | Hoja de cálculo | ExcelJS | Importar la hoja antigua y generar la exportación de validación |
 | Gráficos | Chart.js | Suficiente para barras, líneas y sectores |
 | Pruebas | Vitest (motor de cálculo) y Playwright (flujos principales) | |
-| Contenedor | Imagen Node *slim* de varias etapas | Imagen pequeña: se paga por GB mientras la máquina está parada |
+| Contenedor | Imagen Node *slim* de varias etapas, con la última LTS (26) | Imagen pequeña: se paga por GB mientras la máquina está parada |
 
 La aplicación es instalable (`static/manifest.webmanifest`, iconos en `static/`) pero **no funciona sin conexión**: sin servidor no hay datos. No lleva *service worker*: Chrome ya no lo exige para instalar y así nunca se muestran datos de una caché antigua. Los ficheros de `static/` se sirven antes de comprobar la sesión, porque el navegador pide el manifiesto sin *cookies*. Los PNG se generan a partir de `icon.svg` e `icon-maskable.svg` (la versión «maskable» deja el dibujo dentro de la zona segura, el 80 % central).
 

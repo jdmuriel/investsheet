@@ -3,7 +3,7 @@
 	import { enhance } from '$app/forms';
 	import PriceChart from '#lib/components/PriceChart.svelte';
 	import { lastMonths, purchasesIn, reviewVariations, type ReviewVariation } from '#lib/engine/selection.ts';
-	import { date, eurWhole, pct, plain, price } from '#lib/format.ts';
+	import { date, eurWhole, pct, price } from '#lib/format.ts';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
@@ -113,11 +113,6 @@
 	/** Variaciones de revisión a revisión en filas de doce, para la tabla bajo el gráfico grande. */
 	const chunks = (vs: ReviewVariation[]) => Array.from({ length: Math.ceil(vs.length / 12) }, (_, k) => vs.slice(k * 12, k * 12 + 12));
 	const monthLabel = (v: ReviewVariation) => (v.today ? 'hoy' : `${v.date.slice(5, 7)}/${v.date.slice(2, 4)}`);
-	const countTone = (vs: ReviewVariation[], dir: 'sube' | 'baja') => {
-		const all = vs.filter((v) => v.tone?.startsWith(dir)).length;
-		const strong = vs.filter((v) => v.tone === `${dir} fuerte`).length;
-		return `${all}${strong ? ` (${strong} ${strong === 1 ? 'fuerte' : 'fuertes'})` : ''}`;
-	};
 
 	const signedPct = (v: number | null) => (v == null ? '' : `${v > 0 ? '+' : ''}${pct(v)}`);
 	const p = $derived(data.params);
@@ -239,9 +234,6 @@
 											</p>
 											<PriceChart points={big} purchases={purchasesIn(r.purchases, big)} currency={r.currency} target={r.target} tone={r.tone} label="Evolución del precio de {r.ticker} en las revisiones" />
 											{#if vars.length}
-												<p class="muted vars-head">
-													Variación de cada revisión a la siguiente, las {vars.length} últimas: {countTone(vars, 'sube')} subidas y {countTone(vars, 'baja')} bajadas de más del {plain(p.significant * 100, 0)} % (fuertes, más del {plain(p.high * 100, 0)} %).
-												</p>
 												<div class="scroll">
 													<table class="vars">
 														{#each chunks(vars) as chunk, k (k)}
@@ -498,10 +490,8 @@
 		gap: 0.4rem;
 		align-items: baseline;
 	}
-	.vars-head {
-		margin-top: 0.75rem;
-	}
 	table.vars {
+		margin-top: 0.75rem;
 		width: auto;
 		background: var(--bg);
 	}

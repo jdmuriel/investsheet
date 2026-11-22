@@ -20,7 +20,9 @@
 	const toneClass = $derived(tone?.replace(' ', '-') ?? '');
 	let measured = $state(600);
 	const width = $derived(small ? 96 : measured);
-	const height = $derived(small ? 24 : 220 + labelRows * 14);
+	const times = $derived(points.map((p) => Date.parse(p.date)));
+	/** Milisegundos por píxel, aproximado (sin márgenes de rótulos): para repartir los rótulos de compras. */
+	const msPerPx = $derived(times.length > 1 ? (times[times.length - 1] - times[0]) / Math.max(width - 72, 1) : 1);
 	/** Compras con su rótulo (acciones y total) en el grande; los rótulos que se pisarían bajan a otra fila. */
 	const buys = $derived.by(() => {
 		const rows: number[] = [];
@@ -38,11 +40,9 @@
 		});
 	});
 	const labelRows = $derived(small ? 0 : Math.max(0, ...buys.map((b) => b.row + 1)));
+	const height = $derived(small ? 24 : 220 + labelRows * 14);
 	const pad = $derived(small ? { l: 3, r: 4, t: 4, b: 4 } : { l: 56, r: 16, t: 14 + labelRows * 14, b: 26 });
 
-	const times = $derived(points.map((p) => Date.parse(p.date)));
-	/** Milisegundos por píxel, aproximado (sin márgenes de rótulos): para repartir los rótulos de compras. */
-	const msPerPx = $derived(times.length > 1 ? (times[times.length - 1] - times[0]) / Math.max(width - 72, 1) : 1);
 	const domain = $derived.by(() => {
 		const values = points.map((p) => p.price);
 		// En el grande el objetivo entra en la escala: la distancia a él es lo que se mira.

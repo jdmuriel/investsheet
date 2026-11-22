@@ -251,6 +251,7 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 | 2026-11-22 | Node 26 (la LTS actual) en la imagen y en la comprobación del despliegue, y `actions/checkout` y `actions/setup-node` en v7 (quita el aviso de Node 20). `@types/node` pasa a dependencia directa: solo llegaba como opcional de otro paquete y el npm de Node 26 no la instala. Desplegado y respondiendo. |
 | 2026-11-22 | Selección, gráfico grande: rótulo de cada compra con acciones, precio por acción y total, rayas de principio de año, y debajo la tabla de las 24 últimas variaciones de revisión a revisión con los colores de la hoja (`reviewVariations` en el motor). |
 | 2026-11-22 | Selección: invertido en miles con un decimal (`kilo` en `format.ts`), RPD de más del 5 % en negrita, filas más compactas y flechas de orden alineadas y con borde. |
+| 2026-11-22 | Selección: el ticker (y la tecla `e`) abre la ficha del valor en ventana emergente; al recargar los datos se conserva el orden sin guardar (antes se perdía al editar, quitar o añadir un valor). |
 
 ## Ideas para más adelante
 

@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { tick, untrack } from 'svelte';
 	import { enhance } from '$app/forms';
 	import PriceChart from '#lib/components/PriceChart.svelte';
+	import SecurityDialog from '#lib/components/SecurityDialog.svelte';
 	import { lastMonths, purchasesIn, reviewVariations, type ReviewVariation } from '#lib/engine/selection.ts';
 	import { date, eurWhole, kilo, pct, price } from '#lib/format.ts';
 	import type { PageProps } from './$types';
@@ -10,9 +11,20 @@
 	type Item = (typeof data.lists)[number]['rows'][number];
 
 	// Orden de trabajo de cada lista: se cambia arrastrando o con las flechas y se guarda con un botón.
+	// Al recargar los datos (editar un valor, quitarlo, añadir otro) se conserva el orden sin guardar: los valores
+	// que siguen en su lista quedan donde estaban y los que llegan entran en el puesto que trae el servidor.
 	let order = $state<Record<string, number[]>>({});
 	$effect(() => {
-		order = Object.fromEntries(data.lists.map((l) => [l.key, l.rows.map((r) => r.id)]));
+		const lists = data.lists;
+		const prev = untrack(() => order);
+		order = Object.fromEntries(
+			lists.map((l) => {
+				const ids = l.rows.map((r) => r.id);
+				const kept = (prev[l.key] ?? []).filter((id) => ids.includes(id));
+				ids.forEach((id, i) => kept.includes(id) || kept.splice(Math.min(i, kept.length), 0, id));
+				return [l.key, kept];
+			})
+		);
 	});
 	const byId = $derived(new Map(data.lists.flatMap((l) => l.rows).map((r) => [r.id, r])));
 	const rowsOf = (key: string) => (order[key] ?? []).map((id) => byId.get(id)).filter((r): r is Item => r != null);
@@ -73,14 +85,23 @@
 		await tick();
 		document.getElementById(`fila-${id}`)?.scrollIntoView({ block: 'nearest' });
 	}
+	// Ficha del valor en ventana emergente, para no salir de la página y perder el orden sin guardar.
+	let editing = $state<number | null>(null);
+	function edit(e: MouseEvent, id: number) {
+		if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+		e.preventDefault();
+		selected = id;
+		editing = id;
+	}
+
 	function onKey(e: KeyboardEvent) {
-		if (e.altKey || e.metaKey || e.defaultPrevented) return;
+		if (editing != null || e.altKey || e.metaKey || e.defaultPrevented) return;
 		const t = e.target as HTMLElement | null;
 		if (t && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName))) return;
 		const k = e.key.toLowerCase();
 		if (k === 'escape') return void (selected = null);
-		if (!['j', 'k', 'c', 'g'].includes(k)) return;
-		if (e.ctrlKey && (k === 'c' || k === 'g')) return;
+		if (!['j', 'k', 'c', 'g', 'e'].includes(k)) return;
+		if (e.ctrlKey && k !== 'j' && k !== 'k') return;
 		const row = selected == null ? null : byId.get(selected);
 		if (k === 'j' || k === 'k') {
 			e.preventDefault();
@@ -102,6 +123,7 @@
 		if (!row) return;
 		e.preventDefault();
 		if (k === 'c') copy(row.summary, `l${row.id}`);
+		else if (k === 'e') editing = row.id;
 		else if (lastMonths(row.history, 60).length > 1) {
 			toggle(row.id);
 			reveal(row.id);
@@ -122,13 +144,17 @@
 
 <svelte:window onkeydown={onKey} />
 
+{#if editing != null}
+	<SecurityDialog security={editing} onclose={() => (editing = null)} onsaved={() => selected != null && reveal(selected)} />
+{/if}
+
 <header class="page">
 	<h1>Selección</h1>
 	<p class="muted">
 		{#if data.lastReview}Variación desde la revisión del {date(data.lastReview.date)}.{:else}Sin revisiones anteriores.{/if}
 		<button type="button" class="link" onclick={() => copy(allText, 'todo')}>{copied === 'todo' ? 'Copiado' : 'Copiar todas las líneas'}</button>
 	</p>
-	<p class="muted keys">Pulsa una fila para seleccionarla. Teclado: <kbd>j</kbd> <kbd>k</kbd> fila siguiente o anterior, <kbd>Ctrl</kbd>+<kbd>j</kbd> <kbd>Ctrl</kbd>+<kbd>k</kbd> bajarla o subirla, <kbd>c</kbd> copiar su línea, <kbd>g</kbd> ver u ocultar su gráfico, <kbd>Esc</kbd> quitar la selección.</p>
+	<p class="muted keys">Pulsa una fila para seleccionarla. Teclado: <kbd>j</kbd> <kbd>k</kbd> fila siguiente o anterior, <kbd>Ctrl</kbd>+<kbd>j</kbd> <kbd>Ctrl</kbd>+<kbd>k</kbd> bajarla o subirla, <kbd>c</kbd> copiar su línea, <kbd>g</kbd> ver u ocultar su gráfico, <kbd>e</kbd> editar el valor, <kbd>Esc</kbd> quitar la selección.</p>
 </header>
 
 {#if form?.errors}
@@ -195,7 +221,7 @@
 									<button type="button" title="Subir" onclick={() => move(list.key, i, i - 1)} disabled={i === 0}>↑</button>
 									<button type="button" title="Bajar" onclick={() => move(list.key, i, i + 1)} disabled={i === rows.length - 1}>↓</button>
 								</td>
-								<th class="l" scope="row"><a href="/ajustes/valores/{r.id}?volver=/seleccion" title={[r.name, r.country].filter(Boolean).join(' · ')}>{r.ticker}</a></th>
+								<th class="l" scope="row"><a href="/ajustes/valores/{r.id}?volver=/seleccion" onclick={(e) => edit(e, r.id)} title={[r.name, r.country].filter(Boolean).join(' · ')}>{r.ticker}</a></th>
 								<td>{r.tier ?? ''}</td>
 								<td class:warn={r.status === 'cerca'} class:neg={r.status === 'superado'} title={r.max == null ? undefined : `${r.status === 'cerca' ? 'Cerca del máximo' : r.status === 'superado' ? 'Por encima del máximo' : 'Máximo'}: ${eurWhole(r.max)}`}>{kilo(r.invested, true)}</td>
 								<td class:high={r.rpd != null && r.rpd > 0.05} title={r.rpd != null && r.rpd > 0.05 ? 'Más del 5 %' : undefined}>{pct(r.rpd)}</td>

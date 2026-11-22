@@ -105,9 +105,9 @@ Los importes monetarios se guardan como decimales exactos con su moneda, nunca e
 
 ### 5.8 Selección mensual
 
-- **RF-31** Listas por zona ordenables a mano (arrastrar), con las columnas actuales: *tier*, invertido, RPD, precio, objetivo, distancia, variación desde la revisión anterior.
+- **RF-31** Listas por zona ordenables a mano (arrastrar, flechas o teclado), con las columnas actuales: *tier*, invertido, RPD, precio, objetivo, distancia, variación desde la revisión anterior. La pantalla se puede manejar solo con el teclado (cambiar de fila, moverla, copiar su línea, ver su gráfico, editar el valor), y editar un valor no hace perder el orden sin guardar.
 - **RF-32** «Cerrar revisión» guarda la fecha, el orden y el precio de cada valor ese día; se conserva el histórico de revisiones y la evolución mensual de precios.
-- **RF-33** Variación mensual clasificada con umbrales configurables (hoy 4 % y 10 %).
+- **RF-33** Variación mensual clasificada con umbrales configurables (hoy 4 % y 10 %). Para cada valor se pueden ver de un vistazo las variaciones de las últimas 24 revisiones con sus colores y precios, como en la hoja, junto al gráfico de evolución con las compras marcadas.
 - **RF-34** Inversión máxima por valor según *tier* y zona, configurable y con aviso al acercarse o superarla. Valores iniciales en miles de euros: España T1 6, T2 4, T3 1,5; resto del mundo T1 5, T2 3, T3 1. Los valores sin *tier* no tienen límite definido.
 - **RF-35** Línea de texto resumen por valor con el formato actual (`XXX +2% (11.70/9.50 +23%, RPD 3.59%, invertido 4.3K, T1, PMC 9.35)`), con botón para copiar una línea o una lista entera, porque se pega en un fichero de texto externo donde se anotan las decisiones y los datos que las justifican.
 - **RF-36** Registro de las propuestas y de la elección de cada mes por cartera.
@@ -253,7 +253,7 @@ Situación de cada requisito a 16 de noviembre de 2026. Los requisitos no cambia
 | RF-22 | Indicador de reinversión | Parcial: se muestra lo cobrado desde la última compra; falta definir «mantener el equilibrio» |
 | RF-25, RF-26 | Métricas anuales y objetivos | Hecho. La fracción de año se mide por días |
 | RF-27 a RF-30 | Valores en estudio | Fase 3, sin empezar. El precio objetivo y el dividendo estimado ya están en la ficha del valor (los usa la selección) |
-| RF-31 a RF-36 | Selección mensual | Hecho (`/seleccion`): listas por zona y *tier* ordenables, cierre de revisión, histórico importado, máximos por *tier* y zona, línea resumen copiable, propuestas y elección. Variación coloreada (verde si sube, rojo si baja; claro si es reseñable, oscuro si es grande) y evolución del precio de cada valor en las revisiones, en una línea por fila que se despliega en un gráfico con el objetivo |
+| RF-31 a RF-36 | Selección mensual | Hecho (`/seleccion`): listas por zona y *tier* ordenables, cierre de revisión, histórico importado, máximos por *tier* y zona, línea resumen copiable, propuestas y elección. Variación coloreada (verde si sube, rojo si baja; claro si es reseñable, oscuro si es grande) y evolución del precio de cada valor en las revisiones, en una línea por fila (24 meses) que se despliega en un gráfico (hasta 5 años) con el objetivo, las compras y la tabla de las 24 últimas variaciones. Manejo con teclado y ficha del valor en ventana emergente |
 | RF-37 a RF-40, RF-42 | Informes y fotos de cartera | Fase 4, sin empezar |
 | RF-41 | Informe fiscal | Excluido |
 | RF-43, RF-46 | Precios con una hora de retraso, último conocido y precio a mano | Hecho; falta que el propietario cree la hoja de precios |

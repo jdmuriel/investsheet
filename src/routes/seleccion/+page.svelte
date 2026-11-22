@@ -1,7 +1,9 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { enhance } from '$app/forms';
 	import PriceChart from '#lib/components/PriceChart.svelte';
-	import { date, eur, pct, price } from '#lib/format.ts';
+	import { lastMonths } from '#lib/engine/selection.ts';
+	import { date, eurWhole, pct, price } from '#lib/format.ts';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
@@ -25,6 +27,28 @@
 		order[key] = ids;
 	}
 	let dragging: { key: string; index: number } | null = null;
+	/** Hueco donde caería la fila arrastrada: 0 es antes de la primera, `n` después de la fila `n - 1`. */
+	let dropGap = $state<{ key: string; gap: number } | null>(null);
+	function dragOver(e: DragEvent, key: string, index: number, detail: boolean) {
+		if (dragging?.key !== key) return;
+		e.preventDefault();
+		const box = (e.currentTarget as HTMLElement).getBoundingClientRect();
+		const gap = detail || e.clientY > box.top + box.height / 2 ? index + 1 : index;
+		if (dropGap?.key !== key || dropGap.gap !== gap) dropGap = { key, gap };
+	}
+	function drop(e: DragEvent, key: string) {
+		e.preventDefault();
+		if (dragging?.key === key && dropGap?.key === key) {
+			const to = dropGap.gap > dragging.index ? dropGap.gap - 1 : dropGap.gap;
+			move(key, dragging.index, to);
+		}
+		dragEnd();
+	}
+	function dragEnd() {
+		dragging = null;
+		dropGap = null;
+	}
+	const dropAfter = (key: string, i: number) => dropGap?.key === key && dropGap.gap === i + 1;
 
 	let copied = $state('');
 	async function copy(text: string, what: string) {
@@ -42,6 +66,48 @@
 		if (!next.delete(id)) next.add(id);
 		open = next;
 	}
+	// Manejo con el teclado: j y k cambian de fila, Ctrl+j y Ctrl+k la mueven, c copia su línea y g abre su gráfico.
+	let selected = $state<number | null>(null);
+	const flat = $derived(data.lists.flatMap((l) => order[l.key] ?? []));
+	async function reveal(id: number) {
+		await tick();
+		document.getElementById(`fila-${id}`)?.scrollIntoView({ block: 'nearest' });
+	}
+	function onKey(e: KeyboardEvent) {
+		if (e.altKey || e.metaKey || e.defaultPrevented) return;
+		const t = e.target as HTMLElement | null;
+		if (t && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName))) return;
+		const k = e.key.toLowerCase();
+		if (k === 'escape') return void (selected = null);
+		if (!['j', 'k', 'c', 'g'].includes(k)) return;
+		if (e.ctrlKey && (k === 'c' || k === 'g')) return;
+		const row = selected == null ? null : byId.get(selected);
+		if (k === 'j' || k === 'k') {
+			e.preventDefault();
+			const step = k === 'j' ? 1 : -1;
+			if (!row) {
+				if (e.ctrlKey || !flat.length) return;
+				selected = step > 0 ? flat[0] : flat[flat.length - 1];
+			} else if (e.ctrlKey) {
+				const ids = order[row.list] ?? [];
+				const i = ids.indexOf(row.id);
+				move(row.list, i, i + step);
+			} else {
+				const i = flat.indexOf(row.id);
+				selected = flat[Math.min(Math.max(i + step, 0), flat.length - 1)];
+			}
+			if (selected != null) reveal(selected);
+			return;
+		}
+		if (!row) return;
+		e.preventDefault();
+		if (k === 'c') copy(row.summary, `l${row.id}`);
+		else if (lastMonths(row.history, 60).length > 1) {
+			toggle(row.id);
+			reveal(row.id);
+		}
+	}
+
 	const toneClass = (tone: string | null) => (tone ? tone.replace(' ', '-') : '');
 
 	const signedPct = (v: number | null) => (v == null ? '' : `${v > 0 ? '+' : ''}${pct(v)}`);
@@ -50,12 +116,15 @@
 	const kInput = (v: number) => String(v).replace('.', ',');
 </script>
 
+<svelte:window onkeydown={onKey} />
+
 <header class="page">
 	<h1>Selección</h1>
 	<p class="muted">
 		{#if data.lastReview}Variación desde la revisión del {date(data.lastReview.date)}.{:else}Sin revisiones anteriores.{/if}
 		<button type="button" class="link" onclick={() => copy(allText, 'todo')}>{copied === 'todo' ? 'Copiado' : 'Copiar todas las líneas'}</button>
 	</p>
+	<p class="muted keys">Pulsa una fila para seleccionarla. Teclado: <kbd>j</kbd> <kbd>k</kbd> fila siguiente o anterior, <kbd>Ctrl</kbd>+<kbd>j</kbd> <kbd>Ctrl</kbd>+<kbd>k</kbd> bajarla o subirla, <kbd>c</kbd> copiar su línea, <kbd>g</kbd> ver u ocultar su gráfico, <kbd>Esc</kbd> quitar la selección.</p>
 </header>
 
 {#if form?.errors}
@@ -86,8 +155,7 @@
 							<th></th>
 							<th class="l">Valor</th>
 							<th><i>Tier</i></th>
-							<th title="Coste reducido de la posición">Invertido</th>
-							<th title="Inversión máxima por tier y zona">Máximo</th>
+							<th title="Coste reducido de la posición, en naranja cerca del máximo por tier y zona y en rojo por encima">Invertido</th>
 							<th title="Dividendo bruto anual sobre el precio de hoy">RPD</th>
 							<th>Precio</th>
 							<th>Objetivo</th>
@@ -100,15 +168,22 @@
 					</thead>
 					<tbody>
 						{#each rows as r, i (r.id)}
+							{@const small = lastMonths(r.history, 24)}
+							{@const big = lastMonths(r.history, 60)}
 							<tr
+								id="fila-{r.id}"
 								draggable="true"
-								ondragstart={() => (dragging = { key: list.key, index: i })}
-								ondragover={(e) => dragging?.key === list.key && e.preventDefault()}
-								ondrop={(e) => {
-									e.preventDefault();
-									if (dragging?.key === list.key) move(list.key, dragging.index, i);
-									dragging = null;
+								class:selected={selected === r.id}
+								class:drop-before={dropGap?.key === list.key && dropGap.gap === 0 && i === 0}
+								class:drop-after={dropAfter(list.key, i) && !open.has(r.id)}
+								onclick={() => (selected = r.id)}
+								ondragstart={() => {
+									dragging = { key: list.key, index: i };
+									selected = r.id;
 								}}
+								ondragover={(e) => dragOver(e, list.key, i, false)}
+								ondrop={(e) => drop(e, list.key)}
+								ondragend={dragEnd}
 							>
 								<td class="handle">
 									<span class="muted">{i + 1}</span>
@@ -117,21 +192,25 @@
 								</td>
 								<th class="l" scope="row"><a href="/ajustes/valores/{r.id}?volver=/seleccion" title={[r.name, r.country].filter(Boolean).join(' · ')}>{r.ticker}</a></th>
 								<td>{r.tier ?? ''}</td>
-								<td>{r.invested ? eur(r.invested) : ''}</td>
-								<td class:warn={r.status === 'cerca'} class:neg={r.status === 'superado'} title={r.status ? `Inversión ${r.status === 'cerca' ? 'cerca del máximo' : 'por encima del máximo'}` : undefined}>{r.max == null ? '' : eur(r.max)}</td>
+								<td class:warn={r.status === 'cerca'} class:neg={r.status === 'superado'} title={r.max == null ? undefined : `${r.status === 'cerca' ? 'Cerca del máximo' : r.status === 'superado' ? 'Por encima del máximo' : 'Máximo'}: ${eurWhole(r.max)}`}>{eurWhole(r.invested, true)}</td>
 								<td>{pct(r.rpd)}</td>
 								<td title={r.priceDate ? `Precio del ${date(r.priceDate)}` : 'Sin precio'}>{price(r.price, r.currency)}</td>
 								<td>{price(r.target, r.currency)}</td>
 								<td>{signedPct(r.distance)}</td>
 								<td class="var {toneClass(r.tone)}" title={r.tone ? `${r.description[0].toUpperCase()}${r.description.slice(1)}` : undefined}>{signedPct(r.variation)}</td>
 								<td class="l evo">
-									{#if r.history.length > 1}
+									{#if small.length > 1}
 										<button type="button" class="spark" aria-expanded={open.has(r.id)} title="{open.has(r.id) ? 'Ocultar' : 'Ver'} la evolución del precio de {r.ticker}" onclick={() => toggle(r.id)}>
-											<PriceChart small points={r.history} tone={r.tone} label="Evolución del precio de {r.ticker}" />
+											<PriceChart small points={small} tone={r.tone} label="Evolución del precio de {r.ticker}" />
 										</button>
 									{/if}
 								</td>
-								<td class="l line"><button type="button" class="link" title="Copiar esta línea" onclick={() => copy(r.summary, `l${r.id}`)}>{copied === `l${r.id}` ? 'Copiada' : r.summary}</button></td>
+								<td class="l line">
+									<div>
+										<span>{r.summary}</span>
+										<button type="button" class="copy" title="Copiar esta línea (c)" onclick={() => copy(r.summary, `l${r.id}`)}>{copied === `l${r.id}` ? 'copiada' : 'copiar'}</button>
+									</div>
+								</td>
 								<td>
 									<form method="POST" action="?/quitar" use:enhance>
 										<input type="hidden" name="security" value={r.id} />
@@ -140,15 +219,15 @@
 								</td>
 							</tr>
 							{#if open.has(r.id)}
-								<tr class="detail">
-									<td colspan="13">
+								<tr class="detail" class:drop-after={dropAfter(list.key, i)} ondragover={(e) => dragOver(e, list.key, i, true)} ondrop={(e) => drop(e, list.key)}>
+									<td colspan="12">
 										<div class="detail-box">
 											<p>
 												<strong>{r.ticker}</strong>{r.name ? ` · ${r.name}` : ''}
-												<span class="muted">· {r.history.filter((h) => !h.today).length} revisiones desde el {date(r.history[0].date)}</span>
+												<span class="muted">· {big.filter((h) => !h.today).length} revisiones desde el {date(big[0].date)}</span>
 												<button type="button" class="link" onclick={() => toggle(r.id)}>Cerrar</button>
 											</p>
-											<PriceChart points={r.history} currency={r.currency} target={r.target} tone={r.tone} label="Evolución del precio de {r.ticker} en las revisiones" />
+											<PriceChart points={big} currency={r.currency} target={r.target} tone={r.tone} label="Evolución del precio de {r.ticker} en las revisiones" />
 										</div>
 									</td>
 								</tr>
@@ -268,8 +347,55 @@
 		white-space: normal;
 		min-width: 22rem;
 	}
+	td.line div {
+		display: flex;
+		gap: 0.5rem;
+		align-items: baseline;
+		justify-content: space-between;
+	}
+	.copy {
+		flex: none;
+		background: none;
+		border: 1px solid var(--line);
+		border-radius: 4px;
+		padding: 0 0.4rem;
+		color: var(--accent);
+		cursor: pointer;
+		font: inherit;
+		font-size: 0.85em;
+	}
 	tr[draggable='true'] {
 		cursor: grab;
+		scroll-margin: 4rem 0 1rem;
+	}
+	tr.selected > * {
+		background: var(--soft);
+	}
+	tr.selected > :first-child {
+		box-shadow: inset 3px 0 0 var(--accent);
+	}
+	/* Raya donde caerá la fila arrastrada. */
+	tr.drop-after > * {
+		box-shadow: inset 0 -3px 0 var(--accent);
+	}
+	tr.drop-before > * {
+		box-shadow: inset 0 3px 0 var(--accent);
+	}
+	tr.selected.drop-after > :first-child {
+		box-shadow: inset 3px 0 0 var(--accent), inset 0 -3px 0 var(--accent);
+	}
+	tr.selected.drop-before > :first-child {
+		box-shadow: inset 3px 0 0 var(--accent), inset 0 3px 0 var(--accent);
+	}
+	.keys {
+		font-size: 0.85rem;
+	}
+	kbd {
+		font: inherit;
+		font-size: 0.9em;
+		padding: 0 0.3rem;
+		border: 1px solid var(--line);
+		border-radius: 3px;
 	}
 	.handle {
 		text-align: left;
@@ -289,9 +415,6 @@
 		cursor: pointer;
 		font: inherit;
 		text-align: left;
-	}
-	.line .link {
-		color: inherit;
 	}
 	.neg {
 		color: var(--neg);

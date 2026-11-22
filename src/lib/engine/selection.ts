@@ -118,6 +118,15 @@ export function priceSeries(reviews: { date: string; price: number; currency: st
 	return points;
 }
 
+/** Los puntos de los últimos `months` meses de la serie, contados hacia atrás desde su último punto. */
+export function lastMonths(points: PricePoint[], months: number): PricePoint[] {
+	if (!points.length) return points;
+	const [y, m, d] = points[points.length - 1].date.split('-').map(Number);
+	const total = y * 12 + (m - 1) - months;
+	const from = `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+	return points.filter((p) => p.date >= from);
+}
+
 export function selectionRow(input: SelectionInput, params: SelectionParams): SelectionRow {
 	const { price, lastPrice, target } = input;
 	const distance = price != null && target ? (price - target) / target : null;

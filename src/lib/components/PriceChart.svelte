@@ -46,6 +46,13 @@
 		for (let v = Math.ceil(domain.lo / step) * step; v <= domain.hi; v += step) out.push(Math.round(v / step) * step);
 		return out;
 	});
+	/** Principios de año dentro del periodo dibujado, para las rayas verticales del gráfico pequeño. */
+	const yearStarts = $derived.by(() => {
+		const out: number[] = [];
+		if (!points.length) return out;
+		for (let y = Number(points[0].date.slice(0, 4)) + 1; y <= Number(points[points.length - 1].date.slice(0, 4)); y++) out.push(Date.parse(`${y}-01-01`));
+		return out;
+	});
 	/** Rótulos del eje horizontal: el primer punto de cada año. */
 	const years = $derived(points.map((p, i) => ({ i, year: p.date.slice(0, 4) })).filter((p, k, all) => k === 0 || p.year !== all[k - 1].year));
 
@@ -66,6 +73,7 @@
 	{#if !small}<p class="muted">Aún no hay precios de dos revisiones para dibujar su evolución.</p>{/if}
 {:else if small}
 	<svg class="spark" {width} {height} viewBox="0 0 {width} {height}" role="img" aria-label={label}>
+		{#each yearStarts as t (t)}<line class="year" x1={x(t)} x2={x(t)} y1="0" y2={height} />{/each}
 		<path d={path} />
 		<circle class="end {toneClass}" cx={x(times[times.length - 1])} cy={y(points[points.length - 1].price)} r="2.5" />
 	</svg>
@@ -155,6 +163,10 @@
 	.chart svg {
 		display: block;
 		touch-action: pan-y;
+	}
+	.year {
+		stroke: var(--line);
+		stroke-width: 1;
 	}
 	.grid {
 		stroke: var(--line);

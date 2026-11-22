@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_PARAMS, limitStatus, listOf, maxInvestment, priceSeries, selectionRow, variationText, variationTone } from './selection.ts';
+import { DEFAULT_PARAMS, lastMonths, limitStatus, listOf, maxInvestment, priceSeries, selectionRow, variationText, variationTone } from './selection.ts';
 
 // Todos los datos de estas pruebas son inventados.
 const base = { ticker: 'ACME', zone: 'España', tier: 'T1', price: 11.7, lastPrice: 11.47, target: 9.5, rpd: 0.0359, invested: 433_301, pmc: 9.35 };
@@ -65,5 +65,12 @@ describe('selección', () => {
 		// El precio de hoy no se repite si es de la fecha de la última revisión.
 		expect(priceSeries(reviews, 'EUR', { date: '2026-10-01', price: 12 })).toHaveLength(2);
 		expect(priceSeries([], 'EUR', null)).toEqual([]);
+	});
+
+	it('recorta la serie a los últimos meses', () => {
+		const points = ['2023-12-31', '2024-01-15', '2024-11-20', '2025-06-01', '2026-11-20'].map((date, i) => ({ date, price: i + 1 }));
+		expect(lastMonths(points, 24).map((p) => p.date)).toEqual(['2024-11-20', '2025-06-01', '2026-11-20']);
+		expect(lastMonths(points, 35).map((p) => p.date)).toEqual(['2023-12-31', '2024-01-15', '2024-11-20', '2025-06-01', '2026-11-20']);
+		expect(lastMonths([], 24)).toEqual([]);
 	});
 });

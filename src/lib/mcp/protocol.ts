@@ -1,11 +1,12 @@
 /**
  * Protocolo MCP (JSON-RPC 2.0) reducido a lo que usa un servidor de herramientas: `initialize`,
- * `tools/list`, `tools/call` y `ping`. Independiente del transporte: recibe un mensaje ya
- * interpretado y devuelve la respuesta, o `null` para las notificaciones.
+ * `tools/list`, `tools/call` y `ping`. Independiente del transporte (la ruta `/mcp` lo sirve por
+ * Streamable HTTP sin sesiones): recibe un mensaje ya interpretado y devuelve la respuesta, o `null`
+ * para las notificaciones.
  */
-import { INSTRUCTIONS, TOOLS, type Tool, type ToolContext } from './tools.ts';
+import { INSTRUCTIONS, TOOLS, type Backend, type Tool } from './tools.ts';
 
-export const SUPPORTED_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
+export const SUPPORTED_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26'];
 export const SERVER_INFO = { name: 'investsheet', version: '1.0.0' };
 
 interface Request {
@@ -17,9 +18,9 @@ interface Request {
 
 export type Response = { jsonrpc: '2.0'; id: string | number | null } & ({ result: unknown } | { error: { code: number; message: string } });
 
-const describe = (t: Tool) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema, ...(t.annotations ? { annotations: t.annotations } : {}) });
+const describe = (t: Tool) => ({ name: t.name, title: t.title, description: t.description, inputSchema: t.inputSchema, annotations: t.annotations });
 
-export async function handleMessage(message: unknown, ctx: ToolContext, tools: Tool[] = TOOLS): Promise<Response | null> {
+export function handleMessage(message: unknown, backend: Backend, tools: Tool[] = TOOLS): Response | null {
 	const req = message as Request;
 	if (req == null || typeof req !== 'object' || typeof req.method !== 'string') {
 		return { jsonrpc: '2.0', id: null, error: { code: -32600, message: 'Petición no válida.' } };
@@ -50,7 +51,7 @@ export async function handleMessage(message: unknown, ctx: ToolContext, tools: T
 			if (!tool) return error(-32602, `Herramienta desconocida: ${String(name)}.`);
 			const args = (req.params?.arguments ?? {}) as Record<string, unknown>;
 			try {
-				return result(await tool.run(args, ctx));
+				return result(tool.run(args, backend));
 			} catch (e) {
 				// Un fallo de la herramienta se devuelve como resultado con error, para que el modelo lo vea.
 				return result({ content: [{ type: 'text', text: `Error: ${e instanceof Error ? e.message : String(e)}` }], isError: true });

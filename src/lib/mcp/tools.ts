@@ -1,23 +1,29 @@
 /**
- * Herramientas del servidor MCP de investsheet. Cada una llama a la API (`/api/v1`) a través de un
- * cliente inyectado, de modo que el mismo código sirve para el servidor local (stdio, contra la API de
- * producción) y para probarlo con un cliente falso. Lo que no es la API (agregar dividendos, dibujar)
- * está en `dividends.ts` y `chart.ts`.
+ * Herramientas del servidor MCP de investsheet (`/mcp`). Llaman a la lógica de la API para asistentes
+ * a través de un `Backend` inyectado: en el servidor, las funciones de `api.ts` sobre la base de datos;
+ * en las pruebas, uno falso. La agregación de dividendos está en `dividends.ts`.
  */
-import { renderChart, validateChart, type ChartKind, type ChartSpec } from './chart.ts';
 import { DIVIDEND_TYPES, RETURN_TYPES, dividendReport, type Breakdown, type DividendRow, type Measure, type Period } from './dividends.ts';
 
-export interface ApiReply {
+/** Respuesta de la API: código HTTP y cuerpo JSON. */
+export interface Reply {
 	status: number;
 	body: unknown;
 }
 
-/** Acceso a la API y al disco que necesitan las herramientas. */
-export interface ToolContext {
-	/** `path` relativo a `/api/v1`, con su consulta: `/carteras/1/estado?fecha=2025-12-31`. */
-	api(method: 'GET' | 'POST' | 'PUT' | 'DELETE', path: string, body?: unknown): Promise<ApiReply>;
-	/** Guarda un gráfico y devuelve la ruta absoluta donde ha quedado. */
-	saveChart(svg: string, name: string, path?: string): Promise<string>;
+/** Lo que las herramientas necesitan de la aplicación. Carteras por id o nombre; importes en unidades. */
+export interface Backend {
+	guide(): Reply;
+	securities(): Reply;
+	state(portfolio: string, date: string | null): Reply;
+	/** Filtros como los de la API (`desde`, `hasta`, `tipo`, `valor`, `cuenta`, `texto`, `limite`). */
+	operations(portfolio: string, filters: Record<string, string>): Reply;
+	/** Todas las operaciones de una cartera entre dos fechas, sin límite. */
+	allOperations(portfolio: string, from: string, to: string): Reply;
+	operation(id: number): Reply;
+	/** Alta (`id` nulo, en `portfolio`) o sustitución de una operación; el cuerpo es el de la API. */
+	save(portfolio: string | null, id: number | null, body: Record<string, unknown>): Reply;
+	remove(id: number): Reply;
 }
 
 export interface ToolResult {
@@ -29,328 +35,228 @@ type Args = Record<string, unknown>;
 
 export interface Tool {
 	name: string;
+	title: string;
 	description: string;
-	inputSchema: { type: 'object'; properties: Record<string, unknown>; required?: string[]; additionalProperties?: boolean };
-	annotations?: { readOnlyHint?: boolean; destructiveHint?: boolean; idempotentHint?: boolean; openWorldHint?: boolean };
-	run(args: Args, ctx: ToolContext): Promise<ToolResult>;
+	inputSchema: { type: 'object'; properties: Record<string, unknown>; required?: string[] };
+	annotations: { readOnlyHint: boolean; destructiveHint?: boolean; idempotentHint?: boolean; openWorldHint: false };
+	run(args: Args, backend: Backend): ToolResult;
 }
 
-const json = (value: unknown, isError = false): ToolResult => ({ content: [{ type: 'text', text: JSON.stringify(value, null, 1) }], ...(isError ? { isError } : {}) });
+const json = (value: unknown, isError = false): ToolResult => ({ content: [{ type: 'text', text: JSON.stringify(value) }], ...(isError ? { isError } : {}) });
 /** Respuesta de la API tal cual, marcada como error si no es 2xx. */
-const reply = (r: ApiReply): ToolResult => json(r.status < 300 ? r.body : { status: r.status, ...(r.body as object) }, r.status >= 300);
+const reply = (r: Reply): ToolResult => json(r.status < 300 ? r.body : { status: r.status, ...(r.body as object) }, r.status >= 300);
 const fail = (message: string): ToolResult => json({ error: message }, true);
 
 const text = (a: Args, key: string) => (typeof a[key] === 'string' && a[key] !== '' ? (a[key] as string) : undefined);
+const portfolioOf = (a: Args) => text(a, 'portfolio') ?? (typeof a.portfolio === 'number' ? String(a.portfolio) : '1');
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
-const enc = encodeURIComponent;
+const isObject = (v: unknown): v is Record<string, unknown> => v != null && typeof v === 'object' && !Array.isArray(v);
 
-function query(params: Record<string, string | number | undefined>): string {
-	const parts = Object.entries(params).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => `${k}=${enc(String(v))}`);
-	return parts.length ? `?${parts.join('&')}` : '';
-}
-
-const cartera = { type: 'string', description: 'Id o nombre de la cartera. Si el usuario no la dice, la 1 (principal).' };
+const portfolio = { type: 'string', description: 'Id o nombre de la cartera. Si el usuario no la dice, la 1 (principal).' };
 const id = { type: 'integer', description: 'Id de la operación.' };
-
-/** Las carteras de la guía, con sus ids. */
-async function portfolios(ctx: ToolContext): Promise<{ id: number; name: string }[]> {
-	const r = await ctx.api('GET', '');
-	if (r.status !== 200) throw new Error(`La API respondió ${r.status} al pedir la guía.`);
-	return (r.body as { portfolios: { id: number; name: string }[] }).portfolios;
-}
-
-interface ApiOperation extends DividendRow {
-	id: number;
-}
-
-/**
- * Todas las operaciones de una cartera entre dos fechas. La API devuelve como mucho 500 por consulta,
- * así que se piden por años y, si un año no cabe, por meses.
- */
-export async function fetchOperations(ctx: ToolContext, portfolio: string | number, from: string, to: string): Promise<ApiOperation[]> {
-	const get = async (desde: string, hasta: string) => {
-		const r = await ctx.api('GET', `/carteras/${enc(String(portfolio))}/operaciones${query({ desde, hasta, limite: 500 })}`);
-		if (r.status !== 200) throw new Error(`La API respondió ${r.status}: ${JSON.stringify(r.body)}`);
-		return r.body as { total: number; returned: number; operations: ApiOperation[] };
-	};
-	const out: ApiOperation[] = [];
-	for (let year = Number(from.slice(0, 4)); year <= Number(to.slice(0, 4)); year++) {
-		const start = year === Number(from.slice(0, 4)) ? from : `${year}-01-01`;
-		const end = year === Number(to.slice(0, 4)) ? to : `${year}-12-31`;
-		const page = await get(start, end);
-		if (page.total <= page.returned) {
-			out.push(...page.operations);
-			continue;
-		}
-		for (let m = Number(start.slice(5, 7)); m <= Number(end.slice(5, 7)); m++) {
-			const mm = String(m).padStart(2, '0');
-			const monthStart = `${year}-${mm}-01` < start ? start : `${year}-${mm}-01`;
-			const monthEnd = `${year}-${mm}-31` > end ? end : `${year}-${mm}-31`;
-			const month = await get(monthStart, monthEnd);
-			if (month.total > month.returned) throw new Error(`Más de 500 operaciones en ${year}-${mm}: no se pueden leer todas.`);
-			out.push(...month.operations);
-		}
-	}
-	return out;
-}
+const readOnly = { readOnlyHint: true, openWorldHint: false } as const;
 
 const euros = (c: number) => c / 100;
 
 export const TOOLS: Tool[] = [
 	{
-		name: 'guia',
-		description: 'Guía de la API de investsheet: carteras con sus cuentas (códigos), tipos de operación con los campos de cada uno y normas de escritura. Consúltala antes de anotar un tipo de operación poco habitual.',
+		name: 'get_guide',
+		title: 'Guía de la API',
+		description: 'Carteras con sus cuentas (códigos y moneda), tipos de operación con los campos de cada uno y normas de escritura. Consúltala antes de anotar un tipo de operación poco habitual o si no sabes qué cuentas tiene una cartera.',
 		inputSchema: { type: 'object', properties: {} },
-		annotations: { readOnlyHint: true },
-		run: async (_, ctx) => reply(await ctx.api('GET', ''))
+		annotations: readOnly,
+		run: (_, b) => reply(b.guide())
 	},
 	{
-		name: 'valores',
-		description: 'Valores conocidos (ticker, nombre, moneda, retenciones en %, zona, tier, precio objetivo, si están activos y cuántas operaciones los usan).',
+		name: 'list_securities',
+		title: 'Valores',
+		description: 'Valores conocidos: ticker, nombre, moneda, retenciones en %, zona, tier, precio objetivo, si están activos y cuántas operaciones los usan.',
 		inputSchema: { type: 'object', properties: {} },
-		annotations: { readOnlyHint: true },
-		run: async (_, ctx) => reply(await ctx.api('GET', '/valores'))
+		annotations: readOnly,
+		run: (_, b) => reply(b.securities())
 	},
 	{
-		name: 'estado_cartera',
+		name: 'get_portfolio_state',
+		title: 'Estado de la cartera',
 		description: 'Estado de una cartera a una fecha: saldo de cada cuenta, capital aportado e invertido, resultado del año, posiciones (acciones, coste, coste reducido, precio medio, dividendos brutos y plusvalías realizadas) y métricas por año (capital, bruto, impuestos, gastos, neto, compras). Importes en euros.',
-		inputSchema: { type: 'object', properties: { cartera, fecha: { type: 'string', description: 'AAAA-MM-DD (inclusive). Por defecto, al final del registro.' } } },
-		annotations: { readOnlyHint: true },
-		run: async (a, ctx) => {
-			const fecha = text(a, 'fecha');
-			if (fecha && !DATE.test(fecha)) return fail('«fecha» debe ser AAAA-MM-DD.');
-			return reply(await ctx.api('GET', `/carteras/${enc(text(a, 'cartera') ?? '1')}/estado${query({ fecha })}`));
+		inputSchema: { type: 'object', properties: { portfolio, date: { type: 'string', description: 'AAAA-MM-DD (inclusive). Por defecto, al final del registro.' } } },
+		annotations: readOnly,
+		run: (a, b) => {
+			const date = text(a, 'date');
+			if (date && !DATE.test(date)) return fail('«date» debe ser AAAA-MM-DD.');
+			return reply(b.state(portfolioOf(a), date ?? null));
 		}
 	},
 	{
-		name: 'buscar_operaciones',
-		description: 'Operaciones de una cartera que cumplen los filtros, con sus importes en euros (bruto, impuestos, gastos, neto) y movimientos de efectivo. Si hay más que «limite», devuelve las más recientes; «total» dice cuántas cumplen los filtros. Sirve también de plantilla: la última operación del mismo tipo y valor da cantidad, precio, moneda y cambio habituales.',
+		name: 'search_operations',
+		title: 'Buscar operaciones',
+		description: 'Operaciones de una cartera que cumplen los filtros, con sus importes en euros (bruto, impuestos, gastos, neto) y movimientos de efectivo. Si hay más que «limit», devuelve las más recientes; «total» dice cuántas cumplen los filtros. Sirve de plantilla: la última operación del mismo tipo y valor da cantidad, precio, moneda y cambio habituales.',
 		inputSchema: {
 			type: 'object',
 			properties: {
-				cartera,
-				desde: { type: 'string', description: 'AAAA-MM-DD' },
-				hasta: { type: 'string', description: 'AAAA-MM-DD' },
-				tipo: { type: 'string', description: 'Código del tipo: DIVIDENDOS, COMPRA, VENTA, APORTACION…' },
-				valor: { type: 'string', description: 'Ticker.' },
-				cuenta: { type: 'string', description: 'Código de la cuenta.' },
-				texto: { type: 'string', description: 'Texto que debe contener la descripción.' },
-				limite: { type: 'integer', minimum: 1, maximum: 500, description: 'Por defecto 50.' }
+				portfolio,
+				from: { type: 'string', description: 'AAAA-MM-DD' },
+				to: { type: 'string', description: 'AAAA-MM-DD' },
+				type: { type: 'string', description: 'Código del tipo: DIVIDENDOS, COMPRA, VENTA, APORTACION…' },
+				security: { type: 'string', description: 'Ticker.' },
+				account: { type: 'string', description: 'Código de la cuenta.' },
+				text: { type: 'string', description: 'Texto que debe contener la descripción.' },
+				limit: { type: 'integer', minimum: 1, maximum: 500, description: 'Por defecto 50.' }
 			}
 		},
-		annotations: { readOnlyHint: true },
-		run: async (a, ctx) => {
-			const q = query({ desde: text(a, 'desde'), hasta: text(a, 'hasta'), tipo: text(a, 'tipo'), valor: text(a, 'valor'), cuenta: text(a, 'cuenta'), texto: text(a, 'texto'), limite: typeof a.limite === 'number' ? a.limite : undefined });
-			return reply(await ctx.api('GET', `/carteras/${enc(text(a, 'cartera') ?? '1')}/operaciones${q}`));
+		annotations: readOnly,
+		run: (a, b) => {
+			const filters: Record<string, string> = {};
+			const map: [string, string][] = [['from', 'desde'], ['to', 'hasta'], ['type', 'tipo'], ['security', 'valor'], ['account', 'cuenta'], ['text', 'texto']];
+			for (const [key, apiKey] of map) if (text(a, key)) filters[apiKey] = text(a, key)!;
+			if (typeof a.limit === 'number') filters.limite = String(a.limit);
+			return reply(b.operations(portfolioOf(a), filters));
 		}
 	},
 	{
-		name: 'ver_operacion',
-		description: 'Una operación con sus campos tal como se teclearon («fields», listos para reenviarlos al modificarla), sus efectos en efectivo y en posiciones, notas y origen.',
+		name: 'get_operation',
+		title: 'Ver una operación',
+		description: 'Una operación con sus campos tal como se teclearon («fields», listos para reenviarlos a update_operation), sus efectos en efectivo y en posiciones, notas y origen.',
 		inputSchema: { type: 'object', properties: { id }, required: ['id'] },
-		annotations: { readOnlyHint: true },
-		run: async (a, ctx) => reply(await ctx.api('GET', `/operaciones/${Number(a.id)}`))
+		annotations: readOnly,
+		run: (a, b) => reply(b.operation(Number(a.id)))
 	},
 	{
-		name: 'anotar_operacion',
+		name: 'add_operation',
+		title: 'Anotar una operación',
 		description: [
 			'Da de alta una operación (dividendo, compra, venta, aportación, intereses, traspaso, cambio de divisa…).',
-			'Sin «guardar» solo la valida y devuelve descripción, efectivo, saldos resultantes e importes en euros, SIN GUARDAR: hazlo siempre primero, comprueba que cuadra con lo que dictó el usuario y repite con "guardar": true.',
-			'«operacion» lleva «type», «date» (AAAA-MM-DD) y los campos del tipo (ver la herramienta «guia»): «account» es el código de la cuenta, «security» el ticker; importes en unidades de su moneda («amount» y retenciones en la de «currency»; «fees» y «cashTotal» en la de la cuenta); «fxRate» son unidades de la moneda por euro y no se inventa (el del broker difiere del BCE).',
+			'Sin "save": true solo la valida y devuelve descripción, efectivo, saldos resultantes e importes en euros, SIN GUARDAR: hazlo siempre primero, comprueba que cuadra con lo que dictó el usuario y repite con "save": true.',
+			'«operation» lleva «type», «date» (AAAA-MM-DD) y los campos del tipo (ver get_guide): «account» es el código de la cuenta, «security» el ticker; importes en unidades de su moneda («amount» y retenciones en la de «currency»; «fees» y «cashTotal» en la de la cuenta); «fxRate» son unidades de la moneda por euro y no se inventa (el del broker difiere del BCE).',
 			'Retenciones: en DEGIRO, DEGIRO2, IBUSD e IBEUR, siempre en origen («whtSource»); en ING y MYINV puede haber también la española en «whtDest».'
 		].join(' '),
 		inputSchema: {
 			type: 'object',
 			properties: {
-				cartera,
-				operacion: {
+				portfolio,
+				operation: {
 					type: 'object',
 					description: 'Campos de la operación. Ejemplo (inventado): {"type":"DIVIDENDOS","date":"2026-03-10","account":"DEGIRO","security":"ACME","quantity":10,"price":0.5,"currency":"USD","fxRate":1.08,"amount":5,"whtSource":0.75}',
 					properties: { type: { type: 'string' }, date: { type: 'string' } },
 					required: ['type', 'date']
 				},
-				guardar: { type: 'boolean', description: 'true para guardarla de verdad; por defecto solo se valida.' },
-				confirmar: { type: 'boolean', description: 'Acepta los avisos (por ejemplo, saldo negativo). Solo si el usuario los ha aceptado.' },
-				crearValor: { type: 'boolean', description: 'Da de alta el ticker si no existe. Pregunta antes: puede ser una errata.' }
+				save: { type: 'boolean', description: 'true para guardarla de verdad; por defecto solo se valida.' },
+				confirm: { type: 'boolean', description: 'Acepta los avisos (por ejemplo, saldo negativo). Solo si el usuario los ha aceptado.' },
+				createSecurity: { type: 'boolean', description: 'Da de alta el ticker si no existe. Pregunta antes: puede ser una errata.' }
 			},
-			required: ['operacion']
+			required: ['operation']
 		},
-		annotations: { readOnlyHint: false, destructiveHint: false },
-		run: async (a, ctx) => {
-			if (a.operacion == null || typeof a.operacion !== 'object' || Array.isArray(a.operacion)) return fail('«operacion» debe ser un objeto con los campos de la operación.');
-			const body = { ...(a.operacion as object), dryRun: a.guardar !== true, confirm: a.confirmar === true || undefined, createSecurity: a.crearValor === true || undefined };
-			return reply(await ctx.api('POST', `/carteras/${enc(text(a, 'cartera') ?? '1')}/operaciones`, body));
+		annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+		run: (a, b) => {
+			if (!isObject(a.operation)) return fail('«operation» debe ser un objeto con los campos de la operación.');
+			return reply(b.save(portfolioOf(a), null, { ...a.operation, dryRun: a.save !== true, confirm: a.confirm === true, createSecurity: a.createSecurity === true }));
 		}
 	},
 	{
-		name: 'modificar_operacion',
-		description: 'Sustituye una operación existente. «campos» debe llevar TODOS sus campos: parte de los «fields» de «ver_operacion» y cambia lo necesario. Sin «guardar» solo valida y enseña el resultado. Las importadas de la hoja antigua solo admiten cambiar fecha, descripción, notas, valor y moneda, con «mantenerEfectos».',
+		name: 'update_operation',
+		title: 'Modificar una operación',
+		description: 'Sustituye una operación existente. «fields» debe llevar TODOS sus campos: parte de los «fields» de get_operation y cambia lo necesario. Sin "save": true solo valida y enseña el resultado. Las importadas de la hoja antigua solo admiten cambiar fecha, descripción, notas, valor y moneda, con "keepEffects": true.',
 		inputSchema: {
 			type: 'object',
 			properties: {
 				id,
-				campos: { type: 'object', description: 'Todos los campos de la operación, como en «anotar_operacion».' },
-				guardar: { type: 'boolean' },
-				confirmar: { type: 'boolean' },
-				mantenerEfectos: { type: 'boolean', description: 'Para operaciones importadas: cambia solo fecha, descripción, notas, valor y moneda, sin recalcular importes.' }
+				fields: { type: 'object', description: 'Todos los campos de la operación, como en add_operation.' },
+				save: { type: 'boolean' },
+				confirm: { type: 'boolean' },
+				keepEffects: { type: 'boolean', description: 'Para operaciones importadas: cambia solo fecha, descripción, notas, valor y moneda, sin recalcular importes.' }
 			},
-			required: ['id', 'campos']
+			required: ['id', 'fields']
 		},
-		annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
-		run: async (a, ctx) => {
-			if (a.campos == null || typeof a.campos !== 'object' || Array.isArray(a.campos)) return fail('«campos» debe ser un objeto.');
-			const body = { ...(a.campos as object), dryRun: a.guardar !== true, confirm: a.confirmar === true || undefined, keepEffects: a.mantenerEfectos === true || undefined };
-			return reply(await ctx.api('PUT', `/operaciones/${Number(a.id)}`, body));
+		annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+		run: (a, b) => {
+			if (!isObject(a.fields)) return fail('«fields» debe ser un objeto.');
+			return reply(b.save(null, Number(a.id), { ...a.fields, dryRun: a.save !== true, confirm: a.confirm === true, keepEffects: a.keepEffects === true }));
 		}
 	},
 	{
-		name: 'borrar_operacion',
-		description: 'Borra una operación. No se puede deshacer: úsala solo si el usuario lo pide expresamente, y enséñale antes la operación con «ver_operacion».',
-		inputSchema: { type: 'object', properties: { id, confirmar: { type: 'boolean', description: 'Debe ser true.' } }, required: ['id', 'confirmar'] },
-		annotations: { readOnlyHint: false, destructiveHint: true },
-		run: async (a, ctx) => {
-			if (a.confirmar !== true) return fail('Para borrar hay que pasar "confirmar": true.');
-			return reply(await ctx.api('DELETE', `/operaciones/${Number(a.id)}?confirm=1`, {}));
-		}
+		name: 'delete_operation',
+		title: 'Borrar una operación',
+		description: 'Borra una operación. No se puede deshacer: úsala solo si el usuario lo pide expresamente, y enséñale antes la operación con get_operation.',
+		inputSchema: { type: 'object', properties: { id, confirm: { type: 'boolean', description: 'Debe ser true.' } }, required: ['id', 'confirm'] },
+		annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
+		run: (a, b) => (a.confirm === true ? reply(b.remove(Number(a.id))) : fail('Para borrar hay que pasar "confirm": true.'))
 	},
 	{
-		name: 'dividendos',
+		name: 'get_dividends',
+		title: 'Dividendos cobrados',
 		description: [
-			'Dividendos cobrados por año, trimestre o mes (los periodos sin cobros salen a cero), en euros: número de cobros, bruto, retenciones, gastos y neto, con la variación sobre el periodo anterior y el acumulado de la medida elegida.',
-			'Puede desglosarse por valor, cuenta, cartera o tipo (como mucho «maxGrupos» grupos; el resto, en «Otros») y dibujar el gráfico de una vez.',
+			'Dividendos cobrados por año, trimestre o mes (los periodos sin cobros salen a cero), en euros: número de cobros, bruto, retenciones, gastos y neto, con la variación sobre el periodo anterior (en %) y el acumulado de la medida elegida.',
+			'Puede desglosarse por valor, cuenta, cartera o tipo (como mucho «maxGroups» grupos; el resto, en «Otros»). Sirve para dibujar la evolución de los dividendos.',
 			'El último periodo puede estar incompleto (el año o el mes en curso).'
 		].join(' '),
 		inputSchema: {
 			type: 'object',
 			properties: {
-				cartera: { type: 'string', description: 'Id o nombre de la cartera, o «todas». Por defecto, la 1.' },
-				desde: { type: 'string', description: 'AAAA-MM-DD. Por defecto, desde el principio.' },
-				hasta: { type: 'string', description: 'AAAA-MM-DD. Por defecto, hasta hoy.' },
-				agrupar: { type: 'string', enum: ['año', 'trimestre', 'mes'], description: 'Por defecto, año.' },
-				medida: { type: 'string', enum: ['neto', 'bruto'], description: 'La que se usa en variación, acumulado, desglose y gráfico. Por defecto, neto.' },
-				desglose: { type: 'string', enum: ['valor', 'cuenta', 'cartera', 'tipo'] },
-				valor: { type: 'string', description: 'Solo los cobros de este ticker.' },
-				incluirDevoluciones: { type: 'boolean', description: 'Suma también devoluciones de prima y ventas de derechos, como «Cobrado» en el cuadro de cartera.' },
-				maxGrupos: { type: 'integer', minimum: 1, maximum: 8, description: 'Grupos del desglose (por defecto 8).' },
-				grafico: { type: 'string', enum: ['barras', 'barras_apiladas', 'lineas', 'acumulado'], description: 'Dibuja además el gráfico en SVG y devuelve su ruta. «acumulado» es la línea del acumulado.' },
-				ruta: { type: 'string', description: 'Dónde guardar el gráfico (.svg). Por defecto, en data/graficos/.' }
+				portfolio: { type: 'string', description: 'Id o nombre de la cartera, o «all» para todas. Por defecto, la 1.' },
+				from: { type: 'string', description: 'AAAA-MM-DD. Por defecto, desde el principio.' },
+				to: { type: 'string', description: 'AAAA-MM-DD. Por defecto, hasta hoy.' },
+				period: { type: 'string', enum: ['year', 'quarter', 'month'], description: 'Por defecto, year.' },
+				measure: { type: 'string', enum: ['net', 'gross'], description: 'La que se usa en variación, acumulado y desglose. Por defecto, net.' },
+				breakdown: { type: 'string', enum: ['security', 'account', 'portfolio', 'type'] },
+				security: { type: 'string', description: 'Solo los cobros de este ticker.' },
+				includeReturns: { type: 'boolean', description: 'Suma también devoluciones de prima y ventas de derechos, como «Cobrado» en el cuadro de cartera.' },
+				maxGroups: { type: 'integer', minimum: 1, maximum: 50, description: 'Grupos del desglose (por defecto 8).' }
 			}
 		},
-		annotations: { readOnlyHint: true },
-		run: async (a, ctx) => {
-			const desde = text(a, 'desde') ?? '2000-01-01';
-			const hasta = text(a, 'hasta') ?? new Date().toISOString().slice(0, 10);
-			if (!DATE.test(desde) || !DATE.test(hasta)) return fail('«desde» y «hasta» deben ser AAAA-MM-DD.');
-			const all = await portfolios(ctx);
-			const key = text(a, 'cartera') ?? '1';
-			const chosen = key.toLowerCase() === 'todas' ? all : all.filter((p) => String(p.id) === key || p.name.toLowerCase() === key.toLowerCase());
+		annotations: readOnly,
+		run: (a, b) => {
+			const from = text(a, 'from') ?? '1900-01-01';
+			const to = text(a, 'to') ?? new Date().toISOString().slice(0, 10);
+			if (!DATE.test(from) || !DATE.test(to)) return fail('«from» y «to» deben ser AAAA-MM-DD.');
+			const guide = b.guide();
+			const all = (guide.body as { portfolios: { id: number; name: string }[] }).portfolios;
+			const key = portfolioOf(a);
+			const chosen = key.toLowerCase() === 'all' ? all : all.filter((p) => String(p.id) === key || p.name.toLowerCase() === key.toLowerCase());
 			if (!chosen.length) return fail(`No existe la cartera «${key}». Carteras: ${all.map((p) => `${p.id} (${p.name})`).join(', ')}.`);
-			// Sin «desde», se empieza en el primer año con actividad de cada cartera.
-			const types = new Set([...DIVIDEND_TYPES, ...(a.incluirDevoluciones === true ? RETURN_TYPES : [])]);
-			const ticker = text(a, 'valor')?.toUpperCase();
+			const types = new Set([...DIVIDEND_TYPES, ...(a.includeReturns === true ? RETURN_TYPES : [])]);
+			const ticker = text(a, 'security')?.toUpperCase();
 			const rows: DividendRow[] = [];
 			for (const p of chosen) {
-				let from = desde;
-				if (!text(a, 'desde')) {
-					const state = await ctx.api('GET', `/carteras/${p.id}/estado`);
-					const years = (state.body as { years?: { year: number }[] }).years ?? [];
-					if (years.length) from = `${Math.min(...years.map((y) => y.year))}-01-01`;
-				}
-				if (from > hasta) continue;
-				for (const op of await fetchOperations(ctx, p.id, from, hasta)) {
+				const r = b.allOperations(String(p.id), from, to);
+				if (r.status !== 200) return reply(r);
+				for (const op of (r.body as { operations: DividendRow[] }).operations) {
 					if (types.has(op.type) && (!ticker || op.security?.toUpperCase() === ticker)) rows.push({ ...op, portfolio: p.name });
 				}
 			}
+			const periods: Record<string, Period> = { year: 'año', quarter: 'trimestre', month: 'mes' };
+			const breakdowns: Record<string, Breakdown> = { security: 'valor', account: 'cuenta', portfolio: 'cartera', type: 'tipo' };
 			const report = dividendReport(rows, {
-				period: (text(a, 'agrupar') as Period) ?? 'año',
-				measure: (text(a, 'medida') as Measure) ?? 'neto',
-				breakdown: (text(a, 'desglose') as Breakdown) ?? null,
-				maxGroups: typeof a.maxGrupos === 'number' ? a.maxGrupos : 8
+				period: periods[text(a, 'period') ?? 'year'] ?? 'año',
+				measure: (text(a, 'measure') === 'gross' ? 'bruto' : 'neto') as Measure,
+				breakdown: breakdowns[text(a, 'breakdown') ?? ''] ?? null,
+				maxGroups: typeof a.maxGroups === 'number' ? a.maxGroups : 8
 			});
-			const result: Record<string, unknown> = {
-				carteras: chosen.map((p) => p.name),
-				medida: report.measure,
-				agrupar: report.period,
-				desglose: report.breakdown,
-				grupos: report.groups,
-				total: { cobros: report.total.count, bruto: euros(report.total.gross), retenciones: euros(report.total.tax), gastos: euros(report.total.fees), neto: euros(report.total.net) },
-				periodos: report.rows.map((r) => ({
-					periodo: r.period,
-					cobros: r.count,
-					bruto: euros(r.gross),
-					retenciones: euros(r.tax),
-					gastos: euros(r.fees),
-					neto: euros(r.net),
-					variacion: r.change == null ? null : Math.round(r.change * 1000) / 10,
-					acumulado: euros(r.cumulative),
-					...(r.parts ? { desglose: Object.fromEntries(Object.entries(r.parts).map(([g, v]) => [g, euros(v)])) } : {})
+			return json({
+				portfolios: chosen.map((p) => p.name),
+				measure: report.measure === 'bruto' ? 'gross' : 'net',
+				period: text(a, 'period') ?? 'year',
+				breakdown: text(a, 'breakdown') ?? null,
+				groups: report.groups,
+				total: { count: report.total.count, gross: euros(report.total.gross), tax: euros(report.total.tax), fees: euros(report.total.fees), net: euros(report.total.net) },
+				periods: report.rows.map((r) => ({
+					period: r.period,
+					count: r.count,
+					gross: euros(r.gross),
+					tax: euros(r.tax),
+					fees: euros(r.fees),
+					net: euros(r.net),
+					changePct: r.change == null ? null : Math.round(r.change * 1000) / 10,
+					cumulative: euros(r.cumulative),
+					...(r.parts ? { breakdown: Object.fromEntries(Object.entries(r.parts).map(([g, v]) => [g, euros(v)])) } : {})
 				}))
-			};
-			const kind = text(a, 'grafico');
-			if (kind && report.rows.length) {
-				const measureName = report.measure === 'bruto' ? 'brutos' : 'netos';
-				const scope = chosen.length > 1 ? 'todas las carteras' : `cartera ${chosen[0].name}`;
-				const periodName = { año: 'año', trimestre: 'trimestre', mes: 'mes' }[report.period];
-				const labels = report.rows.map((r) => r.period);
-				const spec: ChartSpec =
-					kind === 'acumulado'
-						? { title: `Dividendos ${measureName} acumulados`, kind: 'lineas', labels, series: [{ name: 'Acumulado', values: report.rows.map((r) => euros(r.cumulative)) }], unit: '€' }
-						: {
-								title: `Dividendos ${measureName} por ${periodName}${ticker ? ` · ${ticker}` : ''}`,
-								kind: (report.breakdown && kind === 'barras' ? 'barras_apiladas' : kind) as ChartKind,
-								labels,
-								series: report.breakdown
-									? report.groups.map((g) => ({ name: g, values: report.rows.map((r) => euros(r.parts![g])) }))
-									: [{ name: 'Dividendos', values: report.rows.map((r) => euros(report.measure === 'bruto' ? r.gross : r.net)) }],
-								unit: '€'
-							};
-				spec.subtitle = `En euros · ${scope}${a.incluirDevoluciones === true ? ' · con devoluciones de prima y venta de derechos' : ''} · ${labels[0]} a ${labels.at(-1)}`;
-				result.grafico = await ctx.saveChart(renderChart(spec), `dividendos-${report.period}${report.breakdown ? `-${report.breakdown}` : ''}`, text(a, 'ruta'));
-			}
-			return json(result);
-		}
-	},
-	{
-		name: 'grafico',
-		description: 'Dibuja un gráfico en SVG (barras, barras apiladas o líneas, con modo claro y oscuro y el valor de cada punto al pasar el ratón) con los datos que se le den, y devuelve la ruta del fichero. Para dividendos es más directo «dividendos» con «grafico». Una sola escala: no mezcles medidas de distinta magnitud; como mucho 8 series.',
-		inputSchema: {
-			type: 'object',
-			properties: {
-				titulo: { type: 'string' },
-				subtitulo: { type: 'string' },
-				tipo: { type: 'string', enum: ['barras', 'barras_apiladas', 'lineas'] },
-				etiquetas: { type: 'array', items: { type: 'string' }, description: 'Eje horizontal (periodos, tickers…).' },
-				series: {
-					type: 'array',
-					items: { type: 'object', properties: { nombre: { type: 'string' }, valores: { type: 'array', items: { type: ['number', 'null'] } } }, required: ['nombre', 'valores'] }
-				},
-				unidad: { type: 'string', description: '«€», «%»… Se añade a los valores.' },
-				ruta: { type: 'string', description: 'Dónde guardarlo (.svg). Por defecto, en data/graficos/.' }
-			},
-			required: ['titulo', 'tipo', 'etiquetas', 'series']
-		},
-		annotations: { readOnlyHint: true },
-		run: async (a, ctx) => {
-			const series = Array.isArray(a.series) ? (a.series as { nombre?: unknown; valores?: unknown }[]) : [];
-			const spec: ChartSpec = {
-				title: String(a.titulo ?? ''),
-				subtitle: text(a, 'subtitulo'),
-				kind: a.tipo as ChartKind,
-				labels: Array.isArray(a.etiquetas) ? a.etiquetas.map(String) : [],
-				series: series.map((s) => ({ name: String(s.nombre ?? ''), values: Array.isArray(s.valores) ? (s.valores as (number | null)[]) : [] })),
-				unit: text(a, 'unidad')
-			};
-			const errors = validateChart(spec);
-			if (errors.length) return fail(errors.join(' '));
-			return json({ grafico: await ctx.saveChart(renderChart(spec), spec.title, text(a, 'ruta')) });
+			});
 		}
 	}
 ];
 
 export const INSTRUCTIONS = [
-	'Servidor de investsheet, la aplicación de cartera de acciones de dividendos del usuario. Trabaja contra los datos reales de producción.',
-	'Para anotar: reúne tipo, fecha, cuenta, ticker, acciones, importe o precio, retención y cambio (si la moneda no es EUR); lo que falte y sea imprescindible, pregúntalo todo junto. Fecha sin año: el año en curso (o el anterior si quedaría en el futuro).',
-	'Llama a «anotar_operacion» sin «guardar» para validarla, comprueba que bruto, retención y neto cuadran con lo dictado (y con la última operación del mismo valor, vía «buscar_operaciones»), y repite con "guardar": true. Si responde con avisos, enséñalos y confirma solo si el usuario los acepta.',
-	'Para gráficos de dividendos usa «dividendos» con «grafico»; para otros, «grafico» con los datos. Devuelven la ruta de un SVG: enséñaselo al usuario.',
-	'Los importes reales no se escriben en el repositorio (código, documentación ni commits): el repositorio es público.'
+	'Servidor de investsheet, la aplicación de cartera de acciones de dividendos del usuario. Trabaja contra sus datos reales.',
+	'Para anotar: reúne tipo, fecha, cuenta, ticker, acciones, importe o precio, retención y cambio (si la moneda no es EUR); lo que falte y sea imprescindible, pregúntalo todo junto. Fecha sin año: el año en curso (o el anterior si quedaría en el futuro). Sin cartera: la 1.',
+	'Llama a add_operation sin "save" para validarla, comprueba que bruto, retención y neto cuadran con lo dictado (y con la última operación del mismo valor, vía search_operations), y repite con "save": true. Si responde con avisos, enséñalos y confirma solo si el usuario los acepta.',
+	'Para gráficos de dividendos, usa get_dividends y dibuja tú los datos.'
 ].join('\n');

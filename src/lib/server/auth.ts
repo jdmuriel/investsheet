@@ -2,6 +2,8 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypt
 
 export const SESSION_COOKIE = 'sesion';
 export const STATE_COOKIE = 'oauth_state';
+/** Ruta a la que volver tras iniciar sesión. */
+export const RETURN_COOKIE = 'volver';
 const SESSION_DAYS = 30;
 
 export interface AuthConfig {
@@ -89,4 +91,22 @@ export function apiTokenValid(header: string | null, token: string | undefined):
 	if (!token || token.length < 32 || !header?.startsWith('Bearer ')) return false;
 	const digest = (value: string) => createHash('sha256').update(value).digest();
 	return timingSafeEqual(digest(header.slice(7).trim()), digest(token));
+}
+
+const FORM_TYPES = ['application/x-www-form-urlencoded', 'multipart/form-data', 'text/plain'];
+
+/**
+ * Equivalente a la comprobación de origen de SvelteKit para envíos de formulario: un `POST`, `PUT`,
+ * `PATCH` o `DELETE` con tipo de formulario (o sin tipo) desde otro origen se rechaza.
+ */
+export function crossSiteForbidden(request: Request, selfOrigin: string): boolean {
+	if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) return false;
+	const type = request.headers.get('content-type')?.split(';')[0].trim().toLowerCase();
+	if (type && !FORM_TYPES.includes(type)) return false;
+	return request.headers.get('origin') !== selfOrigin;
+}
+
+/** Ruta interna a la que volver tras iniciar sesión; cualquier otra cosa lleva a la portada. */
+export function safeReturnPath(value: string | null | undefined): string {
+	return value && value.startsWith('/') && !value.startsWith('//') && !value.startsWith('/\\') && !value.startsWith('/auth/') ? value : '/';
 }

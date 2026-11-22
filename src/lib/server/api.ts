@@ -173,7 +173,8 @@ function describeRow(op: OperationRow, accounts: Account[]) {
 	};
 }
 
-export function apiOperations(db: DatabaseSync, portfolioId: number, query: URLSearchParams): ApiResponse {
+/** `maxLimit` solo lo sube el servidor MCP, que agrega dentro del proceso; por HTTP son 500. */
+export function apiOperations(db: DatabaseSync, portfolioId: number, query: URLSearchParams, maxLimit = 500): ApiResponse {
 	const accounts = listAccounts(portfolioId, db);
 	const from = query.get('desde');
 	const to = query.get('hasta');
@@ -181,7 +182,7 @@ export function apiOperations(db: DatabaseSync, portfolioId: number, query: URLS
 	const ticker = query.get('valor')?.toUpperCase();
 	const account = query.get('cuenta')?.toUpperCase();
 	const text = query.get('texto')?.toLowerCase();
-	const limit = Math.min(Math.max(Number(query.get('limite')) || 50, 1), 500);
+	const limit = Math.min(Math.max(Number(query.get('limite')) || 50, 1), maxLimit);
 	const accountId = account ? accounts.find((a) => a.code.toUpperCase() === account)?.id : undefined;
 	if (account && accountId == null) return problem(400, `No hay ninguna cuenta «${account}» en esta cartera.`);
 	const matching = loadOperations(portfolioId, db).filter(

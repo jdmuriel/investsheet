@@ -57,4 +57,4 @@ El token se guarda como secreto de red del entorno para el host de la aplicació
 
 ## Servidor MCP
 
-Para Claude Code hay un servidor MCP local sobre esta API, con herramientas para anotar, consultar y sacar gráficos de dividendos: ver [mcp.md](mcp.md). Pendiente: el conector remoto con OAuth para la aplicación de Claude (tarea 1.19 del plan).
+La misma lógica se sirve como servidor MCP en `/mcp`, con OAuth, para usarla como conector desde Claude y desde Claude Code: ver [mcp.md](mcp.md). `/mcp` acepta también este token.

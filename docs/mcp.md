@@ -1,39 +1,57 @@
-# Servidor MCP local
+# Servidor MCP
 
-Servidor MCP para usar investsheet desde Claude Code: anotar, corregir y consultar operaciones, y sacar los dividendos cobrados por periodo con su gráfico. Es un proceso local (transporte stdio) que llama a la [API para asistentes](api.md) de producción; no añade nada al servidor ni al esquema.
+La aplicación sirve un servidor MCP en **`https://invest.jdmuriel.com/mcp`** para usarla desde Claude (web, escritorio y móvil) como conector personalizado, y desde Claude Code: anotar, corregir y consultar operaciones, y sacar los dividendos cobrados por periodo para dibujarlos. Las herramientas llaman dentro del proceso a la misma lógica que la [API para asistentes](api.md), con sus validaciones y su auditoría (origen `api`).
 
-## Arranque
+## Conectarlo
 
-Claude Code lo lanza solo según `.mcp.json` (en la raíz del repositorio) al empezar una sesión en esta carpeta; la primera vez pide aprobar el servidor del proyecto. Si se añade o cambia el fichero a mitad de sesión, hace falta una sesión nueva (o `/mcp` para reconectar). No necesita dependencias ni compilar: `node scripts/mcp.ts`.
-
-- **En la nube de Claude Code** el token va como secreto de red del entorno para el host de la aplicación: el proxy lo inyecta y el servidor no lo ve. `.mcp.json` pone `NODE_USE_ENV_PROXY=1` para que `fetch` pase por ese proxy.
-- **En local** hay que darle el token en `INVESTSHEET_TOKEN` (por ejemplo, en el `env` de una configuración propia, nunca en el repositorio). `INVESTSHEET_URL` cambia la base de la API (por defecto, la de producción; para el servidor de desarrollo, `http://localhost:5173/api/v1` con su propio `API_TOKEN`).
+- **Claude (web, escritorio, móvil)**: Ajustes → Conectores → «Añadir conector personalizado», con la dirección `https://invest.jdmuriel.com/mcp` y sin ID ni secreto de cliente. Claude abre la aplicación: se inicia sesión con Google (si no había sesión) y se pulsa «Permitir». Desde ese momento el conector está disponible también en el móvil.
+- **Claude Code**: `.mcp.json` del repositorio ya lo declara (`type: http`). En la nube, el proxy de la sesión añade el `API_TOKEN` (secreto de red del entorno), que `/mcp` también acepta. En local, Claude Code hace el mismo flujo OAuth abriendo el navegador (`/mcp` → autenticar).
+- Los accesos concedidos se ven y se revocan en **Ajustes → Conectores** (`/ajustes/conectores`). Revocar uno invalida al momento sus tokens.
 
 ## Herramientas
 
+Nombres y parámetros en inglés; descripciones en español.
+
 | Herramienta | Qué hace |
 |---|---|
-| `guia` | La guía de la API: carteras y cuentas, tipos de operación con sus campos, normas. |
-| `valores` | Valores conocidos con moneda, retenciones y estado. |
-| `estado_cartera` | Saldos, capital, posiciones y métricas por año a una fecha. |
-| `buscar_operaciones` | Operaciones con filtros (fechas, tipo, valor, cuenta, texto). |
-| `ver_operacion` | Una operación con sus campos y efectos. |
-| `anotar_operacion` | Alta. **Sin `guardar: true` solo valida** y enseña el resultado (`dryRun` de la API). |
-| `modificar_operacion` | Sustituye una operación (todos los campos); igual, sin `guardar` solo valida. |
-| `borrar_operacion` | Borra; exige `confirmar: true`. |
-| `dividendos` | Cobros por año, trimestre o mes (huecos a cero), con bruto, retenciones, gastos, neto, variación y acumulado; desglose por valor, cuenta, cartera o tipo; `cartera: "todas"`; `incluirDevoluciones` suma devoluciones de prima y ventas de derechos, como «Cobrado» en el cuadro. Con `grafico` dibuja además el SVG. |
-| `grafico` | Gráfico SVG (barras, barras apiladas o líneas) con los datos que se le pasen. |
+| `get_guide` | Carteras y cuentas, tipos de operación con sus campos, normas de escritura. |
+| `list_securities` | Valores conocidos con moneda, retenciones y estado. |
+| `get_portfolio_state` | Saldos, capital, posiciones y métricas por año a una fecha. |
+| `search_operations` | Operaciones con filtros (`from`, `to`, `type`, `security`, `account`, `text`, `limit`). |
+| `get_operation` | Una operación con sus campos (`fields`) y efectos. |
+| `add_operation` | Alta. **Sin `save: true` solo valida** y enseña el resultado (el `dryRun` de la API). |
+| `update_operation` | Sustituye una operación (todos los campos); sin `save`, solo valida. |
+| `delete_operation` | Borra; exige `confirm: true`. |
+| `get_dividends` | Cobros por `year`, `quarter` o `month` (huecos a cero) con bruto, retenciones, gastos, neto, variación (`changePct`) y acumulado; desglose por `security`, `account`, `portfolio` o `type` (como mucho `maxGroups`, el resto en «Otros»); `portfolio: "all"`; `includeReturns` suma devoluciones de prima y ventas de derechos, como «Cobrado» en el cuadro. |
 
-Los gráficos se guardan por defecto en `data/graficos/` (fuera del repositorio: llevan importes reales), con modo claro y oscuro y el valor de cada marca al pasar el ratón. Como mucho ocho series; en los desgloses, el resto va en «Otros», en gris.
+Los gráficos los dibuja quien llama (Claude) con los datos de `get_dividends`.
+
+## Autorización
+
+La aplicación es su propio servidor de autorización OAuth 2.1, para un solo usuario (el de `ALLOWED_EMAIL`):
+
+| Ruta | Qué es |
+|---|---|
+| `/.well-known/oauth-protected-resource` (también con `/mcp` al final) | Metadatos del recurso protegido (RFC 9728): recurso `…/mcp` y su servidor de autorización. |
+| `/.well-known/oauth-authorization-server` | Metadatos del servidor de autorización (RFC 8414). |
+| `/oauth/register` | Registro dinámico de clientes (RFC 7591). Solo clientes públicos y solo con vuelta a `https://claude.ai/…`, `https://claude.com/…` o al bucle local (`http://localhost`, `127.0.0.1`; el puerto no cuenta). `MCP_REDIRECT_HOSTS` añade hosts. Los clientes que no llegan a autorizarse se borran al día. |
+| `/oauth/authorize` | Pide la sesión del propietario y su consentimiento, que enseña el host al que se vuelve. PKCE S256 obligatorio; `resource`, si viene, debe ser `…/mcp`. |
+| `/oauth/token` | Canje del código (un solo uso, diez minutos) y refresco. Acceso de una hora; refresco de 90 días que rota en cada uso. |
+
+- `/mcp` sin token válido responde 401 con `WWW-Authenticate: Bearer resource_metadata="…/.well-known/oauth-protected-resource/mcp"`, que es lo que arranca el flujo en Claude.
+- Códigos y tokens se guardan solo como hash SHA-256 (migración 10: `oauth_client`, `oauth_code`, `oauth_grant`, `oauth_token`).
+- **CSRF**: el canje de tokens llega como formulario desde el servidor de Claude, sin cabecera `Origin`, y SvelteKit lo rechazaría. Por eso su comprobación está desactivada (`csrf.trustedOrigins: ['*']` en `vite.config.ts`) y `hooks.server.ts` aplica la misma regla (`crossSiteForbidden`) a todo salvo `/oauth/register` y `/oauth/token`.
+- Tras iniciar sesión se vuelve a la página pedida (`/auth/login?volver=`, solo rutas internas), para que el flujo siga en la autorización.
+
+## Transporte
+
+Streamable HTTP sin sesiones: cada `POST /mcp` lleva un mensaje JSON-RPC (o un lote) y se responde con `application/json`; si solo había notificaciones, 202 sin cuerpo. `GET` y `DELETE` dan 405 (no hay flujo SSE ni sesiones). Versiones del protocolo: 2025-11-25, 2025-06-18 y 2025-03-26; una cabecera `MCP-Protocol-Version` con otra da 400.
 
 ## Código
 
-- `src/lib/mcp/protocol.ts`: JSON-RPC de MCP (`initialize`, `tools/list`, `tools/call`, `ping`), sin dependencias e independiente del transporte.
-- `src/lib/mcp/tools.ts`: las herramientas, con la API y el disco inyectados (`ToolContext`), para probarlas con una API falsa.
-- `src/lib/mcp/dividends.ts`: agregación de cobros (pura). `src/lib/mcp/chart.ts`: dibujo SVG (puro).
-- `scripts/mcp.ts`: transporte stdio, `fetch` a la API y escritura de los gráficos.
-- La API devuelve como mucho 500 operaciones por consulta: `fetchOperations` las pide por años y, si un año no cabe, por meses.
+- `src/lib/mcp/protocol.ts`: JSON-RPC de MCP (`initialize`, `tools/list`, `tools/call`, `ping`).
+- `src/lib/mcp/tools.ts`: las herramientas, sobre un `Backend` inyectado; `src/lib/mcp/dividends.ts`: agregación de cobros (pura).
+- `src/lib/server/mcp.ts`: el `Backend` con las funciones de `api.ts` y el transporte; ruta en `src/routes/mcp/+server.ts`.
+- `src/lib/server/oauth.ts`: el servidor de autorización; rutas en `src/routes/oauth/` y `src/routes/.well-known/`.
 
-## Pendiente
-
-El conector remoto con OAuth para la aplicación de Claude y el móvil (tarea 1.19): las mismas herramientas de `tools.ts` servidas desde la aplicación por HTTP, llamando a `api.ts` directamente en lugar de por red.
+Referencias: documentación de Claude sobre [autenticación de conectores](https://claude.com/docs/connectors/building/authentication) y [conectores personalizados](https://claude.com/docs/connectors/custom/remote-mcp).

@@ -286,5 +286,40 @@ CREATE TABLE selection_review_item (
 ALTER TABLE account ADD COLUMN foreign_broker INTEGER NOT NULL DEFAULT 0;
 UPDATE account SET foreign_broker = 1 WHERE code IN ('DEGIRO', 'DEGIRO2', 'IBUSD', 'IBEUR');
 `
+	},
+	{
+		version: 10,
+		sql: `
+-- Servidor de autorización OAuth del conector MCP. Los secretos (códigos y tokens) se guardan como hash SHA-256.
+-- Clientes dados de alta por registro dinámico (RFC 7591): Claude registra uno en cada conexión nueva.
+CREATE TABLE oauth_client (
+	id TEXT PRIMARY KEY,
+	name TEXT NOT NULL,
+	redirect_uris TEXT NOT NULL,
+	created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+-- Código de autorización: un solo uso y diez minutos de vida, ligado a PKCE (S256).
+CREATE TABLE oauth_code (
+	hash TEXT PRIMARY KEY,
+	client_id TEXT NOT NULL REFERENCES oauth_client(id) ON DELETE CASCADE,
+	redirect_uri TEXT NOT NULL,
+	code_challenge TEXT NOT NULL,
+	expires_at INTEGER NOT NULL
+);
+-- Autorización concedida por el propietario a un cliente; se revoca desde Ajustes y con ella sus tokens.
+CREATE TABLE oauth_grant (
+	id INTEGER PRIMARY KEY,
+	client_id TEXT NOT NULL REFERENCES oauth_client(id) ON DELETE CASCADE,
+	created_at TEXT NOT NULL DEFAULT (datetime('now')),
+	last_used_at TEXT
+);
+CREATE TABLE oauth_token (
+	hash TEXT PRIMARY KEY,
+	grant_id INTEGER NOT NULL REFERENCES oauth_grant(id) ON DELETE CASCADE,
+	kind TEXT NOT NULL CHECK (kind IN ('access', 'refresh')),
+	expires_at INTEGER NOT NULL
+);
+CREATE INDEX oauth_token_grant ON oauth_token(grant_id);
+`
 	}
 ];

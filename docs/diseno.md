@@ -188,6 +188,8 @@ Un selector de cartera en la cabecera fija a cuál se refiere todo lo demás. La
 - Sesión en *cookie* firmada, `HttpOnly`, `Secure`, `SameSite=Lax`, de 30 días.
 - Todas las rutas exigen sesión, salvo el inicio de sesión y una comprobación de salud sin datos.
 - La API para asistentes (`/api/v1`, [documentación](api.md)) es la excepción: no usa la sesión, sino un token propio (`API_TOKEN`) en la cabecera `Authorization`, comparado en tiempo constante. Sin token configurado está desactivada.
+- El servidor MCP (`/mcp`, [documentación](mcp.md)) acepta tokens OAuth emitidos por la propia aplicación, que hace de servidor de autorización para el único usuario: registro dinámico limitado a direcciones de vuelta de Claude y del bucle local, PKCE S256, consentimiento con la sesión del propietario, códigos y tokens guardados como hash, refresco con rotación y revocación en Ajustes → Conectores. También acepta `API_TOKEN`. Los metadatos de descubrimiento (`/.well-known/…`) y los puntos `/oauth/register` y `/oauth/token` son públicos.
+- Protección CSRF: la comprobación de origen de los envíos de formulario la hace `hooks.server.ts` (no SvelteKit), para poder exceptuar `/oauth/register` y `/oauth/token`, que llegan del servidor de Claude sin cabecera `Origin`.
 - HTTPS forzado; el certificado lo emite y renueva Fly con Let's Encrypt.
 - Secretos (cliente de Google, clave de sesión, URL de la hoja de precios, credencial de la copia) como secretos de Fly, nunca en el repositorio.
 - Cada máquina de Fly es una microVM Firecracker aislada, y las instantáneas de volumen se guardan cifradas.

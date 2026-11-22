@@ -1,8 +1,9 @@
 import { redirect } from '@sveltejs/kit';
 import type { Handle } from '@sveltejs/kit/hooks';
 import { dev } from '$app/env';
-import { SESSION_COOKIE, apiTokenValid, authConfig, readSession } from '#lib/server/auth.ts';
-import { listPortfolios } from '#lib/server/store.ts';
+import { SESSION_COOKIE, apiTokenValid, authConfig, crossSiteForbidden, readSession } from '#lib/server/auth.ts';
+import { verifyAccessToken, wwwAuthenticate } from '#lib/server/oauth.ts';
+import { getDb, listPortfolios } from '#lib/server/store.ts';
 
 const PORTFOLIO_COOKIE = 'cartera';
 
@@ -21,11 +22,28 @@ function choosePortfolio(event: Parameters<Handle>[0]['event']): void {
 	event.locals.portfolioId = chosen;
 }
 
-const PUBLIC = ['/auth/', '/health'];
+const PUBLIC = ['/auth/', '/health', '/.well-known/'];
+/** Puntos del servidor OAuth que llaman los clientes desde fuera: sin sesión ni comprobación de origen. */
+const OAUTH_PUBLIC = ['/oauth/register', '/oauth/token'];
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const path = event.url.pathname;
+	if (OAUTH_PUBLIC.includes(path)) return resolve(event);
+	// La comprobación de origen de SvelteKit está desactivada (vite.config.ts) para que el canje de tokens
+	// OAuth, que llega como formulario sin cabecera Origin, funcione; esta la sustituye en todo lo demás.
+	if (!dev && crossSiteForbidden(event.request, event.url.origin)) return new Response(`Cross-site ${event.request.method} form submissions are forbidden`, { status: 403 });
 	if (PUBLIC.some((p) => path === p || path.startsWith(p))) return resolve(event);
+
+	// El servidor MCP acepta un token OAuth emitido por esta aplicación o el de la API.
+	if (path === '/mcp') {
+		const header = event.request.headers.get('authorization');
+		if (dev && !process.env.API_TOKEN && !authConfig()) return resolve(event);
+		if (apiTokenValid(header, process.env.API_TOKEN) || verifyAccessToken(getDb(), header) != null) return resolve(event);
+		return new Response(JSON.stringify({ error: 'invalid_token', error_description: 'Hace falta autorización.' }), {
+			status: 401,
+			headers: { 'content-type': 'application/json', 'www-authenticate': wwwAuthenticate(event.url.origin, header ? 'invalid_token' : undefined) }
+		});
+	}
 
 	// La API no usa la sesión del navegador: solo vale su propio token.
 	if (path === '/api' || path.startsWith('/api/')) {
@@ -48,7 +66,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 	const email = readSession(event.cookies.get(SESSION_COOKIE), config.sessionSecret);
 	if (email !== config.allowedEmail) {
-		if (event.request.method === 'GET') redirect(303, '/auth/login');
+		// Tras iniciar sesión se vuelve a donde se iba (por ejemplo, a la autorización de un conector).
+		if (event.request.method === 'GET') redirect(303, path === '/' ? '/auth/login' : `/auth/login?volver=${encodeURIComponent(path + event.url.search)}`);
 		return new Response('No autorizado', { status: 401 });
 	}
 	event.locals.email = email;

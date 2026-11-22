@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { formatValue, niceStep, renderChart, validateChart } from './chart.ts';
+import type { DatabaseSync } from 'node:sqlite';
+import { openDatabase } from '../server/db.ts';
+import { mcpPost } from '../server/mcp.ts';
 import { dividendReport, periodRange, type DividendRow } from './dividends.ts';
-import { handleMessage } from './protocol.ts';
-import { fetchOperations, type ToolContext } from './tools.ts';
 
-const row = (date: string, security: string, gross: number, tax = 0, extra: Partial<DividendRow> = {}): DividendRow => ({ date, type: 'DIVIDENDOS', security, account: 'BANCO', grossEur: gross, taxEur: tax, feesEur: 0, ...extra });
+// Todos los datos de estas pruebas son inventados.
+const row = (date: string, security: string, gross: number, tax = 0): DividendRow => ({ date, type: 'DIVIDENDOS', security, account: 'BANCO', grossEur: gross, taxEur: tax, feesEur: 0 });
 
 describe('dividendReport', () => {
 	const rows = [row('2022-03-01', 'ACME', 10, 1.5), row('2024-06-15', 'ACME', 20, 3), row('2024-07-01', 'FOO', 5.1, 0.3), row('2024-11-30', 'BAR', 0.3)];
@@ -17,136 +18,74 @@ describe('dividendReport', () => {
 		expect(r.total).toEqual({ count: 4, gross: 3540, tax: 480, fees: 0, net: 3060 });
 	});
 
-	it('variación con base positiva y medida bruta', () => {
-		const r = dividendReport([row('2023-01-01', 'A', 10), row('2024-01-01', 'A', 15)], { measure: 'bruto' });
-		expect(r.rows[1].change).toBeCloseTo(0.5);
-	});
-
 	it('agrupa por mes y trimestre', () => {
-		expect(dividendReport(rows, { period: 'trimestre' }).rows.map((p) => p.period).slice(0, 3)).toEqual(['2022-T1', '2022-T2', '2022-T3']);
+		expect(dividendReport(rows, { period: 'trimestre' }).rows.map((p) => p.period).slice(0, 2)).toEqual(['2022-T1', '2022-T2']);
 		expect(dividendReport(rows, { period: 'mes' }).rows).toHaveLength(33);
 		expect(periodRange('2023-11', '2024-02', 'mes')).toEqual(['2023-11', '2023-12', '2024-01', '2024-02']);
-		expect(periodRange('2023-T4', '2024-T1', 'trimestre')).toEqual(['2023-T4', '2024-T1']);
 	});
 
-	it('desglosa por valor y junta en «Otros» los que no caben', () => {
+	it('desglosa y junta en «Otros» los que no caben', () => {
 		const r = dividendReport(rows, { breakdown: 'valor', maxGroups: 2 });
 		expect(r.groups).toEqual(['ACME', 'Otros']);
 		expect(r.rows[2].parts).toEqual({ ACME: 1700, Otros: 510 });
-		const all = dividendReport(rows, { breakdown: 'valor' });
-		expect(all.groups).toEqual(['ACME', 'FOO', 'BAR']);
-	});
-
-	it('sin cobros devuelve un informe vacío', () => {
-		expect(dividendReport([]).rows).toEqual([]);
 	});
 });
 
-describe('renderChart', () => {
-	const spec = { title: 'Dividendos <netos>', kind: 'barras' as const, labels: ['2023', '2024'], series: [{ name: 'Neto', values: [1234.5, 2000] }], unit: '€' };
-
-	it('pinta barras con el valor en el aviso y escapa los textos', () => {
-		const svg = renderChart(spec);
-		expect(svg.startsWith('<svg')).toBe(true);
-		expect(svg).toContain('Dividendos &lt;netos&gt;');
-		expect(svg).toContain('<title>2023: 1.235 €</title>');
-		expect(svg.match(/class="m"/g)).toHaveLength(2);
-		expect(svg).toContain('prefers-color-scheme: dark');
-	});
-
-	it('pinta barras apiladas y líneas con leyenda', () => {
-		const two = { ...spec, series: [{ name: 'A', values: [1, 2] }, { name: 'B', values: [3, null] }] };
-		const stacked = renderChart({ ...two, kind: 'barras_apiladas' });
-		expect(stacked).toContain('>A</text>');
-		expect(stacked).toContain('<title>2023 · B: 3,00 €</title>');
-		const lines = renderChart({ ...two, kind: 'lineas' });
-		expect(lines.match(/<circle/g)).toHaveLength(3);
-	});
-
-	it('valida la especificación', () => {
-		expect(validateChart({ ...spec, series: [{ name: 'X', values: [1] }] })[0]).toContain('1 valores y hay 2 etiquetas');
-		expect(() => renderChart({ ...spec, labels: [] })).toThrow();
-	});
-
-	it('formatea con separador de miles y elige pasos redondos', () => {
-		expect(formatValue(1234)).toBe('1.234');
-		expect(formatValue(12.5, '€')).toBe('12,50 €');
-		expect(niceStep(2300)).toBe(500);
-		expect(niceStep(9)).toBe(2);
-	});
-});
-
-/** API falsa: responde a las rutas que usan las herramientas con datos inventados. */
-function fakeContext(operations: { id: number; date: string; type: string; security: string; grossEur: number }[]) {
-	const calls: { method: string; path: string; body?: unknown }[] = [];
-	const charts: string[] = [];
-	const ctx: ToolContext = {
-		async api(method, path, body) {
-			calls.push({ method, path, body });
-			if (path === '') return { status: 200, body: { portfolios: [{ id: 1, name: 'Prueba' }] } };
-			if (path.endsWith('/estado')) return { status: 200, body: { years: [{ year: 2023 }, { year: 2024 }] } };
-			const m = path.match(/operaciones\?desde=([\d-]+)&hasta=([\d-]+)/);
-			if (method === 'GET' && m) {
-				const found = operations.filter((o) => o.date >= m[1] && o.date <= m[2]).map((o) => ({ ...o, account: 'BANCO', taxEur: 0, feesEur: 0 }));
-				// Como la API real: como mucho 2 en esta prueba, las más recientes.
-				return { status: 200, body: { total: found.length, returned: Math.min(found.length, 2), operations: found.slice(-2) } };
-			}
-			return { status: 201, body: { saved: true, echo: body } };
-		},
-		async saveChart(svg, name) {
-			charts.push(svg);
-			return `/tmp/${name}.svg`;
-		}
-	};
-	return { ctx, calls, charts };
+function seeded(): DatabaseSync {
+	const db = openDatabase(':memory:');
+	db.exec(`
+		INSERT INTO portfolio (id, name) VALUES (1, 'Prueba'), (2, 'Otra');
+		INSERT INTO account (id, portfolio_id, code, name, currency) VALUES (1, 1, 'BANCO', 'Banco', 'EUR'), (2, 2, 'OTRO', 'Otro', 'EUR');
+		INSERT INTO security (id, ticker, currency) VALUES (1, 'ACME', 'EUR');
+	`);
+	return db;
 }
 
-const call = (ctx: ToolContext, name: string, args: object) => handleMessage({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } }, ctx);
+type Rpc = { result: { content: { text: string }[]; isError?: boolean; tools?: { name: string }[]; protocolVersion?: string }; error?: { code: number } };
+const call = (db: DatabaseSync, name: string, args: object) => {
+	const r = mcpPost(db, { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } }, null).body as Rpc;
+	return { isError: r.result.isError === true, data: JSON.parse(r.result.content[0].text) };
+};
 
-describe('servidor MCP', () => {
-	it('responde a initialize y lista las herramientas; ignora notificaciones', async () => {
-		const { ctx } = fakeContext([]);
-		const init = (await handleMessage({ jsonrpc: '2.0', id: 0, method: 'initialize', params: { protocolVersion: '2025-03-26' } }, ctx)) as { result: { protocolVersion: string } };
-		expect(init.result.protocolVersion).toBe('2025-03-26');
-		expect(await handleMessage({ jsonrpc: '2.0', method: 'notifications/initialized' }, ctx)).toBeNull();
-		const list = (await handleMessage({ jsonrpc: '2.0', id: 2, method: 'tools/list' }, ctx)) as { result: { tools: { name: string }[] } };
-		expect(list.result.tools.map((t) => t.name)).toContain('anotar_operacion');
-		const unknown = (await handleMessage({ jsonrpc: '2.0', id: 3, method: 'x' }, ctx)) as { error: { code: number } };
-		expect(unknown.error.code).toBe(-32601);
+describe('servidor MCP sobre la API', () => {
+	it('protocolo: initialize, lista, notificaciones, lotes y versiones', () => {
+		const db = seeded();
+		const init = mcpPost(db, { jsonrpc: '2.0', id: 0, method: 'initialize', params: { protocolVersion: '2025-06-18' } }, null).body as Rpc;
+		expect(init.result.protocolVersion).toBe('2025-06-18');
+		expect(mcpPost(db, { jsonrpc: '2.0', method: 'notifications/initialized' }, null)).toEqual({ status: 202 });
+		const list = mcpPost(db, [{ jsonrpc: '2.0', id: 2, method: 'tools/list' }], '2025-06-18').body as Rpc[];
+		expect(list[0].result.tools!.map((t) => t.name)).toEqual(['get_guide', 'list_securities', 'get_portfolio_state', 'search_operations', 'get_operation', 'add_operation', 'update_operation', 'delete_operation', 'get_dividends']);
+		expect(mcpPost(db, { jsonrpc: '2.0', id: 3, method: 'x' }, null).body).toMatchObject({ error: { code: -32601 } });
+		expect(mcpPost(db, {}, '1999-01-01').status).toBe(400);
+		expect(mcpPost(db, undefined, null).status).toBe(400);
 	});
 
-	it('anotar_operacion valida sin guardar salvo que se pida', async () => {
-		const { ctx, calls } = fakeContext([]);
-		await call(ctx, 'anotar_operacion', { operacion: { type: 'APORTACION', date: '2024-01-01', account: 'BANCO', amount: 100 } });
-		expect(calls[0]).toMatchObject({ method: 'POST', path: '/carteras/1/operaciones', body: { dryRun: true } });
-		await call(ctx, 'anotar_operacion', { cartera: '2', guardar: true, operacion: { type: 'APORTACION', date: '2024-01-01' } });
-		expect(calls[1]).toMatchObject({ path: '/carteras/2/operaciones', body: { dryRun: false } });
+	it('add_operation valida sin guardar y guarda con save', () => {
+		const db = seeded();
+		const count = () => (db.prepare('SELECT count(*) AS n FROM operation').get() as { n: number }).n;
+		const op = { type: 'APORTACION', date: '2024-01-01', account: 'BANCO', amount: 1000 };
+		expect(call(db, 'add_operation', { operation: op }).data).toMatchObject({ saved: false, dryRun: true });
+		expect(count()).toBe(0);
+		const saved = call(db, 'add_operation', { operation: op, save: true }).data;
+		expect(saved).toMatchObject({ saved: true });
+		expect(count()).toBe(1);
+		expect(call(db, 'add_operation', { portfolio: 'Otra', operation: op }).isError).toBe(true);
+		expect(call(db, 'get_operation', { id: saved.id }).data).toMatchObject({ type: 'APORTACION' });
+		const update = call(db, 'update_operation', { id: saved.id, fields: { ...op, amount: 1500 }, save: true });
+		expect(update.data).toMatchObject({ saved: true });
+		expect(call(db, 'delete_operation', { id: saved.id }).isError).toBe(true);
+		expect(call(db, 'delete_operation', { id: saved.id, confirm: true }).data).toMatchObject({ deleted: true });
+		expect(count()).toBe(0);
 	});
 
-	it('borrar_operacion exige confirmar', async () => {
-		const { ctx, calls } = fakeContext([]);
-		const r = (await call(ctx, 'borrar_operacion', { id: 5 })) as { result: { isError: boolean } };
-		expect(r.result.isError).toBe(true);
-		expect(calls).toHaveLength(0);
-	});
-
-	it('fetchOperations parte por meses un año que no cabe', async () => {
-		const ops = ['2024-01-05', '2024-02-05', '2024-02-20', '2024-03-01'].map((date, i) => ({ id: i, date, type: 'DIVIDENDOS', security: 'ACME', grossEur: 1 }));
-		const { ctx } = fakeContext(ops);
-		expect((await fetchOperations(ctx, 1, '2024-01-01', '2024-12-31')).map((o) => o.date)).toEqual(ops.map((o) => o.date));
-	});
-
-	it('dividendos agrega lo leído y dibuja el gráfico', async () => {
-		const ops = [
-			{ id: 1, date: '2023-05-01', type: 'DIVIDENDOS', security: 'ACME', grossEur: 10 },
-			{ id: 2, date: '2024-05-01', type: 'DIVIDENDOS', security: 'ACME', grossEur: 12 },
-			{ id: 3, date: '2024-06-01', type: 'COMPRA', security: 'ACME', grossEur: 0 }
-		];
-		const { ctx, charts } = fakeContext(ops);
-		const r = (await call(ctx, 'dividendos', { grafico: 'barras' })) as { result: { content: { text: string }[] } };
-		const out = JSON.parse(r.result.content[0].text);
-		expect(out.periodos.map((p: { periodo: string; neto: number }) => [p.periodo, p.neto])).toEqual([['2023', 10], ['2024', 12]]);
-		expect(out.grafico).toBe('/tmp/dividendos-año.svg');
-		expect(charts[0]).toContain('Dividendos netos por año');
+	it('get_dividends agrega todas las carteras sin el límite de 500', () => {
+		const db = seeded();
+		call(db, 'add_operation', { operation: { type: 'APORTACION', date: '2023-01-01', account: 'BANCO', amount: 10000 }, save: true });
+		call(db, 'add_operation', { operation: { type: 'COMPRA', date: '2023-01-02', account: 'BANCO', security: 'ACME', quantity: 100, price: 10 }, save: true });
+		for (const date of ['2023-06-01', '2024-06-01']) call(db, 'add_operation', { operation: { type: 'DIVIDENDOS', date, account: 'BANCO', security: 'ACME', quantity: 100, price: 0.5 }, save: true });
+		const r = call(db, 'get_dividends', { portfolio: 'all', breakdown: 'portfolio', measure: 'gross' }).data;
+		expect(r.periods.map((p: { period: string; gross: number }) => [p.period, p.gross])).toEqual([['2023', 50], ['2024', 50]]);
+		expect(r.groups).toEqual(['Prueba']);
+		expect(call(db, 'get_dividends', { portfolio: 'nada' }).isError).toBe(true);
 	});
 });

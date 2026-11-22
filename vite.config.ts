@@ -11,7 +11,10 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 
-			adapter: adapter()
+			adapter: adapter(),
+			// La comprobación de origen la hace hooks.server.ts (`crossSiteForbidden`), salvo en los puntos
+			// OAuth a los que Claude envía formularios desde su servidor sin cabecera Origin.
+			csrf: { trustedOrigins: ['*'] }
 		})
 	]
 });

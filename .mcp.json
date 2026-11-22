@@ -1,10 +1,8 @@
 {
 	"mcpServers": {
 		"investsheet": {
-			"type": "stdio",
-			"command": "node",
-			"args": ["--no-warnings", "scripts/mcp.ts"],
-			"env": { "NODE_USE_ENV_PROXY": "1" }
+			"type": "http",
+			"url": "https://invest.jdmuriel.com/mcp"
 		}
 	}
 }

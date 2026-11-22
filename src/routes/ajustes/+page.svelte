@@ -65,6 +65,11 @@
 </section>
 
 <section>
+	<h2>Conectores</h2>
+	<p><a href="/ajustes/conectores">Conector MCP para Claude</a>: dirección del servidor y accesos concedidos, que se pueden revocar.</p>
+</section>
+
+<section>
 	<h2>Copia de seguridad</h2>
 	<p><a href="/ajustes/copia" download>Descargar una copia de la base de datos</a></p>
 </section>

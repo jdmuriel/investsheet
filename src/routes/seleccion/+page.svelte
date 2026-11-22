@@ -75,8 +75,22 @@
 	let open = $state(new Set<number>());
 	function toggle(id: number) {
 		const next = new Set(open);
-		if (!next.delete(id)) next.add(id);
+		if (!next.delete(id)) {
+			next.add(id);
+			revealDetail(id);
+		}
 		open = next;
+	}
+	/** Tras abrir el gráfico de un valor, lo desplaza a la vista entero (con su fila) si cabe; si no, desde su fila. */
+	async function revealDetail(id: number) {
+		await tick();
+		const row = document.getElementById(`fila-${id}`);
+		const detail = row?.nextElementSibling;
+		if (!row || !detail) return;
+		const top = row.getBoundingClientRect().top - 56;
+		const bottom = detail.getBoundingClientRect().bottom + 12 - window.innerHeight;
+		if (bottom > 0) window.scrollBy({ top: Math.min(bottom, top), behavior: 'smooth' });
+		else if (top < 0) window.scrollBy({ top, behavior: 'smooth' });
 	}
 	// Manejo con el teclado: j y k cambian de fila, Ctrl+j y Ctrl+k la mueven, c copia su línea y g abre su gráfico.
 	let selected = $state<number | null>(null);
@@ -125,8 +139,9 @@
 		if (k === 'c') copy(row.summary, `l${row.id}`);
 		else if (k === 'e') editing = row.id;
 		else if (lastMonths(row.history, 60).length > 1) {
+			const opening = !open.has(row.id);
 			toggle(row.id);
-			reveal(row.id);
+			if (!opening) reveal(row.id);
 		}
 	}
 
@@ -266,6 +281,7 @@
 															<tbody>
 																<tr>{#each chunk as v (v.date)}<th title={v.today ? `Hasta hoy, ${date(v.date)}` : `Revisión del ${date(v.date)}`}>{monthLabel(v)}</th>{/each}</tr>
 																<tr>{#each chunk as v (v.date)}<td class="var {toneClass(v.tone)}">{signedPct(v.variation)}</td>{/each}</tr>
+																<tr class="prices">{#each chunk as v (v.date)}<td>{price(v.price)}</td>{/each}</tr>
 															</tbody>
 														{/each}
 													</table>
@@ -550,6 +566,10 @@
 		font-size: 0.85em;
 		padding-bottom: 0.1rem;
 		border-bottom: none;
+	}
+	table.vars tr.prices td {
+		font-size: 0.85em;
+		color: var(--muted);
 	}
 	table.vars td {
 		min-width: 3.2rem;

@@ -95,6 +95,7 @@ describe('selección', () => {
 			['2026-11-20', true, 'baja']
 		]);
 		expect(v[0].variation).toBeCloseTo(0.02);
+		expect(v.map((x) => x.price)).toEqual([10.2, 11.22, 10.6]);
 		expect(reviewVariations(points, DEFAULT_PARAMS, 2).map((x) => x.date)).toEqual(['2026-10-01', '2026-11-20']);
 		expect(reviewVariations(points.slice(0, 1), DEFAULT_PARAMS)).toEqual([]);
 	});

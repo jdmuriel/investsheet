@@ -131,6 +131,8 @@ export interface ReviewVariation {
 	/** Fecha del punto al que se llega (revisión, o hoy en la última si aún no hay revisión de hoy). */
 	date: string;
 	today: boolean;
+	/** Precio en ese punto, en la moneda del valor. */
+	price: number;
 	variation: number;
 	tone: VariationTone | null;
 }
@@ -143,7 +145,7 @@ export function reviewVariations(points: PricePoint[], params: SelectionParams, 
 	const out: ReviewVariation[] = [];
 	for (let i = 1; i < points.length; i++) {
 		const variation = (points[i].price - points[i - 1].price) / points[i - 1].price;
-		out.push({ date: points[i].date, today: !!points[i].today, variation, tone: variationTone(variation, params) });
+		out.push({ date: points[i].date, today: !!points[i].today, price: points[i].price, variation, tone: variationTone(variation, params) });
 	}
 	return out.slice(-count);
 }

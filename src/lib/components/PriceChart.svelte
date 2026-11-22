@@ -28,7 +28,7 @@
 		const rows: number[] = [];
 		return purchases.map((b) => {
 			const t = Date.parse(b.date);
-			const text = `${num(b.shares / MICRO)} acc. · ${eurWhole(b.cost)} €`;
+			const text = `${num(b.shares / MICRO)} acc.${b.price == null ? '' : ` a ${fmtPrice(b.price, b.currency ?? currency)}`}, total ${eurWhole(b.cost)} €`;
 			const span = (text.length * 6 + 8) * msPerPx;
 			// Pegado a la derecha de la raya, o a la izquierda si no cabe antes del final.
 			const end = t + span > times[times.length - 1];
@@ -102,6 +102,7 @@
 {:else}
 	<div class="chart" bind:clientWidth={measured}>
 		<svg {width} {height} viewBox="0 0 {width} {height}" role="img" aria-label={label} onpointermove={pick} onpointerdown={pick} onpointerleave={() => (hover = null)}>
+			{#each yearStarts as t (t)}<line class="year" x1={x(t)} x2={x(t)} y1={pad.t} y2={height - pad.b} />{/each}
 			{#each ticks as v (v)}
 				<line class="grid" x1={pad.l} x2={width - pad.r} y1={y(v)} y2={y(v)} />
 				<text class="axis" x={pad.l - 6} y={y(v)} text-anchor="end" dominant-baseline="middle">{axisNumber(v)}</text>

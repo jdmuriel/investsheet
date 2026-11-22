@@ -216,15 +216,16 @@ export function priceHistories(db: DatabaseSync, portfolioId: number): Map<numbe
 	return map;
 }
 
-/** Compras de cada valor en la cartera, una por fecha (se suman las del mismo día), en orden de fecha. */
+/** Compras de cada valor en la cartera, una por fecha (se suman las del mismo día, con su precio medio), en orden de fecha. */
 export function purchases(db: DatabaseSync, portfolioId: number): Map<number, Purchase[]> {
 	const rows = db
 		.prepare(
-			`SELECT l.security_id AS id, o.date, SUM(l.shares) AS shares, SUM(l.cost_eur) AS cost
+			`SELECT l.security_id AS id, o.date, SUM(l.shares) AS shares, SUM(l.cost_eur) AS cost,
+				SUM(o.price * l.shares) / SUM(CASE WHEN o.price IS NULL THEN NULL ELSE l.shares END) AS price, MAX(o.currency) AS currency
 			FROM position_leg l JOIN operation o ON o.id = l.operation_id
 			WHERE o.portfolio_id = ? AND l.kind = 'buy' AND l.shares > 0 GROUP BY l.security_id, o.date ORDER BY o.date`
 		)
-		.all(portfolioId) as { id: number; date: string; shares: number; cost: number }[];
+		.all(portfolioId) as { id: number; date: string; shares: number; cost: number; price: number | null; currency: string | null }[];
 	const map = new Map<number, Purchase[]>();
 	for (const { id, ...buy } of rows) (map.get(id) ?? map.set(id, []).get(id)!).push(buy);
 	return map;

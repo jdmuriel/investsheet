@@ -118,11 +118,34 @@ export function priceSeries(reviews: { date: string; price: number; currency: st
 	return points;
 }
 
-/** Una compra del valor: acciones en millonésimas y coste en céntimos de euro. */
+/** Una compra del valor: acciones en millonésimas, coste en céntimos de euro y precio por acción en su moneda. */
 export interface Purchase {
 	date: string;
 	shares: number;
 	cost: Cents;
+	price: number | null;
+	currency: string | null;
+}
+
+export interface ReviewVariation {
+	/** Fecha del punto al que se llega (revisión, o hoy en la última si aún no hay revisión de hoy). */
+	date: string;
+	today: boolean;
+	variation: number;
+	tone: VariationTone | null;
+}
+
+/**
+ * Variación del precio de una revisión a la siguiente (la última, hasta hoy), de las `count` más recientes y
+ * en orden de fecha: lo que la hoja dejaba ver de un vistazo con sus colores.
+ */
+export function reviewVariations(points: PricePoint[], params: SelectionParams, count = 24): ReviewVariation[] {
+	const out: ReviewVariation[] = [];
+	for (let i = 1; i < points.length; i++) {
+		const variation = (points[i].price - points[i - 1].price) / points[i - 1].price;
+		out.push({ date: points[i].date, today: !!points[i].today, variation, tone: variationTone(variation, params) });
+	}
+	return out.slice(-count);
 }
 
 /** Compras dentro del periodo de una serie de precios (de su primer a su último punto). */

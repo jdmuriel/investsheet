@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_PARAMS, lastMonths, purchasesIn, limitStatus, listOf, maxInvestment, priceSeries, selectionRow, variationText, variationTone } from './selection.ts';
+import { DEFAULT_PARAMS, lastMonths, purchasesIn, reviewVariations, limitStatus, listOf, maxInvestment, priceSeries, selectionRow, variationText, variationTone } from './selection.ts';
 
 // Todos los datos de estas pruebas son inventados.
 const base = { ticker: 'ACME', zone: 'España', tier: 'T1', price: 11.7, lastPrice: 11.47, target: 9.5, rpd: 0.0359, invested: 433_301, pmc: 9.35 };
@@ -76,8 +76,26 @@ describe('selección', () => {
 
 	it('se queda con las compras del periodo dibujado', () => {
 		const points = [{ date: '2025-01-10', price: 1 }, { date: '2026-11-20', price: 2, today: true }];
-		const buys = ['2024-12-01', '2025-01-10', '2026-03-05', '2026-11-21'].map((date) => ({ date, shares: 1_000_000, cost: 100 }));
+		const buys = ['2024-12-01', '2025-01-10', '2026-03-05', '2026-11-21'].map((date) => ({ date, shares: 1_000_000, cost: 100, price: 1, currency: 'EUR' }));
 		expect(purchasesIn(buys, points).map((b) => b.date)).toEqual(['2025-01-10', '2026-03-05']);
 		expect(purchasesIn(buys, points.slice(0, 1))).toEqual([]);
+	});
+
+	it('calcula la variación de cada revisión a la siguiente con su tono', () => {
+		const points = [
+			{ date: '2026-08-01', price: 10 },
+			{ date: '2026-09-01', price: 10.2 },
+			{ date: '2026-10-01', price: 11.22 },
+			{ date: '2026-11-20', price: 10.6, today: true }
+		];
+		const v = reviewVariations(points, DEFAULT_PARAMS);
+		expect(v.map((x) => [x.date, x.today, x.tone])).toEqual([
+			['2026-09-01', false, null],
+			['2026-10-01', false, 'sube fuerte'],
+			['2026-11-20', true, 'baja']
+		]);
+		expect(v[0].variation).toBeCloseTo(0.02);
+		expect(reviewVariations(points, DEFAULT_PARAMS, 2).map((x) => x.date)).toEqual(['2026-10-01', '2026-11-20']);
+		expect(reviewVariations(points.slice(0, 1), DEFAULT_PARAMS)).toEqual([]);
 	});
 });

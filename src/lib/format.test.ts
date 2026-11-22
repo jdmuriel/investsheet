@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { amount, eur, num, pct, price, symbol, typed } from './format.ts';
+import { amount, eur, num, pct, price, symbol, typed, kilo } from './format.ts';
 
 describe('formato de importes', () => {
 	it('pone siempre el separador de miles, también con cuatro cifras', () => {
@@ -39,5 +39,13 @@ describe('formato de importes', () => {
 		expect(eur(null)).toBe('');
 		expect(eur(0, true)).toBe('');
 		expect(amount(null, 'EUR')).toBe('');
+	});
+
+	it('resume en miles con un decimal', () => {
+		expect(kilo(407_500)).toBe('4,1K');
+		expect(kilo(379_100)).toBe('3,8K');
+		expect(kilo(1_234_567_800)).toBe('12.345,7K');
+		expect(kilo(0, true)).toBe('');
+		expect(kilo(0)).toBe('0,0K');
 	});
 });

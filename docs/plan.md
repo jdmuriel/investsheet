@@ -250,6 +250,7 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 | 2026-11-22 | Selección: manejo con el teclado (pulsar una fila la selecciona; `j`/`k` cambian de fila, `Ctrl+j`/`Ctrl+k` la mueven, `c` copia su línea, `g` abre su gráfico, `Esc` quita la selección), botón «copiar» en cada línea, raya donde caerá la fila al arrastrar; sin la columna Máximo (el invertido sale en naranja cerca del máximo y en rojo por encima, sin decimales); gráfico pequeño de los últimos 24 meses con rayas de principio de año y grande de hasta 5 años; las compras del valor se marcan con una raya morada en los dos, y en el grande con las acciones y el total. Fusionado en `main`. |
 | 2026-11-22 | Node 26 (la LTS actual) en la imagen y en la comprobación del despliegue, y `actions/checkout` y `actions/setup-node` en v7 (quita el aviso de Node 20). `@types/node` pasa a dependencia directa: solo llegaba como opcional de otro paquete y el npm de Node 26 no la instala. Desplegado y respondiendo. |
 | 2026-11-22 | Selección, gráfico grande: rótulo de cada compra con acciones, precio por acción y total, rayas de principio de año, y debajo la tabla de las 24 últimas variaciones de revisión a revisión con los colores de la hoja (`reviewVariations` en el motor). |
+| 2026-11-22 | Selección: invertido en miles con un decimal (`kilo` en `format.ts`), RPD de más del 5 % en negrita, filas más compactas y flechas de orden alineadas y con borde. |
 
 ## Ideas para más adelante
 

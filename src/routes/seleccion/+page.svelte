@@ -3,7 +3,7 @@
 	import { enhance } from '$app/forms';
 	import PriceChart from '#lib/components/PriceChart.svelte';
 	import { lastMonths, purchasesIn, reviewVariations, type ReviewVariation } from '#lib/engine/selection.ts';
-	import { date, eurWhole, pct, price } from '#lib/format.ts';
+	import { date, eurWhole, kilo, pct, price } from '#lib/format.ts';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
@@ -191,14 +191,14 @@
 								ondragend={dragEnd}
 							>
 								<td class="handle">
-									<span class="muted">{i + 1}</span>
+									<span class="muted pos">{i + 1}</span>
 									<button type="button" title="Subir" onclick={() => move(list.key, i, i - 1)} disabled={i === 0}>↑</button>
 									<button type="button" title="Bajar" onclick={() => move(list.key, i, i + 1)} disabled={i === rows.length - 1}>↓</button>
 								</td>
 								<th class="l" scope="row"><a href="/ajustes/valores/{r.id}?volver=/seleccion" title={[r.name, r.country].filter(Boolean).join(' · ')}>{r.ticker}</a></th>
 								<td>{r.tier ?? ''}</td>
-								<td class:warn={r.status === 'cerca'} class:neg={r.status === 'superado'} title={r.max == null ? undefined : `${r.status === 'cerca' ? 'Cerca del máximo' : r.status === 'superado' ? 'Por encima del máximo' : 'Máximo'}: ${eurWhole(r.max)}`}>{eurWhole(r.invested, true)}</td>
-								<td>{pct(r.rpd)}</td>
+								<td class:warn={r.status === 'cerca'} class:neg={r.status === 'superado'} title={r.max == null ? undefined : `${r.status === 'cerca' ? 'Cerca del máximo' : r.status === 'superado' ? 'Por encima del máximo' : 'Máximo'}: ${eurWhole(r.max)}`}>{kilo(r.invested, true)}</td>
+								<td class:high={r.rpd != null && r.rpd > 0.05} title={r.rpd != null && r.rpd > 0.05 ? 'Más del 5 %' : undefined}>{pct(r.rpd)}</td>
 								<td title={r.priceDate ? `Precio del ${date(r.priceDate)}` : 'Sin precio'}>{price(r.price, r.currency)}</td>
 								<td>{price(r.target, r.currency)}</td>
 								<td>{signedPct(r.distance)}</td>
@@ -352,7 +352,7 @@
 	}
 	th,
 	td {
-		padding: 0.3rem 0.5rem;
+		padding: 0.15rem 0.5rem;
 		border-bottom: 1px solid var(--line);
 		text-align: right;
 		white-space: nowrap;
@@ -417,12 +417,35 @@
 	.handle {
 		text-align: left;
 	}
-	.handle button,
+	.handle .pos {
+		display: inline-block;
+		min-width: 1.6em;
+		text-align: right;
+		margin-right: 0.3rem;
+	}
+	.handle button {
+		background: none;
+		border: 1px solid var(--line);
+		border-radius: 4px;
+		color: var(--accent);
+		cursor: pointer;
+		font: inherit;
+		line-height: 1.2;
+		padding: 0 0.3rem;
+	}
+	.handle button:disabled {
+		color: var(--muted);
+		opacity: 0.4;
+		cursor: default;
+	}
 	td form button {
 		border: none;
 		background: none;
 		cursor: pointer;
 		padding: 0 0.2rem;
+	}
+	td.high {
+		font-weight: 700;
 	}
 	.link {
 		background: none;
@@ -461,7 +484,7 @@
 	}
 	.spark {
 		display: block;
-		padding: 0.15rem;
+		padding: 0;
 		border: 1px solid transparent;
 		border-radius: 4px;
 		background: none;

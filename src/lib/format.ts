@@ -15,6 +15,12 @@ export function eurWhole(cents: number | null | undefined, blankZero = false): s
 	if (cents == null || (blankZero && Math.round(cents / 100) === 0)) return '';
 	return whole.format(Math.round(cents / 100));
 }
+const kiloFormat = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: 'always' });
+/** Céntimos a miles de euros con un decimal y «K»: 407.500 céntimos → «4,1K». Vacío para cero si `blankZero`. */
+export function kilo(cents: number | null | undefined, blankZero = false): string {
+	if (cents == null || (blankZero && cents === 0)) return '';
+	return `${kiloFormat.format(cents / 100_000)}K`;
+}
 const two = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' });
 /** Número con dos decimales exactos: «12,50». */
 export function dec2(value: number | null | undefined): string {

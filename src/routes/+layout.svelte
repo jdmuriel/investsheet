@@ -52,6 +52,8 @@
 		--down-soft: #fde2df;
 		--down-strong: #c62828;
 		--on-strong: #fff;
+		/* Compras marcadas en los gráficos de evolución. */
+		--buy: #8a4fd0;
 		color-scheme: light dark;
 	}
 	@media (prefers-color-scheme: dark) {
@@ -69,6 +71,7 @@
 			--down-fg: #ffb4ab;
 			--down-soft: #42201d;
 			--down-strong: #b3261e;
+			--buy: #c6a2ff;
 		}
 	}
 	:global(body) {

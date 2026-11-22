@@ -4,7 +4,7 @@
  */
 import type { DatabaseSync } from 'node:sqlite';
 import { run, totalReducedCost, totalShares } from '../engine/engine.ts';
-import { DEFAULT_PARAMS, LISTS, listOf, priceSeries, selectionRow, type ListKey, type PricePoint, type SelectionParams, type SelectionRow } from '../engine/selection.ts';
+import { DEFAULT_PARAMS, LISTS, listOf, priceSeries, selectionRow, type ListKey, type PricePoint, type Purchase, type SelectionParams, type SelectionRow } from '../engine/selection.ts';
 import { MICRO } from '../engine/types.ts';
 import { currentSchedules } from './dividends.ts';
 import { fxOn, getSetting, latestFx, latestQuotes, setSetting } from './market.ts';
@@ -19,6 +19,8 @@ export interface SelectionItem extends SelectionRow {
 	position: number;
 	/** Precio en cada revisión y el de hoy, para dibujar su evolución. */
 	history: PricePoint[];
+	/** Compras del valor en la cartera, para marcarlas en la evolución del precio. */
+	purchases: Purchase[];
 }
 
 export interface Review {
@@ -88,6 +90,7 @@ export function loadSelection(db: DatabaseSync, portfolioId: number, today = '99
 		)
 		.all(portfolioId) as { id: number; ticker: string; name: string | null; country: string | null; currency: string | null; zone: string | null; tier: string | null; target: number | null; estimate: number | null; position: number }[];
 	const history = priceHistories(db, portfolioId);
+	const bought = purchases(db, portfolioId);
 	const { state } = run(loadOperations(portfolioId, db));
 	const quotes = latestQuotes(db);
 	const schedules = currentSchedules(db);
@@ -125,7 +128,7 @@ export function loadSelection(db: DatabaseSync, portfolioId: number, today = '99
 			params
 		);
 		const series = priceSeries(history.get(e.id) ?? [], currency, quote ? { date: quote.date, price: quote.price } : null);
-		return { ...row, id: e.id, name: e.name, country: e.country, currency, priceDate: quote?.date ?? null, position: e.position, history: series };
+		return { ...row, id: e.id, name: e.name, country: e.country, currency, priceDate: quote?.date ?? null, position: e.position, history: series, purchases: bought.get(e.id) ?? [] };
 	});
 	const inSelection = new Set(entries.map((e) => e.id));
 	const candidates = (db.prepare('SELECT id, ticker, name FROM security WHERE active = 1 ORDER BY ticker').all() as { id: number; ticker: string; name: string | null }[]).filter((s) => !inSelection.has(s.id));
@@ -210,5 +213,19 @@ export function priceHistories(db: DatabaseSync, portfolioId: number): Map<numbe
 		.all(portfolioId) as { id: number; date: string; price: number; currency: string }[];
 	const map = new Map<number, { date: string; price: number; currency: string }[]>();
 	for (const { id, ...point } of rows) (map.get(id) ?? map.set(id, []).get(id)!).push(point);
+	return map;
+}
+
+/** Compras de cada valor en la cartera, una por fecha (se suman las del mismo día), en orden de fecha. */
+export function purchases(db: DatabaseSync, portfolioId: number): Map<number, Purchase[]> {
+	const rows = db
+		.prepare(
+			`SELECT l.security_id AS id, o.date, SUM(l.shares) AS shares, SUM(l.cost_eur) AS cost
+			FROM position_leg l JOIN operation o ON o.id = l.operation_id
+			WHERE o.portfolio_id = ? AND l.kind = 'buy' AND l.shares > 0 GROUP BY l.security_id, o.date ORDER BY o.date`
+		)
+		.all(portfolioId) as { id: number; date: string; shares: number; cost: number }[];
+	const map = new Map<number, Purchase[]>();
+	for (const { id, ...buy } of rows) (map.get(id) ?? map.set(id, []).get(id)!).push(buy);
 	return map;
 }

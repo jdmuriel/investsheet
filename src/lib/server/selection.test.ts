@@ -83,6 +83,8 @@ describe('selección y revisiones', () => {
 		expect(es[0].rpd).toBeCloseTo(0.05);
 		expect(es[0].distance).toBeCloseTo(0.1);
 		expect(es[0].summary).toBe('ACME (11.00/10.00 +10%, RPD 5.00%, invertido 1.0K, T1, PMC 10.00)');
+		expect(es[0].purchases).toEqual([{ date: '2030-01-02', shares: 100_000_000, cost: 100_000 }]);
+		expect(es[1].purchases).toEqual([]);
 	});
 
 	it('cierra la revisión con el precio del día y mide desde ella la variación siguiente', () => {

@@ -118,6 +118,21 @@ export function priceSeries(reviews: { date: string; price: number; currency: st
 	return points;
 }
 
+/** Una compra del valor: acciones en millonésimas y coste en céntimos de euro. */
+export interface Purchase {
+	date: string;
+	shares: number;
+	cost: Cents;
+}
+
+/** Compras dentro del periodo de una serie de precios (de su primer a su último punto). */
+export function purchasesIn(buys: Purchase[], points: PricePoint[]): Purchase[] {
+	if (points.length < 2) return [];
+	const from = points[0].date;
+	const to = points[points.length - 1].date;
+	return buys.filter((b) => b.date >= from && b.date <= to);
+}
+
 /** Los puntos de los últimos `months` meses de la serie, contados hacia atrás desde su último punto. */
 export function lastMonths(points: PricePoint[], months: number): PricePoint[] {
 	if (!points.length) return points;

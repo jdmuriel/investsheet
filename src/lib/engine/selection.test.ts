@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_PARAMS, lastMonths, limitStatus, listOf, maxInvestment, priceSeries, selectionRow, variationText, variationTone } from './selection.ts';
+import { DEFAULT_PARAMS, lastMonths, purchasesIn, limitStatus, listOf, maxInvestment, priceSeries, selectionRow, variationText, variationTone } from './selection.ts';
 
 // Todos los datos de estas pruebas son inventados.
 const base = { ticker: 'ACME', zone: 'España', tier: 'T1', price: 11.7, lastPrice: 11.47, target: 9.5, rpd: 0.0359, invested: 433_301, pmc: 9.35 };
@@ -72,5 +72,12 @@ describe('selección', () => {
 		expect(lastMonths(points, 24).map((p) => p.date)).toEqual(['2024-11-20', '2025-06-01', '2026-11-20']);
 		expect(lastMonths(points, 35).map((p) => p.date)).toEqual(['2023-12-31', '2024-01-15', '2024-11-20', '2025-06-01', '2026-11-20']);
 		expect(lastMonths([], 24)).toEqual([]);
+	});
+
+	it('se queda con las compras del periodo dibujado', () => {
+		const points = [{ date: '2025-01-10', price: 1 }, { date: '2026-11-20', price: 2, today: true }];
+		const buys = ['2024-12-01', '2025-01-10', '2026-03-05', '2026-11-21'].map((date) => ({ date, shares: 1_000_000, cost: 100 }));
+		expect(purchasesIn(buys, points).map((b) => b.date)).toEqual(['2025-01-10', '2026-03-05']);
+		expect(purchasesIn(buys, points.slice(0, 1))).toEqual([]);
 	});
 });

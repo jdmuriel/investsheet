@@ -2,7 +2,7 @@
 	import { tick } from 'svelte';
 	import { enhance } from '$app/forms';
 	import PriceChart from '#lib/components/PriceChart.svelte';
-	import { lastMonths } from '#lib/engine/selection.ts';
+	import { lastMonths, purchasesIn } from '#lib/engine/selection.ts';
 	import { date, eurWhole, pct, price } from '#lib/format.ts';
 	import type { PageProps } from './$types';
 
@@ -201,7 +201,7 @@
 								<td class="l evo">
 									{#if small.length > 1}
 										<button type="button" class="spark" aria-expanded={open.has(r.id)} title="{open.has(r.id) ? 'Ocultar' : 'Ver'} la evolución del precio de {r.ticker}" onclick={() => toggle(r.id)}>
-											<PriceChart small points={small} tone={r.tone} label="Evolución del precio de {r.ticker}" />
+											<PriceChart small points={small} purchases={purchasesIn(r.purchases, small)} tone={r.tone} label="Evolución del precio de {r.ticker}" />
 										</button>
 									{/if}
 								</td>
@@ -227,7 +227,7 @@
 												<span class="muted">· {big.filter((h) => !h.today).length} revisiones desde el {date(big[0].date)}</span>
 												<button type="button" class="link" onclick={() => toggle(r.id)}>Cerrar</button>
 											</p>
-											<PriceChart points={big} currency={r.currency} target={r.target} tone={r.tone} label="Evolución del precio de {r.ticker} en las revisiones" />
+											<PriceChart points={big} purchases={purchasesIn(r.purchases, big)} currency={r.currency} target={r.target} tone={r.tone} label="Evolución del precio de {r.ticker} en las revisiones" />
 										</div>
 									</td>
 								</tr>

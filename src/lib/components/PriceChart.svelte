@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { date, price as fmtPrice, pct } from '#lib/format.ts';
-	import type { PricePoint } from '#lib/engine/selection.ts';
+	import { date, eurWhole, num, price as fmtPrice, pct } from '#lib/format.ts';
+	import type { PricePoint, Purchase } from '#lib/engine/selection.ts';
+	import { MICRO } from '#lib/engine/types.ts';
 
 	/**
 	 * Evolución del precio de un valor en las revisiones de la selección. `small` es la línea de la tabla;
@@ -11,17 +12,37 @@
 		currency = null,
 		target = null,
 		tone = null,
+		purchases = [],
 		small = false,
 		label = ''
-	}: { points: PricePoint[]; currency?: string | null; target?: number | null; tone?: string | null; small?: boolean; label?: string } = $props();
+	}: { points: PricePoint[]; currency?: string | null; target?: number | null; tone?: string | null; purchases?: Purchase[]; small?: boolean; label?: string } = $props();
 
 	const toneClass = $derived(tone?.replace(' ', '-') ?? '');
 	let measured = $state(600);
 	const width = $derived(small ? 96 : measured);
-	const height = $derived(small ? 24 : 220);
-	const pad = $derived(small ? { l: 3, r: 4, t: 4, b: 4 } : { l: 56, r: 16, t: 14, b: 26 });
+	const height = $derived(small ? 24 : 220 + labelRows * 14);
+	/** Compras con su rótulo (acciones y total) en el grande; los rótulos que se pisarían bajan a otra fila. */
+	const buys = $derived.by(() => {
+		const rows: number[] = [];
+		return purchases.map((b) => {
+			const t = Date.parse(b.date);
+			const text = `${num(b.shares / MICRO)} acc. · ${eurWhole(b.cost)} €`;
+			const span = (text.length * 6 + 8) * msPerPx;
+			// Pegado a la derecha de la raya, o a la izquierda si no cabe antes del final.
+			const end = t + span > times[times.length - 1];
+			const start = end ? t - span : t;
+			let row = rows.findIndex((last) => last < start);
+			if (row < 0) row = rows.push(0) - 1;
+			rows[row] = start + span;
+			return { ...b, t, text, row, end };
+		});
+	});
+	const labelRows = $derived(small ? 0 : Math.max(0, ...buys.map((b) => b.row + 1)));
+	const pad = $derived(small ? { l: 3, r: 4, t: 4, b: 4 } : { l: 56, r: 16, t: 14 + labelRows * 14, b: 26 });
 
 	const times = $derived(points.map((p) => Date.parse(p.date)));
+	/** Milisegundos por píxel, aproximado (sin márgenes de rótulos): para repartir los rótulos de compras. */
+	const msPerPx = $derived(times.length > 1 ? (times[times.length - 1] - times[0]) / Math.max(width - 72, 1) : 1);
 	const domain = $derived.by(() => {
 		const values = points.map((p) => p.price);
 		// En el grande el objetivo entra en la escala: la distancia a él es lo que se mira.
@@ -74,6 +95,7 @@
 {:else if small}
 	<svg class="spark" {width} {height} viewBox="0 0 {width} {height}" role="img" aria-label={label}>
 		{#each yearStarts as t (t)}<line class="year" x1={x(t)} x2={x(t)} y1="0" y2={height} />{/each}
+		{#each buys as b (b.date)}<line class="buy" x1={x(b.t)} x2={x(b.t)} y1="0" y2={height} />{/each}
 		<path d={path} />
 		<circle class="end {toneClass}" cx={x(times[times.length - 1])} cy={y(points[points.length - 1].price)} r="2.5" />
 	</svg>
@@ -86,6 +108,10 @@
 			{/each}
 			{#each years as yr (yr.i)}
 				<text class="axis" x={x(times[yr.i])} y={height - 6} text-anchor={yr.i === 0 ? 'start' : 'middle'}>{yr.year}</text>
+			{/each}
+			{#each buys as b (b.date)}
+				<line class="buy" x1={x(b.t)} x2={x(b.t)} y1={14 + b.row * 14} y2={height - pad.b} />
+				<text class="buy-label" x={x(b.t) + (b.end ? -4 : 4)} y={14 + b.row * 14 + 9} text-anchor={b.end ? 'end' : 'start'}><title>Compra del {date(b.date)}</title>{b.text}</text>
 			{/each}
 			{#if target}
 				<line class="target" x1={pad.l} x2={width - pad.r} y1={y(target)} y2={y(target)} />
@@ -163,6 +189,20 @@
 	.chart svg {
 		display: block;
 		touch-action: pan-y;
+	}
+	.buy {
+		stroke: var(--buy);
+		stroke-width: 1.5;
+		stroke-dasharray: 3 2;
+	}
+	.spark .buy {
+		stroke-width: 1;
+		stroke-dasharray: none;
+	}
+	.buy-label {
+		fill: var(--buy);
+		font-size: 11px;
+		font-variant-numeric: tabular-nums;
 	}
 	.year {
 		stroke: var(--line);

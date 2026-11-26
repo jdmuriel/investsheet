@@ -262,7 +262,7 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 | 2026-11-22 | Servidor MCP local (`scripts/mcp.ts`) para Claude Code: anotar, corregir y consultar operaciones, dividendos cobrados por periodo y gráficos SVG. |
 | 2026-11-22 | Tarea 1.19: el servidor MCP pasa a la aplicación (`/mcp`) con OAuth propio (registro dinámico, PKCE S256, tokens con hash, refresco con rotación; migración 10) y Ajustes → Conectores para revocar. Herramientas en inglés y sin la de gráficos (los dibuja quien llama); se retira el servidor local. La comprobación de origen pasa de SvelteKit a `hooks.server.ts` para admitir el canje de tokens. Probado el flujo completo con la versión compilada. |
 | 2026-11-26 | Desplegada la 1.19 en producción (migración 10): metadatos, registro y `/mcp` responden; la sesión de Claude Code en la nube usa ya el conector con el `API_TOKEN` inyectado por el proxy. |
-| 2026-11-26 | `/dividendos` en solapas (cambios, calendario e historial) y tarea 4.3: historial de cobros con evolución, comparación mensual con su texto, cobros por valor y tabla completa. Los cobros incluyen ventas de derechos y devoluciones de prima. Comparado con la columna BL de `Control cartera` (C11). |
+| 2026-11-26 | `/dividendos` en solapas (cambios, calendario e historial) y tarea 4.3: historial de cobros con evolución, comparación mensual con su texto, cobros por valor y tabla completa. Los cobros incluyen ventas de derechos y devoluciones de prima. Comparado con la columna BL de `Control cartera` (C11). Fusionado en `main` y desplegado. |
 
 ## Ideas para más adelante
 

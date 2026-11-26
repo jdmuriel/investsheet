@@ -170,7 +170,7 @@ La aplicación lee `actual` cuando la última lectura tiene más de 60 minutos y
 | `/movimientos` | Listado de movimientos con acumulados, métricas y objetivos en cabecera | RF-07, RF-25, RF-26 |
 | `/movimientos/nuevo` | Alta por tipo de operación, y alta rápida por lotes | RF-01 a RF-06 |
 | `/valores` y `/valores/[ticker]` | Lista de valores en estudio y ficha de cada uno | RF-27 a RF-30 |
-| `/dividendos` y `/dividendos/[id]` | Calendario por valor y cambios de dividendo por año; alta de un cambio (cobros por mes y año, en la fase 4) | RF-16 a RF-18, RF-38 |
+| `/dividendos` y `/dividendos/[id]` | Solapas «Cambios de dividendo», «Calendario previsto» e «Historial» (`?vista=`); el historial tiene las vistas Evolución, Mes, Valor y Tabla completa (`?ver=`). En la ficha, alta de un cambio | RF-16 a RF-18, RF-38, RF-40 |
 | `/seleccion` | Listas ordenables, revisión mensual, texto para copiar | RF-31 a RF-36 |
 | `/informes` | Top 50 y su evolución, evolución de la inversión, crecimiento de dividendos | RF-37 a RF-40 |
 | `/conciliacion` | Saldo real de cada cuenta frente al calculado, e historial de conciliaciones | RF-12 |
@@ -180,7 +180,7 @@ Un selector de cartera en la cabecera fija a cuál se refiere todo lo demás. La
 
 **Ventanas emergentes.** La ficha de un valor (desde el cuadro y desde Ajustes → Valores) y la edición de un movimiento (desde el listado) se abren encima de la pantalla en vez de cambiar de página. Componentes en `src/lib/components/`: `Dialog` (la ventana, con `<dialog>`), `SecurityDialog` y `OperationDialog`. Cargan los datos de la página de siempre con `preloadData` (con un parámetro `lectura` distinto en cada lectura, porque `preloadData` guarda lo que carga) y envían a sus acciones con `use:enhance`; al guardar cierran y recargan la pantalla de debajo. Los formularios están en componentes que comparten la página y la ventana (`SecurityForm`, `OperationEditor` con `OperationForm`). Con Ctrl, ⌘ o Mayúsculas el enlace abre la página completa.
 
-**Preferencias de pantalla** en *cookies* de un año, para que el servidor pinte ya la vista elegida: `metricas` (métricas anuales abiertas o cerradas en movimientos), `acumulados` (columnas «Capital invertido» y «Ganancias año») y `meses` (columnas de meses del cuadro: ocultas, por acción o total).
+**Preferencias de pantalla** en *cookies* de un año, para que el servidor pinte ya la vista elegida: `metricas` (métricas anuales abiertas o cerradas en movimientos), `acumulados` (columnas «Capital invertido» y «Ganancias año») `meses` (columnas de meses del cuadro: ocultas, por acción o total), y en dividendos `dividendos` (última solapa), `historial` (última vista del historial) y `medida` (bruto, neto o por acción).
 
 ## 7. Acceso y seguridad
 

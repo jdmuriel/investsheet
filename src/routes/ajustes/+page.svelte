@@ -17,6 +17,11 @@
 </section>
 
 <section>
+	<h2>Precios y tipos de cambio</h2>
+	<p><a href="/precios">Precios y tipos de cambio</a>: estado de la hoja de precios y del BCE, último precio de cada valor y precio a mano.</p>
+</section>
+
+<section>
 	<h2>Objetivos anuales</h2>
 	<p><a href="/ajustes/objetivos">Objetivos</a> de cada cartera por año; su grado de consecución se ve junto a las métricas del listado de movimientos.</p>
 </section>

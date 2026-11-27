@@ -38,6 +38,8 @@ fly secrets set PRICES_CSV_URL='https://docs.google.com/spreadsheets/d/e/…/pub
 
 En desarrollo basta con definir la misma variable de entorno antes de `npm run dev`.
 
+Para tener a mano la hoja al añadir valores nuevos, en la pantalla Precios (`/precios`) se pega además su dirección de edición (la que sale en el navegador al abrirla, `https://docs.google.com/spreadsheets/d/…`). Se guarda en `setting` (`prices_sheet_url`) y aparece el botón «Abrir hoja de precios», que la abre en una pestaña nueva.
+
 ## 4. Comprobar
 
 En la pantalla **Precios** (enlazada desde el cuadro de cartera y desde Ajustes), el botón «Leer ahora» fuerza una lectura y muestra el resultado: cuándo se leyó, o el error si no se pudo. Cada valor muestra su último precio, la fecha y el origen.

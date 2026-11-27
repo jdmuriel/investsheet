@@ -10,6 +10,7 @@
 <header class="page">
 	<h1>Precios y tipos de cambio</h1>
 	<a href="/">Volver a Cartera</a>
+	{#if data.sheetUrl}<a class="button" href={data.sheetUrl} target="_blank" rel="noopener noreferrer">Abrir hoja de precios</a>{/if}
 </header>
 
 {#if form?.errors}
@@ -18,6 +19,10 @@
 	</ul>
 {:else if form?.savedId}
 	<p class="ok">Precio guardado.</p>
+{:else if form?.sheetError}
+	<p class="neg">{form.sheetError}</p>
+{:else if form?.sheetSaved}
+	<p class="ok">Dirección de la hoja guardada.</p>
 {:else if form?.refreshed}
 	<p class="ok">Lectura hecha; el resultado está abajo.</p>
 {/if}
@@ -80,6 +85,15 @@
 		</tbody>
 	</table>
 </div>
+<details class="sheet" open={!data.sheetUrl || !!form?.sheetError}>
+	<summary>Dirección de la hoja de precios</summary>
+	<p class="note">Para el botón «Abrir hoja de precios»: la dirección que sale en el navegador al abrir la hoja en Google Sheets, no la publicada en CSV. Ahí se añaden los valores nuevos (ver <code>docs/hoja-precios.md</code>).</p>
+	<form method="POST" action="?/hoja">
+		<input name="url" type="url" size="60" autocomplete="off" placeholder="https://docs.google.com/spreadsheets/d/…" value={form?.sheetRaw ?? data.sheetUrl ?? ''} aria-label="Dirección de la hoja de precios" />
+		<button>Guardar</button>
+	</form>
+</details>
+
 <p class="note">En gris, los valores sin posición en esta cartera. El ticker de precios y la moneda de cada valor se cambian en <a href="/ajustes/valores">Ajustes → Valores</a>.</p>
 
 <style>
@@ -93,6 +107,26 @@
 	h1 {
 		font-size: 1.3rem;
 		margin: 0;
+	}
+	a.button {
+		padding: 0.2rem 0.6rem;
+		border: 1px solid var(--line);
+		border-radius: 4px;
+		background: var(--soft);
+		color: var(--fg);
+		text-decoration: none;
+	}
+	.sheet {
+		margin: 1rem 0;
+	}
+	.sheet form {
+		display: flex;
+		gap: 0.3rem;
+		flex-wrap: wrap;
+	}
+	.sheet input {
+		text-align: left;
+		max-width: 100%;
 	}
 	.status p {
 		margin: 0 0 0.3rem;

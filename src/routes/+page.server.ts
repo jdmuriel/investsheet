@@ -32,6 +32,7 @@ export const load: PageServerLoad = async ({ url, locals, cookies }) => {
 		forecast: portfolio.forecast,
 		oldestQuote: portfolio.oldestQuote,
 		newestQuote: portfolio.newestQuote,
+		fx: portfolio.fx,
 		distributions: { Valor: by((r) => r.ticker), Sector: by((r) => r.sector), Supersector: by((r) => r.supersector), País: by((r) => r.country) },
 		status: marketStatus(db),
 		monthsMode: (MONTHS_MODES as readonly string[]).includes(cookies.get('meses') ?? '') ? (cookies.get('meses') as MonthsMode) : null

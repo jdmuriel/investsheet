@@ -4,7 +4,7 @@
 	import Dialog from '#lib/components/Dialog.svelte';
 	import SecurityDialog from '#lib/components/SecurityDialog.svelte';
 	import { MONTH_NAMES, MONTH_SHORT } from '#lib/engine/dividends.ts';
-	import { date, dateTime, dec2, eur, eurWhole, num, pct, price, symbol } from '#lib/format.ts';
+	import { date, dateTime, dec2, eur, eurWhole, num, pct, price, rate, symbol } from '#lib/format.ts';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -102,6 +102,9 @@
 	const sum = (pick: (r: Row) => number | null) => visible.reduce((a, r) => a + (pick(r) ?? 0), 0);
 
 	const t = $derived(data.totals);
+	/** Cambio del dólar en grande y el resto de monedas debajo. */
+	const usd = $derived(data.fx.find((f) => f.currency === 'USD'));
+	const otherFx = $derived(data.fx.filter((f) => f.currency !== 'USD' && f.currency !== 'EUR'));
 	let weightInfo = $state(false);
 
 	// Desde cada valor: su ficha en ventana emergente (al guardar se recarga el cuadro) y sus movimientos de todos los años.
@@ -160,7 +163,14 @@
 	<div><dt>PADI neto</dt><dd>{eur(t.padiNet)} €</dd><dd class="sub">{eur(t.monthlyNet)} € al mes · YOC {pct(t.yocNet)}</dd></div>
 	<div><dt>Liquidez</dt><dd>{eur(t.liquidity)} €</dd><dd class="sub">{pct(t.liquidityPct)} del total</dd></div>
 	<div><dt>Valor de mercado</dt><dd>{eur(t.value)} €</dd><dd class="sub">{t.count} valores · coste {eur(t.reducedCost)} €</dd></div>
-	<div><dt>Capital aportado y reinvertido</dt><dd>{eur(t.invested)} €</dd><dd class="sub" title="Aportaciones menos retiradas; el resto es el resultado de los años cerrados, que se considera reinvertido">Solo aportación: {eur(t.capital)} €</dd></div>
+	<div><dt>Capital aportado</dt><dd title="Aportaciones menos retiradas">{eur(t.capital)} €</dd><dd class="sub" title="Más el resultado de los años cerrados, que se considera reinvertido">Incluyendo reinversión: {eur(t.invested)} €</dd></div>
+	{#if usd || otherFx.length}
+		<div>
+			<dt><a href="/precios" title="Tipos de cambio del BCE: unidades de cada moneda por euro">Cambio {usd ? '$/€' : ''}</a></dt>
+			{#if usd}<dd title="Del {date(usd.date)}">{rate(usd.rate)}</dd>{/if}
+			<dd class="sub">{#each otherFx as f, i (f.currency)}{i ? ' · ' : ''}<span title="Del {date(f.date)}">{symbol(f.currency)}/€ {rate(f.rate)}</span>{/each}</dd>
+		</div>
+	{/if}
 	<div><dt>Total</dt><dd>{eur(t.value + t.liquidity)} €</dd><dd class="sub" class:neg={t.totalGain < 0} title="Valor de mercado más liquidez menos lo aportado; el porcentaje es sobre lo aportado">resultado total {eur(t.totalGain)}&nbsp;€{#if t.capital > 0}&nbsp;({pct(t.totalGain / t.capital)}){/if}</dd></div>
 </dl>
 
@@ -514,6 +524,9 @@
 	.tiles dt {
 		font-size: 12px;
 		color: var(--muted);
+	}
+	.tiles dt a {
+		color: inherit;
 	}
 	.tiles dd {
 		margin: 0;

@@ -38,6 +38,11 @@ const unit = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumF
 export function price(value: number | null | undefined, currency?: string | null): string {
 	return value == null ? '' : currency ? `${unit.format(value)} ${symbol(currency)}` : unit.format(value);
 }
+/** Tipo de cambio con cuatro decimales: «1,0512». */
+const fourDecimals = new Intl.NumberFormat('es-ES', { minimumFractionDigits: 4, maximumFractionDigits: 4, useGrouping: 'always' });
+export function rate(value: number | null | undefined): string {
+	return value == null ? '' : fourDecimals.format(value);
+}
 /** AAAA-MM-DD a DD/MM/AAAA. */
 export function date(iso: string): string {
 	return `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;

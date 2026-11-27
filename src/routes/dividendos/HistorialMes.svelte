@@ -7,8 +7,8 @@
 	import type { PageData } from './$types';
 
 	/**
-	 * Un mes valor a valor frente al mismo mes del año anterior y frente a tres meses antes, con la causa de
-	 * cada diferencia y el texto resumen para copiar.
+	 * Un mes valor a valor frente al mismo mes del año anterior, con la causa de cada diferencia y el texto
+	 * resumen para copiar.
 	 */
 	let { data }: { data: Extract<PageData, { view: 'mes' }> } = $props();
 	const name = (m: string) => `${MONTH_NAMES[Number(m.slice(5, 7)) - 1]} de ${m.slice(0, 4)}`;
@@ -16,14 +16,8 @@
 	const amount = (c: CompareRow['current']) => (c ? c[field] : 0);
 	const signed = (v: number) => `${v > 0 ? '+' : ''}${eur(v)} €`;
 
-	/** Filas de las dos comparaciones juntas: un valor por fila. */
-	const rows = $derived.by(() => {
-		const q = new Map(data.quarter.rows.map((r) => [r.securityId, r]));
-		const out = data.annual.rows.map((a) => ({ id: a.securityId, ticker: a.ticker, current: a.current, annual: a as CompareRow | null, quarter: q.get(a.securityId) ?? null }));
-		const seen = new Set(out.map((r) => r.id));
-		for (const r of data.quarter.rows) if (!seen.has(r.securityId)) out.push({ id: r.securityId, ticker: r.ticker, current: r.current, annual: null, quarter: r });
-		return out;
-	});
+	/** Un valor por fila. */
+	const rows = $derived(data.annual.rows.map((a) => ({ id: a.securityId, ticker: a.ticker, current: a.current, annual: a as CompareRow | null })));
 
 	function diff(r: CompareRow | null): string {
 		if (!r) return '';
@@ -68,11 +62,11 @@
 	}
 	const isMoved = (r: CompareRow | null) => r?.cause === 'adelanta' || r?.cause === 'atrasa';
 
-	let copied = $state<string | null>(null);
-	async function copy(text: string, key: string) {
+	let copied = $state(false);
+	async function copy(text: string) {
 		await navigator.clipboard.writeText(text);
-		copied = key;
-		setTimeout(() => copied === key && (copied = null), 1500);
+		copied = true;
+		setTimeout(() => (copied = false), 1500);
 	}
 </script>
 
@@ -88,18 +82,14 @@
 	<a href={link(page.url, { mes: addMonths(data.month, 1) })} aria-label="Mes siguiente">{MONTH_NAMES[Number(addMonths(data.month, 1).slice(5, 7)) - 1]} →</a>
 </form>
 
-<div class="texts">
-	{#each [['anual', data.annual, data.annualText, 'Frente al año anterior'], ['trimestral', data.quarter, data.quarterText, 'Frente al trimestre anterior']] as const as [key, cmp, text, title] (key)}
-		<div class="text">
-			<div class="head">
-				<strong>{title}</strong>
-				<span class="muted">{name(cmp.base)}: {eur(cmp.baseTotal)} € → {eur(cmp.total)} €</span>
-				{#if cmp.baseTotal}<span class:neg={cmp.total < cmp.baseTotal}>{signed(cmp.total - cmp.baseTotal)} ({cmp.total >= cmp.baseTotal ? '+' : ''}{pct((cmp.total - cmp.baseTotal) / cmp.baseTotal)})</span>{/if}
-				<button type="button" class="copy" onclick={() => copy(text, key)}>{copied === key ? 'copiado' : 'copiar'}</button>
-			</div>
-			<p>{text}</p>
-		</div>
-	{/each}
+<div class="text">
+	<div class="head">
+		<strong>Frente al año anterior</strong>
+		<span class="muted">{name(data.annual.base)}: {eur(data.annual.baseTotal)} € → {eur(data.annual.total)} €</span>
+		{#if data.annual.baseTotal}<span class:neg={data.annual.total < data.annual.baseTotal}>{signed(data.annual.total - data.annual.baseTotal)} ({data.annual.total >= data.annual.baseTotal ? '+' : ''}{pct((data.annual.total - data.annual.baseTotal) / data.annual.baseTotal)})</span>{/if}
+		<button type="button" class="copy" onclick={() => copy(data.annualText)}>{copied ? 'copiado' : 'copiar'}</button>
+	</div>
+	<p>{data.annualText}</p>
 </div>
 
 <div class="scroll">
@@ -109,15 +99,11 @@
 				<th class="l first" rowspan="2">Valor</th>
 				<th colspan="3" class="group">{name(data.month)}</th>
 				<th colspan="3" class="group">{name(data.annual.base)}</th>
-				<th colspan="3" class="group">{name(data.quarter.base)}</th>
 			</tr>
 			<tr>
 				<th>Acciones</th>
 				<th>Por acción</th>
 				<th>Importe</th>
-				<th>Importe</th>
-				<th>Diferencia</th>
-				<th class="l">Causa</th>
 				<th>Importe</th>
 				<th>Diferencia</th>
 				<th class="l">Causa</th>
@@ -133,9 +119,6 @@
 					<td class="sep">{r.annual?.base ? eur(amount(r.annual.base)) : ''}</td>
 					<td class:neg={!isMoved(r.annual) && (r.annual?.diff ?? 0) < 0} class:moved={isMoved(r.annual)} title={r.annual ? `${signed(r.annual.diff)}` : undefined}>{diff(r.annual)}</td>
 					<td class="l cause" title={detail(r.annual)}>{cause(r.annual)}</td>
-					<td class="sep">{r.quarter?.base ? eur(amount(r.quarter.base)) : ''}</td>
-					<td class:neg={!isMoved(r.quarter) && (r.quarter?.diff ?? 0) < 0} class:moved={isMoved(r.quarter)} title={r.quarter ? `${signed(r.quarter.diff)}` : undefined}>{diff(r.quarter)}</td>
-					<td class="l cause" title={detail(r.quarter)}>{cause(r.quarter)}</td>
 				</tr>
 			{/each}
 		</tbody>
@@ -148,9 +131,6 @@
 				<td class="sep">{eur(data.annual.baseTotal)}</td>
 				<td class:neg={data.annual.total < data.annual.baseTotal}>{signed(data.annual.total - data.annual.baseTotal)}</td>
 				<td></td>
-				<td class="sep">{eur(data.quarter.baseTotal)}</td>
-				<td class:neg={data.quarter.total < data.quarter.baseTotal}>{signed(data.quarter.total - data.quarter.baseTotal)}</td>
-				<td></td>
 			</tr>
 		</tfoot>
 	</table>
@@ -160,13 +140,9 @@
 </p>
 
 <style>
-	.texts {
-		display: grid;
-		gap: 0.75rem;
+	.text {
 		margin-bottom: 1rem;
 		max-width: 60rem;
-	}
-	.text {
 		border: 1px solid var(--line);
 		border-radius: 6px;
 		padding: 0.5rem 0.75rem;

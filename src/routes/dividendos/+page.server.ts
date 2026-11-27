@@ -29,7 +29,7 @@ export const load: PageServerLoad = ({ url, locals, cookies }) => {
 	const db = getDb();
 	const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Madrid' }).format(new Date());
 	const currentYear = Number(today.slice(0, 4));
-	const { rows, totals } = loadPortfolio(db, portfolioId, today);
+	const { rows, totals, order: sortOrder } = loadPortfolio(db, portfolioId, today);
 
 	const remember = (name: string, value: string | null) => {
 		if (value) cookies.set(name, value, { path: '/', maxAge: YEAR, httpOnly: false, sameSite: 'lax' });
@@ -99,13 +99,13 @@ export const load: PageServerLoad = ({ url, locals, cookies }) => {
 		const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(asked) ? asked : fallback;
 		const held = heldAt(month);
 		const annual = compareMonth(history, month, 'anual', money, { today, splits, held });
-		const quarter = compareMonth(history, month, 'trimestral', money, { today, splits, held });
-		return { ...common, view, month, annual, quarter, annualText: comparisonText(annual, money), quarterText: comparisonText(quarter, money) };
+		return { ...common, view, month, annual, annualText: comparisonText(annual, money) };
 	}
 
-	// Valores con cobros: los de la cartera en su orden y después el resto por ticker.
-	const order = new Map(rows.map((r, i) => [r.id, i]));
-	const securities = [...history.tickers.entries()].map(([id, ticker]) => ({ id, ticker, held: order.has(id) })).sort((a, b) => (order.get(a.id) ?? 1e9) - (order.get(b.id) ?? 1e9) || a.ticker.localeCompare(b.ticker));
+	// Valores con cobros: los de la cartera en el orden establecido para ella (el de la portada) y después el resto por ticker.
+	const held = new Set(rows.map((r) => r.id));
+	const rank = (id: number) => sortOrder[id] ?? (held.has(id) ? 1e9 : 2e9);
+	const securities = [...history.tickers.entries()].map(([id, ticker]) => ({ id, ticker, held: held.has(id) })).sort((a, b) => rank(a.id) - rank(b.id) || a.ticker.localeCompare(b.ticker));
 
 	if (view === 'valor') {
 		const asked = Number(url.searchParams.get('valor'));

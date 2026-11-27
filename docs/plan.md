@@ -114,7 +114,7 @@ Objetivo: poder dejar de usar la hoja.
 
 - [ ] **4.1 Fotos de cartera** al cierre de trimestre y de año (RF-42). 🟡
 - [ ] **4.2 Top 50 y su evolución** (RF-37), importando las fotos anuales de la hoja. 🟢
-- [x] **4.3 Dividendos por mes y año** con gráficos (RF-38): solapa «Historial» de `/dividendos`, con las vistas Evolución (acumulado del año frente al anterior, fecha en que se supera y previsión con el calendario), Mes (frente al mismo mes del año y del trimestre anterior, con la causa de cada diferencia y el texto para copiar), Valor y Tabla completa; en bruto, neto o por acción. Cálculo en `src/lib/engine/history.ts`. 🟢
+- [x] **4.3 Dividendos por mes y año** con gráficos (RF-38): solapa «Historial» de `/dividendos`, con las vistas Evolución (acumulado del año frente al anterior, fecha en que se supera y previsión con el calendario), Mes (frente al mismo mes del año anterior, con la causa de cada diferencia y el texto para copiar), Valor y Tabla completa (valores en el orden de la cartera); en bruto, neto o por acción. Cálculo en `src/lib/engine/history.ts`. 🟢
 - [ ] **4.4 Evolución de la inversión** (RF-39). 🟢
 - [ ] **4.5 Crecimiento de dividendos**: orgánico frente a compras (RF-40). 🟡 Hecho mes a mes en la vista Mes del historial (reparto de cada diferencia entre acciones, dividendo por acción y tipo de cambio); falta el resumen anual por valor.
 - [ ] **4.6 Importación de extractos CSV** de Degiro e Interactive Brokers (RF-09). 🔴
@@ -263,6 +263,7 @@ Tareas que el propietario ha decidido dejar para mucho más adelante; no se abor
 | 2026-11-22 | Tarea 1.19: el servidor MCP pasa a la aplicación (`/mcp`) con OAuth propio (registro dinámico, PKCE S256, tokens con hash, refresco con rotación; migración 10) y Ajustes → Conectores para revocar. Herramientas en inglés y sin la de gráficos (los dibuja quien llama); se retira el servidor local. La comprobación de origen pasa de SvelteKit a `hooks.server.ts` para admitir el canje de tokens. Probado el flujo completo con la versión compilada. |
 | 2026-11-26 | Desplegada la 1.19 en producción (migración 10): metadatos, registro y `/mcp` responden; la sesión de Claude Code en la nube usa ya el conector con el `API_TOKEN` inyectado por el proxy. |
 | 2026-11-26 | `/dividendos` en solapas (cambios, calendario e historial) y tarea 4.3: historial de cobros con evolución, comparación mensual con su texto, cobros por valor y tabla completa. Los cobros incluyen ventas de derechos y devoluciones de prima. Comparado con la columna BL de `Control cartera` (C11). Fusionado en `main` y desplegado. |
+| 2026-11-27 | Retoques del historial de dividendos: la vista Mes deja de compararse con el trimestre anterior (texto y columnas) y la tabla completa ordena los valores como la cartera (`sort_order`), no por su posición en el cuadro. |
 
 ## Ideas para más adelante
 
